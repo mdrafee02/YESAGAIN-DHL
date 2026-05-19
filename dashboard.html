@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>YesAgain FZC — DHL Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   RESET & TOKENS
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Background layers */
+  --bg:        #060810;
+  --surface:   #0d1117;
+  --surface2:  #131920;
+  --surface3:  #1a2231;
+  --surface4:  #1f2a3d;
+
+  /* Borders */
+  --border:    rgba(255,255,255,0.08);
+  --border-hi: rgba(255,255,255,0.14);
+
+  /* Brand accent */
+  --amber:     #f5a623;
+  --amber-dim: #c2831a;
+  --amber-glow:rgba(245,166,35,0.18);
+
+  /* Semantic colors */
+  --green:     #22d3a1;
+  --green-dim: rgba(34,211,161,0.15);
+  --red:       #ff5757;
+  --red-dim:   rgba(255,87,87,0.15);
+  --blue:      #4f9eff;
+  --blue-dim:  rgba(79,158,255,0.15);
+  --purple:    #a78bfa;
+
+  /* Text — much higher contrast */
+  --text-hi:   #f0f4ff;
+  --text:      #c8d4e8;
+  --text-mid:  #8fa3bc;
+  --text-lo:   #4d6070;
+
+  /* Typography */
+  --font-ui:   'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 14px;
+}
+
+html { height: 100%; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ── Ambient top glow ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: -300px; left: 50%;
+  transform: translateX(-50%);
+  width: 900px; height: 500px;
+  background: radial-gradient(ellipse, rgba(245,166,35,0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+* { position: relative; z-index: 1; }
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,8,16,0.85);
+  backdrop-filter: blur(20px);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+
+.logo-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, #c2831a, var(--amber));
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px;
+  box-shadow: 0 2px 12px rgba(245,166,35,0.35);
+}
+
+.logo-text {
+  font-size: 16px; font-weight: 700;
+  color: var(--text-hi); letter-spacing: 0.01em;
+}
+.logo-sub {
+  font-family: var(--font-mono);
+  font-size: 10.5px; color: var(--text-lo);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px;
+}
+
+.hc-mode {
+  padding: 5px 16px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; border: none;
+  transition: all 0.2s;
+  color: var(--text-lo);
+  background: transparent;
+}
+.hc-mode.active-test  { background: var(--blue-dim);  color: var(--blue);  }
+.hc-mode.active-prod  { background: var(--amber-glow); color: var(--amber); }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.status-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--text-mid);
+  letter-spacing: 0.04em;
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-lo); transition: all 0.3s; flex-shrink: 0;
+}
+.status-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-dot.running { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse 1s infinite; }
+.status-dot.error   { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+#status-text { color: var(--text); transition: color 0.3s; }
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 0;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-lo);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+.sidebar {
+  padding-right: 24px;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+/* ── Stat boxes ── */
+.stats-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.stat-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+.stat-value {
+  font-size: 26px; font-weight: 700;
+  color: var(--text-hi); line-height: 1;
+  font-family: var(--font-mono);
+}
+.stat-value.green  { color: var(--green); }
+.stat-value.red    { color: var(--red); }
+.stat-value.amber  { color: var(--amber); }
+.stat-label {
+  font-size: 11px; color: var(--text-mid);
+  font-family: var(--font-mono); letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+/* ── Mode card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px;
+}
+
+.mode-toggle {
+  display: flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 3px; gap: 3px;
+}
+.mode-btn {
+  flex: 1; padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 11.5px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s;
+  color: var(--text-lo); background: transparent;
+}
+.mode-btn.active.test { background: var(--blue-dim); color: var(--blue); border-color: rgba(79,158,255,0.3); }
+.mode-btn.active.prod { background: var(--amber-glow); color: var(--amber); border-color: rgba(245,166,35,0.3); }
+
+.notice-box {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: var(--r-sm);
+  font-size: 12px; line-height: 1.55;
+  display: flex; gap: 9px;
+}
+.notice-box.hidden { display: none; }
+.notice-test { background: var(--blue-dim);  border: 1px solid rgba(79,158,255,0.2);  color: #93c5fd; }
+.notice-prod { background: var(--amber-glow); border: 1px solid rgba(245,166,35,0.2); color: #fcd47e; }
+.notice-box strong { color: var(--text-hi); }
+
+/* ── Action button ── */
+.btn-run {
+  width: 100%;
+  padding: 15px 20px;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--font-ui);
+  font-size: 14.5px; font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+.btn-run::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%); transition: transform 0.5s;
+}
+.btn-run:hover::before { transform: translateX(100%); }
+
+.btn-run.prod-btn {
+  background: linear-gradient(135deg, var(--amber-dim), var(--amber));
+  color: #18100a;
+  box-shadow: 0 4px 20px rgba(245,166,35,0.3);
+}
+.btn-run.prod-btn:hover { box-shadow: 0 6px 28px rgba(245,166,35,0.45); transform: translateY(-1px); }
+
+.btn-run.test-btn {
+  background: var(--surface2);
+  color: var(--blue);
+  border: 1.5px solid rgba(79,158,255,0.35);
+}
+.btn-run.test-btn:hover { background: var(--surface3); border-color: rgba(79,158,255,0.6); }
+
+.btn-run:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+/* ── Progress ── */
+.progress-wrap { display: none; flex-direction: column; gap: 8px; }
+.progress-wrap.visible { display: flex; }
+.progress-bar-bg {
+  height: 5px; background: var(--surface3);
+  border-radius: 100px; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; border-radius: 100px;
+  background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+  width: 0%; transition: width 0.4s ease;
+  box-shadow: 0 0 8px rgba(245,166,35,0.6);
+}
+.progress-bar-fill.running { animation: indeterminate 1.5s infinite ease-in-out; }
+@keyframes indeterminate {
+  0%   { width: 0%;  margin-left: 0; }
+  50%  { width: 60%; margin-left: 20%; }
+  100% { width: 0%;  margin-left: 100%; }
+}
+.progress-label {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-mid); text-align: center;
+}
+
+/* ── Downloads card ── */
+#downloads-card {
+  background: var(--surface);
+  border: 1px solid rgba(34,211,161,0.25);
+  border-radius: var(--r-lg);
+  padding: 18px;
+  display: none;
+  animation: fadeSlideUp 0.4s ease;
+}
+#downloads-card.visible { display: block; }
+#downloads-card .section-label { color: var(--green); }
+#downloads-card .section-label::after { background: rgba(34,211,161,0.2); }
+
+.dl-btn {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 11px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.18s;
+  text-decoration: none; margin-bottom: 8px;
+}
+.dl-btn:last-child { margin-bottom: 0; }
+.dl-btn:hover { background: var(--surface3); border-color: var(--border-hi); color: var(--text-hi); }
+.dl-btn .dl-icon { font-size: 16px; flex-shrink: 0; }
+.dl-btn .dl-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-lo); margin-top: 1px; }
+.dl-btn-inner { flex: 1; }
+
+/* ── Log history ── */
+.history-list {
+  display: flex; flex-direction: column; gap: 7px;
+  max-height: 220px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.history-item {
+  display: flex; align-items: center;
+  padding: 9px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  gap: 10px; cursor: pointer; transition: border-color 0.15s;
+}
+.history-item:hover { border-color: var(--border-hi); }
+.history-item-name {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text); flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.history-item-meta {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-lo); white-space: nowrap;
+}
+.badge {
+  padding: 2px 8px; border-radius: 100px;
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
+  flex-shrink: 0;
+}
+.badge.ok  { background: var(--green-dim); color: var(--green); }
+.badge.err { background: var(--red-dim);   color: var(--red); }
+
+/* ═══════════════════════════════════════════
+   CONTENT AREA (right)
+═══════════════════════════════════════════ */
+.content-area {
+  padding-left: 24px;
+  display: flex; flex-direction: column; gap: 18px;
+  min-height: 0;
+}
+
+/* ── Result cards ── */
+.result-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+  transition: border-color 0.3s;
+}
+.result-card.success { border-color: rgba(34,211,161,0.3); }
+.result-card.error   { border-color: rgba(255,87,87,0.3); }
+.result-icon { font-size: 22px; flex-shrink: 0; }
+.result-label {
+  font-size: 11px; color: var(--text-lo);
+  font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
+}
+.result-value {
+  font-size: 24px; font-weight: 700; font-family: var(--font-mono);
+  line-height: 1; color: var(--text-hi); margin-top: 2px;
+}
+.result-value.green { color: var(--green); }
+.result-value.red   { color: var(--red); }
+
+/* ── Terminal ── */
+.terminal {
+  background: #030507;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  flex: 1;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 460px;
+  box-shadow: inset 0 2px 16px rgba(0,0,0,0.6);
+}
+.terminal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.terminal-dots { display: flex; gap: 6px; }
+.terminal-dots span { width: 11px; height: 11px; border-radius: 50%; }
+.td-red   { background: #ff5f57; }
+.td-amber { background: #febc2e; }
+.td-green { background: #28c840; }
+.terminal-title {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-lo); letter-spacing: 0.05em;
+}
+.terminal-actions { display: flex; gap: 8px; }
+.btn-clear {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-lo);
+  font-family: var(--font-mono); font-size: 10px;
+  cursor: pointer; letter-spacing: 0.04em; transition: all 0.15s;
+}
+.btn-clear:hover { border-color: var(--border-hi); color: var(--text); }
+
+.terminal-body {
+  flex: 1; overflow-y: auto;
+  padding: 16px;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.8;
+  scrollbar-width: thin; scrollbar-color: var(--surface3) transparent;
+}
+.terminal-body::-webkit-scrollbar { width: 5px; }
+.terminal-body::-webkit-scrollbar-track { background: transparent; }
+.terminal-body::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
+
+.log-line { display: block; white-space: pre-wrap; word-break: break-all; }
+.log-line.success { color: #34d399; }
+.log-line.error   { color: #fc8181; }
+.log-line.warning { color: #fbbf24; }
+.log-line.info    { color: #60a5fa; }
+.log-line.muted   { color: var(--text-lo); }
+.log-line.header  { color: var(--amber); font-weight: 600; }
+.log-line.default { color: #9eb5cc; }
+
+.cursor-blink::after {
+  content: '▋'; color: var(--amber);
+  animation: blink 1.1s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.terminal-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; gap: 10px; color: var(--text-lo);
+}
+.terminal-empty-icon { font-size: 28px; opacity: 0.25; }
+.terminal-empty-text { font-size: 12px; font-family: var(--font-mono); }
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 24px; right: 24px;
+  padding: 12px 20px;
+  border-radius: var(--r);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  letter-spacing: 0.02em;
+  display: flex; align-items: center; gap: 10px;
+  z-index: 1000;
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none; max-width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { background: rgba(34,211,161,0.12); border: 1px solid rgba(34,211,161,0.35); color: #34d399; }
+#toast.error   { background: rgba(255,87,87,0.12);  border: 1px solid rgba(255,87,87,0.35);  color: #fc8181; }
+#toast.info    { background: rgba(79,158,255,0.12); border: 1px solid rgba(79,158,255,0.35); color: #93c5fd; }
+
+/* ═══════════════════════════════════════════
+   CONFIRM OVERLAY
+═══════════════════════════════════════════ */
+#confirm-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+  z-index: 200; align-items: center; justify-content: center;
+}
+#confirm-overlay.show { display: flex; }
+
+.confirm-box {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r-lg);
+  padding: 30px 34px;
+  max-width: 440px; width: 90%;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  animation: fadeSlideUp 0.25s ease;
+}
+.confirm-icon { font-size: 38px; margin-bottom: 14px; }
+.confirm-title {
+  font-size: 20px; font-weight: 700; color: var(--text-hi); margin-bottom: 10px;
+}
+.confirm-body {
+  font-size: 13.5px; color: var(--text-mid); line-height: 1.65; margin-bottom: 22px;
+}
+.confirm-body strong { color: var(--amber); }
+.confirm-actions { display: flex; gap: 10px; }
+.btn-cancel {
+  flex: 1; padding: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-cancel:hover { border-color: var(--border-hi); }
+.btn-ok {
+  flex: 1; padding: 12px;
+  background: linear-gradient(135deg, var(--amber-dim), var(--amber));
+  border: none; border-radius: var(--r-sm);
+  color: #18100a;
+  font-family: var(--font-ui); font-weight: 700; font-size: 13.5px;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-ok:hover { opacity: 0.88; }
+
+/* ── Separator ── */
+.sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── Spinner ── */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid transparent; border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Animations ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card, .terminal, .result-card { animation: fadeSlideUp 0.4s ease both; }
+.card:nth-child(2)  { animation-delay: 0.05s; }
+.card:nth-child(3)  { animation-delay: 0.10s; }
+.result-card:nth-child(2) { animation-delay: 0.04s; }
+.result-card:nth-child(3) { animation-delay: 0.08s; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+  .sidebar { padding-right: 0; border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+  .content-area { padding-left: 0; }
+  .result-row { grid-template-columns: 1fr 1fr; }
+  .header-center { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════ HEADER ════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">✈️</div>
+    <div>
+      <div class="logo-text">YesAgain FZC</div>
+      <div class="logo-sub">DHL Booking Dashboard</div>
+    </div>
+  </div>
+
+  <!-- Centered mode indicator in header -->
+  <div class="header-center">
+    <button class="hc-mode active-test" id="hc-test" onclick="setMode('test')">🧪&nbsp; Test Mode</button>
+    <button class="hc-mode" id="hc-prod" onclick="setMode('prod')">🚀&nbsp; Production</button>
+  </div>
+
+  <div class="header-right">
+    <div class="status-pill">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ════ MAIN ════ -->
+<main>
+
+  <!-- ───── SIDEBAR ───── -->
+  <aside class="sidebar">
+
+    <!-- Session stats -->
+    <div>
+      <div class="section-label">Session Stats</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-value amber" id="stat-runs">0</div>
+          <div class="stat-label">Runs Today</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value green" id="stat-booked">0</div>
+          <div class="stat-label">Booked</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value red" id="stat-failed">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-time">—</div>
+          <div class="stat-label">Last Run</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Mode card -->
+    <div class="card">
+      <div class="section-label">Booking Mode</div>
+      <div class="mode-toggle">
+        <button class="mode-btn test active" id="mode-test" onclick="setMode('test')">🧪&nbsp; Test</button>
+        <button class="mode-btn prod"        id="mode-prod" onclick="setMode('prod')">🚀&nbsp; Production</button>
+      </div>
+      <div id="notice-test" class="notice-box notice-test">
+        <span>ℹ️</span>
+        <span><strong>Test Mode:</strong> Script runs fully but no real DHL call is made. Fake tracking numbers returned. Airtable is NOT updated.</span>
+      </div>
+      <div id="notice-prod" class="notice-box notice-prod hidden">
+        <span>⚠️</span>
+        <span><strong>Production:</strong> Real DHL shipments will be booked. Real labels generated. Airtable will be updated. Cannot be undone.</span>
+      </div>
+    </div>
+
+    <!-- Action button -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn-run test-btn" id="btn-book" onclick="confirmRun()">
+        <span id="btn-icon">🧪</span>
+        <span id="btn-label">Run Test Booking</span>
+      </button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill running" id="progress-bar"></div>
+      </div>
+      <div class="progress-label" id="progress-label">Initialising…</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- ★ Downloads (shown after successful run) ★ -->
+    <div id="downloads-card">
+      <div class="section-label">Downloads</div>
+
+      <a class="dl-btn" id="dl-csv" href="#" onclick="downloadFile('csv'); return false;">
+        <span class="dl-icon">📊</span>
+        <div class="dl-btn-inner">
+          <div>DHL Order CSV</div>
+          <div class="dl-meta">DHL-Order-File · latest run</div>
+        </div>
+        <span style="font-size:13px;color:var(--text-lo);">↓</span>
+      </a>
+
+      <a class="dl-btn" id="dl-labels" href="#" onclick="downloadFile('labels'); return false;">
+        <span class="dl-icon">🏷️</span>
+        <div class="dl-btn-inner">
+          <div>Shipping Labels (ZIP)</div>
+          <div class="dl-meta">All PDF labels · latest run</div>
+        </div>
+        <span style="font-size:13px;color:var(--text-lo);">↓</span>
+      </a>
+    </div>
+
+    <!-- Log history -->
+    <div>
+      <div class="section-label">Log Files</div>
+      <div class="history-list" id="history-list">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">Loading…</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ───── CONTENT ───── -->
+  <section class="content-area">
+
+    <!-- Result cards -->
+    <div class="result-row">
+      <div class="result-card" id="rc-total">
+        <span class="result-icon">📦</span>
+        <div>
+          <div class="result-label">Processed</div>
+          <div class="result-value" id="rv-total">—</div>
+        </div>
+      </div>
+      <div class="result-card success" id="rc-ok">
+        <span class="result-icon">✅</span>
+        <div>
+          <div class="result-label">Succeeded</div>
+          <div class="result-value green" id="rv-ok">—</div>
+        </div>
+      </div>
+      <div class="result-card error" id="rc-fail">
+        <span class="result-icon">❌</span>
+        <div>
+          <div class="result-label">Failed</div>
+          <div class="result-value red" id="rv-fail">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terminal -->
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <span class="td-red"></span>
+          <span class="td-amber"></span>
+          <span class="td-green"></span>
+        </div>
+        <span class="terminal-title" id="terminal-title">READY — airtable_transform.py</span>
+        <div class="terminal-actions">
+          <button class="btn-clear" onclick="clearTerminal(true)">Clear</button>
+          <button class="btn-clear" onclick="scrollBottom()">↓ Bottom</button>
+        </div>
+      </div>
+      <div class="terminal-body" id="terminal">
+        <div class="terminal-empty" id="terminal-empty">
+          <div class="terminal-empty-icon">⌚</div>
+          <div class="terminal-empty-text">Waiting for a booking run…</div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<!-- ════ TOAST ════ -->
+<div id="toast"></div>
+
+<!-- ════ CONFIRM OVERLAY ════ -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">🧪</div>
+    <div class="confirm-title" id="confirm-title">Run Test Booking?</div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-ok" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════
+const API_BASE = window.location.origin;
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let currentMode  = 'test';
+let isRunning    = false;
+let eventSource  = null;
+let lastRunTimestamp = null;
+const sessionStats = { runs: 0, booked: 0, failed: 0 };
+
+// ════════════════════════════════════════════
+//  DOM REFS
+// ════════════════════════════════════════════
+const $term    = document.getElementById('terminal');
+const $empty   = document.getElementById('terminal-empty');
+const $ttitle  = document.getElementById('terminal-title');
+const $btnBook = document.getElementById('btn-book');
+const $btnIcon = document.getElementById('btn-icon');
+const $btnLbl  = document.getElementById('btn-label');
+const $progW   = document.getElementById('progress-wrap');
+const $progB   = document.getElementById('progress-bar');
+const $progL   = document.getElementById('progress-label');
+const $toast   = document.getElementById('toast');
+
+// ════════════════════════════════════════════
+//  API HEALTH
+// ════════════════════════════════════════════
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
+    const ok  = res.ok;
+    setStatus(ok ? 'online' : 'error', ok ? 'API Online' : 'API Error');
+  } catch {
+    setStatus('error', 'API Offline');
+  }
+}
+
+function setStatus(state, text) {
+  const dot  = document.getElementById('status-dot');
+  const span = document.getElementById('status-text');
+  dot.className  = 'status-dot ' + state;
+  span.textContent = text;
+}
+
+// ════════════════════════════════════════════
+//  MODE
+// ════════════════════════════════════════════
+function setMode(mode) {
+  currentMode = mode;
+
+  // Sidebar buttons
+  document.getElementById('mode-test').className = 'mode-btn test' + (mode === 'test' ? ' active' : '');
+  document.getElementById('mode-prod').className = 'mode-btn prod' + (mode === 'prod' ? ' active' : '');
+
+  // Header pills
+  document.getElementById('hc-test').className = 'hc-mode' + (mode === 'test' ? ' active-test' : '');
+  document.getElementById('hc-prod').className = 'hc-mode' + (mode === 'prod' ? ' active-prod' : '');
+
+  // Notices
+  document.getElementById('notice-test').classList.toggle('hidden', mode !== 'test');
+  document.getElementById('notice-prod').classList.toggle('hidden', mode !== 'prod');
+
+  // Action button
+  if (mode === 'prod') {
+    $btnBook.className = 'btn-run prod-btn';
+    $btnIcon.textContent = '🚀';
+    $btnLbl.textContent  = 'Book Real Shipments';
+  } else {
+    $btnBook.className = 'btn-run test-btn';
+    $btnIcon.textContent = '🧪';
+    $btnLbl.textContent  = 'Run Test Booking';
+  }
+}
+
+// ════════════════════════════════════════════
+//  CONFIRM DIALOG
+// ════════════════════════════════════════════
+function confirmRun() {
+  if (isRunning) return;
+  const overlay = document.getElementById('confirm-overlay');
+  const icon    = document.getElementById('confirm-icon');
+  const title   = document.getElementById('confirm-title');
+  const body    = document.getElementById('confirm-body');
+  const okBtn   = document.getElementById('confirm-ok-btn');
+
+  if (currentMode === 'prod') {
+    icon.textContent  = '🚀';
+    title.textContent = 'Book Real Shipments?';
+    body.innerHTML    = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
+    okBtn.textContent = 'Confirm & Book';
+    okBtn.style.background = 'linear-gradient(135deg, #c2831a, #f5a623)';
+  } else {
+    icon.textContent  = '🧪';
+    title.textContent = 'Run Test Booking?';
+    body.innerHTML    = 'This will run in <strong style="color:var(--blue)">TEST MODE</strong>.<br><br>No real DHL call will be made. Fake tracking numbers will be returned. Airtable will NOT be updated.';
+    okBtn.textContent = 'Run Test';
+    okBtn.style.background = 'var(--blue)';
+  }
+  overlay.classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('show');
+}
+
+// ════════════════════════════════════════════
+//  EXECUTE RUN (SSE Streaming)
+// ════════════════════════════════════════════
+function executeRun() {
+  closeConfirm();
+  if (isRunning) return;
+
+  setRunning(true);
+  clearTerminal(false);
+  document.getElementById('downloads-card').classList.remove('visible');
+
+  const testMode = (currentMode === 'test');
+  const url = `${API_BASE}/stream-dhl?test=${testMode ? '1' : '0'}`;
+
+  $ttitle.textContent = testMode
+    ? 'RUNNING — TEST MODE — airtable_transform.py --send-to-dhl --test'
+    : 'RUNNING — PRODUCTION — airtable_transform.py --send-to-dhl';
+
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource(url);
+
+  eventSource.onmessage = function(e) {
+    try {
+      const msg = JSON.parse(e.data);
+      handleSSEMessage(msg);
+    } catch(err) {
+      appendLog(e.data, 'default');
+    }
+  };
+
+  eventSource.onerror = function() {
+    appendLog('⚠️  Connection to API lost.', 'error');
+    finishRun(false);
+  };
+}
+
+function handleSSEMessage(msg) {
+  switch (msg.type) {
+    case 'start':
+      appendLog(`\n▶  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
+      break;
+
+    case 'log':
+      appendLog(msg.line);
+      const m = msg.line.match(/(\d+)\/(\d+)/);
+      if (m) {
+        const pct = Math.round((parseInt(m[1]) / parseInt(m[2])) * 100);
+        setProgress(pct, `${m[1]} / ${m[2]} shipments`);
+      }
+      if (msg.line.includes('✅ Success')) {
+        const n = msg.line.match(/Success\s*:\s*(\d+)/);
+        if (n) updateResultCard('ok', n[1]);
+      }
+      if (msg.line.includes('❌ Failed')) {
+        const n = msg.line.match(/Failed\s*:\s*(\d+)/);
+        if (n) updateResultCard('fail', n[1]);
+      }
+      if (msg.line.includes('order(s) to process')) {
+        const n = msg.line.match(/(\d+)\s+order/);
+        if (n) updateResultCard('total', n[1]);
+      }
+      // Track timestamp for download filenames
+      if (msg.line.includes('DHL-Order-File-')) {
+        const t = msg.line.match(/DHL-Order-File-(\d{8}_\d{6})/);
+        if (t) lastRunTimestamp = t[1];
+      }
+      break;
+
+    case 'done':
+      if (msg.success) {
+        appendLog('\n✅  Run completed successfully.', 'success');
+        showToast('Booking run completed!', 'success');
+        showDownloads();
+      } else {
+        appendLog('\n❌  Run completed with errors.', 'error');
+        showToast('Run finished with failures.', 'error');
+      }
+      sessionStats.runs++;
+      document.getElementById('stat-runs').textContent = sessionStats.runs;
+      document.getElementById('stat-time').textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      finishRun(msg.success);
+      loadHistory();
+      break;
+
+    case 'error':
+      appendLog(`\n❌  ${msg.message}`, 'error');
+      showToast(msg.message, 'error');
+      finishRun(false);
+      break;
+  }
+}
+
+// ════════════════════════════════════════════
+//  DOWNLOADS
+// ════════════════════════════════════════════
+function showDownloads() {
+  document.getElementById('downloads-card').classList.add('visible');
+}
+
+function downloadFile(type) {
+  let url;
+  if (type === 'csv') {
+    url = `${API_BASE}/download/csv`;
+  } else if (type === 'labels') {
+    url = `${API_BASE}/download/labels`;
+  }
+  if (!url) return;
+
+  showToast(`Preparing ${type === 'csv' ? 'CSV' : 'Labels ZIP'} for download…`, 'info');
+
+  // Trigger download
+  const a = document.createElement('a');
+  a.href = url;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ════════════════════════════════════════════
+//  TERMINAL HELPERS
+// ════════════════════════════════════════════
+function classifyLine(line) {
+  if (!line) return 'muted';
+  if (line.includes('✅') || line.includes('Success')) return 'success';
+  if (line.includes('❌') || line.includes('FAILED') || line.includes('Error') || line.includes('error')) return 'error';
+  if (line.includes('⚠️') || line.includes('WARNING'))  return 'warning';
+  if (line.includes('🌐') || line.includes('ℹ️') || line.includes('TEST')) return 'info';
+  if (line.startsWith('=') || line.startsWith('─') || line.includes('BATCH')) return 'header';
+  return 'default';
+}
+
+function appendLog(line, forcedClass) {
+  $empty.style.display = 'none';
+  const cls = forcedClass || classifyLine(line);
+  const span = document.createElement('span');
+  span.className = 'log-line ' + cls;
+  span.textContent = line + '\n';
+  $term.appendChild(span);
+  $term.scrollTop = $term.scrollHeight;
+
+  if (line.includes('Fake tracking') || line.includes('AWB:')) {
+    sessionStats.booked++;
+    document.getElementById('stat-booked').textContent = sessionStats.booked;
+  }
+  if (line.includes('DHL FAILED') || line.includes('❌ DHL')) {
+    sessionStats.failed++;
+    document.getElementById('stat-failed').textContent = sessionStats.failed;
+  }
+}
+
+function clearTerminal(showEmpty = true) {
+  $term.innerHTML = '';
+  if (showEmpty) { $empty.style.display = ''; $term.appendChild($empty); }
+  updateResultCard('total', '—');
+  updateResultCard('ok', '—');
+  updateResultCard('fail', '—');
+}
+
+function scrollBottom() { $term.scrollTop = $term.scrollHeight; }
+
+// ════════════════════════════════════════════
+//  PROGRESS HELPERS
+// ════════════════════════════════════════════
+function setProgress(pct, label) {
+  $progB.classList.remove('running');
+  $progB.style.width = pct + '%';
+  $progL.textContent = label;
+}
+
+function setRunning(running) {
+  isRunning = running;
+  $btnBook.disabled = running;
+  if (running) {
+    $progW.classList.add('visible');
+    $progB.classList.add('running');
+    $progL.textContent = 'Starting…';
+    $btnIcon.textContent = '';
+    $btnLbl.innerHTML = '<span class="spinner"></span> Running…';
+    setStatus('running', 'Booking in progress…');
+  }
+}
+
+function finishRun(success) {
+  isRunning = false;
+  eventSource?.close();
+  $progB.classList.remove('running');
+  setProgress(100, success ? 'Completed ✓' : 'Completed with errors');
+  $btnBook.disabled    = false;
+  $btnIcon.textContent = currentMode === 'prod' ? '🚀' : '🧪';
+  $btnLbl.textContent  = currentMode === 'prod' ? 'Book Real Shipments' : 'Run Test Booking';
+  $ttitle.textContent  = success ? 'COMPLETED — airtable_transform.py' : 'COMPLETED (ERRORS) — airtable_transform.py';
+  setStatus('online', 'API Online');
+}
+
+function updateResultCard(type, value) {
+  document.getElementById(`rv-${type}`).textContent = value;
+}
+
+// ════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════
+let toastTimer;
+function showToast(message, type = 'info') {
+  clearTimeout(toastTimer);
+  $toast.className  = '';
+  $toast.innerHTML  = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span><span>${message}</span>`;
+  $toast.className  = type;
+  requestAnimationFrame(() => $toast.classList.add('show'));
+  toastTimer = setTimeout(() => $toast.classList.remove('show'), 4000);
+}
+
+// ════════════════════════════════════════════
+//  LOG HISTORY
+// ════════════════════════════════════════════
+async function loadHistory() {
+  try {
+    const res  = await fetch(`${API_BASE}/logs/list`);
+    const data = await res.json();
+    const list = document.getElementById('history-list');
+    if (!data.logs || data.logs.length === 0) {
+      list.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">No log files yet.</div>`;
+      return;
+    }
+    list.innerHTML = data.logs.map(f => {
+      const isFailed = f.filename.startsWith('failed_orders');
+      const date = new Date(f.modified * 1000).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return `<div class="history-item" title="${f.filename}">
+        <span style="font-size:13px;">${isFailed ? '❌' : '📋'}</span>
+        <span class="history-item-name">${f.filename}</span>
+        <span class="history-item-meta">${f.size_kb}kb · ${date}</span>
+        <span class="badge ${isFailed ? 'err' : 'ok'}">${isFailed ? 'FAIL' : 'LOG'}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('history-list').innerHTML =
+      `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">Could not load logs.</div>`;
+  }
+}
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+async function init() {
+  await checkHealth();
+  setMode('test');
+  loadHistory();
+  setInterval(checkHealth, 30000);
+}
+
+init();
+</script>
+</body>
+</html>

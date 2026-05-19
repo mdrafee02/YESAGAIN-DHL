@@ -1,0 +1,26 @@
+# ── NEVER upload these to GitHub ──
+.env
+*.env
+
+# ── Generated output files (download locally, don't commit) ──
+labels/
+logs/
+DHL-Order-File-*.csv
+label_index.json
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# ── OS junk ──
+.DS_Store
+Thumbs.db
+desktop.ini
