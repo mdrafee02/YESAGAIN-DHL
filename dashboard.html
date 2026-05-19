@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>YesAgain FZC — DHL Booking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════
    RESET & TOKENS
@@ -14,47 +14,51 @@
 
 :root {
   /* Background layers */
-  --bg:        #060810;
-  --surface:   #0d1117;
-  --surface2:  #131920;
-  --surface3:  #1a2231;
-  --surface4:  #1f2a3d;
+  --bg:        #0f1219;
+  --surface:   #161c27;
+  --surface2:  #1d2535;
+  --surface3:  #242e42;
+  --surface4:  #2c3850;
 
   /* Borders */
-  --border:    rgba(255,255,255,0.08);
-  --border-hi: rgba(255,255,255,0.14);
+  --border:    rgba(255,255,255,0.09);
+  --border-hi: rgba(255,255,255,0.18);
 
-  /* Brand accent */
+  /* Brand accent - vibrant amber */
   --amber:     #f5a623;
-  --amber-dim: #c2831a;
-  --amber-glow:rgba(245,166,35,0.18);
+  --amber-dim: #c47e10;
+  --amber-glow:rgba(245,166,35,0.15);
 
   /* Semantic colors */
-  --green:     #22d3a1;
-  --green-dim: rgba(34,211,161,0.15);
-  --red:       #ff5757;
-  --red-dim:   rgba(255,87,87,0.15);
+  --green:     #10d9a0;
+  --green-dim: rgba(16,217,160,0.12);
+  --green-border: rgba(16,217,160,0.3);
+  --red:       #f05252;
+  --red-dim:   rgba(240,82,82,0.12);
+  --red-border: rgba(240,82,82,0.3);
   --blue:      #4f9eff;
-  --blue-dim:  rgba(79,158,255,0.15);
-  --purple:    #a78bfa;
+  --blue-dim:  rgba(79,158,255,0.12);
+  --blue-border: rgba(79,158,255,0.3);
+  --cyan:      #22d3ee;
 
-  /* Text — much higher contrast */
-  --text-hi:   #f0f4ff;
-  --text:      #c8d4e8;
-  --text-mid:  #8fa3bc;
-  --text-lo:   #4d6070;
+  /* Text — maximum readability */
+  --text-hi:   #f4f7ff;
+  --text:      #d0daf0;
+  --text-mid:  #8fa5c4;
+  --text-lo:   #4e6380;
 
   /* Typography */
-  --font-ui:   'Space Grotesk', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui:   'Outfit', sans-serif;
+  --font-mono: 'Fira Code', monospace;
 
   /* Radius */
   --r-sm: 6px;
   --r:    10px;
   --r-lg: 14px;
+  --r-xl: 18px;
 }
 
-html { height: 100%; }
+html, body { height: 100%; }
 
 body {
   font-family: var(--font-ui);
@@ -66,19 +70,17 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Ambient top glow ── */
-body::before {
+/* Subtle noise texture */
+body::after {
   content: '';
-  position: fixed;
-  top: -300px; left: 50%;
-  transform: translateX(-50%);
-  width: 900px; height: 500px;
-  background: radial-gradient(ellipse, rgba(245,166,35,0.05) 0%, transparent 70%);
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
+  opacity: 0.4;
 }
 
-* { position: relative; z-index: 1; }
+body > * { position: relative; z-index: 1; }
 
 /* ═══════════════════════════════════════════
    HEADER
@@ -87,39 +89,42 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 32px;
+  padding: 0 28px;
+  height: 62px;
   border-bottom: 1px solid var(--border);
-  background: rgba(6,8,16,0.85);
-  backdrop-filter: blur(20px);
+  background: rgba(15,18,25,0.92);
+  backdrop-filter: blur(24px);
   position: sticky; top: 0; z-index: 100;
+  flex-shrink: 0;
 }
 
 .logo { display: flex; align-items: center; gap: 12px; }
 
 .logo-icon {
-  width: 38px; height: 38px;
-  background: linear-gradient(135deg, #c2831a, var(--amber));
-  border-radius: var(--r-sm);
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #c47e10, var(--amber));
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 19px;
-  box-shadow: 0 2px 12px rgba(245,166,35,0.35);
+  box-shadow: 0 2px 16px rgba(245,166,35,0.3);
+  flex-shrink: 0;
 }
 
 .logo-text {
   font-size: 16px; font-weight: 700;
-  color: var(--text-hi); letter-spacing: 0.01em;
+  color: var(--text-hi); letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 .logo-sub {
   font-family: var(--font-mono);
-  font-size: 10.5px; color: var(--text-lo);
+  font-size: 10px; color: var(--text-lo);
   letter-spacing: 0.1em; text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .header-center {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 100px;
@@ -127,7 +132,7 @@ header {
 }
 
 .hc-mode {
-  padding: 5px 16px;
+  padding: 6px 18px;
   border-radius: 100px;
   font-family: var(--font-mono);
   font-size: 11px; font-weight: 600;
@@ -136,32 +141,33 @@ header {
   transition: all 0.2s;
   color: var(--text-lo);
   background: transparent;
+  display: flex; align-items: center; gap: 7px;
 }
-.hc-mode.active-test  { background: var(--blue-dim);  color: var(--blue);  }
-.hc-mode.active-prod  { background: var(--amber-glow); color: var(--amber); }
+.hc-mode.active-test  { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue-border); }
+.hc-mode.active-prod  { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
 
 .header-right { display: flex; align-items: center; gap: 12px; }
 
 .status-pill {
-  display: flex; align-items: center; gap: 7px;
-  padding: 6px 14px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 16px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 100px;
   font-family: var(--font-mono);
-  font-size: 11px; color: var(--text-mid);
-  letter-spacing: 0.04em;
+  font-size: 12px; color: var(--text-mid);
+  letter-spacing: 0.04em; font-weight: 500;
 }
 .status-dot {
-  width: 7px; height: 7px; border-radius: 50%;
+  width: 8px; height: 8px; border-radius: 50%;
   background: var(--text-lo); transition: all 0.3s; flex-shrink: 0;
 }
-.status-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.status-dot.running { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse 1s infinite; }
-.status-dot.error   { background: var(--red);   box-shadow: 0 0 8px var(--red); }
-#status-text { color: var(--text); transition: color 0.3s; }
+.status-dot.online  { background: var(--green); box-shadow: 0 0 10px rgba(16,217,160,0.6); animation: pulse 2.5s infinite; }
+.status-dot.running { background: var(--amber); box-shadow: 0 0 10px rgba(245,166,35,0.6); animation: pulse 0.9s infinite; }
+.status-dot.error   { background: var(--red);   box-shadow: 0 0 10px rgba(240,82,82,0.6); }
+#status-text { color: var(--text); transition: color 0.3s; font-size: 12px; }
 
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
 
 /* ═══════════════════════════════════════════
    LAYOUT
@@ -169,12 +175,11 @@ header {
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 0;
-  max-width: 1440px;
   width: 100%;
-  margin: 0 auto;
-  padding: 24px 32px;
+  height: calc(100vh - 62px);
+  overflow: hidden;
 }
 
 .section-label {
@@ -182,8 +187,8 @@ main {
   font-size: 10px; font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--text-lo);
-  margin-bottom: 12px;
-  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
 }
 .section-label::after {
   content: ''; flex: 1; height: 1px; background: var(--border);
@@ -193,74 +198,83 @@ main {
    SIDEBAR
 ═══════════════════════════════════════════ */
 .sidebar {
-  padding-right: 24px;
   border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 20px;
+  display: flex; flex-direction: column; gap: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface3) transparent;
+  background: var(--surface);
 }
 
+.sidebar-section {
+  padding: 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section:last-child { border-bottom: none; }
+
 /* ── Stat boxes ── */
-.stats-row {
+.stats-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
 }
 .stat-box {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  padding: 14px 16px;
+  padding: 14px 14px;
+  transition: border-color 0.2s;
 }
+.stat-box:hover { border-color: var(--border-hi); }
 .stat-value {
-  font-size: 26px; font-weight: 700;
+  font-size: 28px; font-weight: 800;
   color: var(--text-hi); line-height: 1;
   font-family: var(--font-mono);
+  letter-spacing: -0.02em;
 }
 .stat-value.green  { color: var(--green); }
 .stat-value.red    { color: var(--red); }
 .stat-value.amber  { color: var(--amber); }
+.stat-value.mono   { font-size: 18px; }
 .stat-label {
   font-size: 11px; color: var(--text-mid);
   font-family: var(--font-mono); letter-spacing: 0.04em;
-  margin-top: 4px;
+  margin-top: 5px; font-weight: 500;
 }
 
 /* ── Mode card ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 18px;
-}
-
 .mode-toggle {
   display: flex;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   padding: 3px; gap: 3px;
+  margin-bottom: 14px;
 }
 .mode-btn {
-  flex: 1; padding: 9px 10px;
+  flex: 1; padding: 10px 10px;
   border: 1px solid transparent;
   border-radius: 5px;
   font-family: var(--font-mono);
-  font-size: 11.5px; font-weight: 600;
-  letter-spacing: 0.05em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
   cursor: pointer; transition: all 0.2s;
   color: var(--text-lo); background: transparent;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
 }
-.mode-btn.active.test { background: var(--blue-dim); color: var(--blue); border-color: rgba(79,158,255,0.3); }
+.mode-btn.active.test { background: var(--blue-dim); color: var(--blue); border-color: var(--blue-border); }
 .mode-btn.active.prod { background: var(--amber-glow); color: var(--amber); border-color: rgba(245,166,35,0.3); }
 
 .notice-box {
-  margin-top: 12px;
-  padding: 11px 13px;
+  padding: 12px 14px;
   border-radius: var(--r-sm);
-  font-size: 12px; line-height: 1.55;
-  display: flex; gap: 9px;
+  font-size: 12.5px; line-height: 1.6;
+  display: flex; gap: 10px; align-items: flex-start;
+  font-weight: 500;
 }
 .notice-box.hidden { display: none; }
-.notice-test { background: var(--blue-dim);  border: 1px solid rgba(79,158,255,0.2);  color: #93c5fd; }
-.notice-prod { background: var(--amber-glow); border: 1px solid rgba(245,166,35,0.2); color: #fcd47e; }
-.notice-box strong { color: var(--text-hi); }
+.notice-test { background: var(--blue-dim); border: 1px solid var(--blue-border); color: #93c5fd; }
+.notice-prod { background: var(--amber-glow); border: 1px solid rgba(245,166,35,0.25); color: #fcd47e; }
+.notice-box strong { color: var(--text-hi); font-weight: 700; }
 
 /* ── Action button ── */
 .btn-run {
@@ -269,8 +283,8 @@ main {
   border: none;
   border-radius: var(--r);
   font-family: var(--font-ui);
-  font-size: 14.5px; font-weight: 700;
-  letter-spacing: 0.03em;
+  font-size: 15px; font-weight: 700;
+  letter-spacing: 0.01em;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 10px;
   transition: all 0.2s;
@@ -279,39 +293,38 @@ main {
 .btn-run::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   transform: translateX(-100%); transition: transform 0.5s;
 }
 .btn-run:hover::before { transform: translateX(100%); }
 
 .btn-run.prod-btn {
   background: linear-gradient(135deg, var(--amber-dim), var(--amber));
-  color: #18100a;
-  box-shadow: 0 4px 20px rgba(245,166,35,0.3);
+  color: #14100a;
+  box-shadow: 0 4px 20px rgba(245,166,35,0.25);
 }
-.btn-run.prod-btn:hover { box-shadow: 0 6px 28px rgba(245,166,35,0.45); transform: translateY(-1px); }
+.btn-run.prod-btn:hover { box-shadow: 0 6px 28px rgba(245,166,35,0.4); transform: translateY(-1px); }
 
 .btn-run.test-btn {
   background: var(--surface2);
   color: var(--blue);
-  border: 1.5px solid rgba(79,158,255,0.35);
+  border: 1.5px solid var(--blue-border);
 }
-.btn-run.test-btn:hover { background: var(--surface3); border-color: rgba(79,158,255,0.6); }
-
-.btn-run:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.btn-run.test-btn:hover { background: var(--surface3); border-color: rgba(79,158,255,0.6); color: #93c5fd; }
+.btn-run:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
 /* ── Progress ── */
-.progress-wrap { display: none; flex-direction: column; gap: 8px; }
+.progress-wrap { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
 .progress-wrap.visible { display: flex; }
 .progress-bar-bg {
-  height: 5px; background: var(--surface3);
+  height: 6px; background: var(--surface3);
   border-radius: 100px; overflow: hidden;
 }
 .progress-bar-fill {
   height: 100%; border-radius: 100px;
   background: linear-gradient(90deg, var(--amber-dim), var(--amber));
   width: 0%; transition: width 0.4s ease;
-  box-shadow: 0 0 8px rgba(245,166,35,0.6);
+  box-shadow: 0 0 8px rgba(245,166,35,0.5);
 }
 .progress-bar-fill.running { animation: indeterminate 1.5s infinite ease-in-out; }
 @keyframes indeterminate {
@@ -321,43 +334,39 @@ main {
 }
 .progress-label {
   font-family: var(--font-mono); font-size: 11px;
-  color: var(--text-mid); text-align: center;
+  color: var(--text-mid); text-align: center; font-weight: 500;
 }
 
 /* ── Downloads card ── */
 #downloads-card {
-  background: var(--surface);
-  border: 1px solid rgba(34,211,161,0.25);
-  border-radius: var(--r-lg);
-  padding: 18px;
   display: none;
   animation: fadeSlideUp 0.4s ease;
 }
 #downloads-card.visible { display: block; }
-#downloads-card .section-label { color: var(--green); }
-#downloads-card .section-label::after { background: rgba(34,211,161,0.2); }
 
 .dl-btn {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 11px 14px;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 12px 14px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   color: var(--text);
-  font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+  font-family: var(--font-ui); font-size: 13.5px; font-weight: 600;
   cursor: pointer; transition: all 0.18s;
   text-decoration: none; margin-bottom: 8px;
 }
 .dl-btn:last-child { margin-bottom: 0; }
 .dl-btn:hover { background: var(--surface3); border-color: var(--border-hi); color: var(--text-hi); }
-.dl-btn .dl-icon { font-size: 16px; flex-shrink: 0; }
-.dl-btn .dl-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-lo); margin-top: 1px; }
+.dl-btn .dl-icon { flex-shrink: 0; color: var(--text-mid); }
+.dl-btn .dl-meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-lo); margin-top: 2px; }
 .dl-btn-inner { flex: 1; }
+.dl-arrow { color: var(--text-lo); transition: color 0.15s; }
+.dl-btn:hover .dl-arrow { color: var(--text); }
 
 /* ── Log history ── */
 .history-list {
-  display: flex; flex-direction: column; gap: 7px;
-  max-height: 220px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 200px; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
 .history-item {
@@ -366,104 +375,139 @@ main {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  gap: 10px; cursor: pointer; transition: border-color 0.15s;
+  gap: 10px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
 }
-.history-item:hover { border-color: var(--border-hi); }
+.history-item:hover { border-color: var(--border-hi); background: var(--surface3); }
+.history-item-icon { flex-shrink: 0; }
 .history-item-name {
   font-family: var(--font-mono); font-size: 11px;
   color: var(--text); flex: 1;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 500;
 }
 .history-item-meta {
   font-family: var(--font-mono); font-size: 10px;
   color: var(--text-lo); white-space: nowrap;
 }
 .badge {
-  padding: 2px 8px; border-radius: 100px;
-  font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
-  flex-shrink: 0;
+  padding: 3px 9px; border-radius: 100px;
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  flex-shrink: 0; letter-spacing: 0.05em;
 }
-.badge.ok  { background: var(--green-dim); color: var(--green); }
-.badge.err { background: var(--red-dim);   color: var(--red); }
+.badge.ok  { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+.badge.err { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red-border); }
 
 /* ═══════════════════════════════════════════
    CONTENT AREA (right)
 ═══════════════════════════════════════════ */
 .content-area {
-  padding-left: 24px;
-  display: flex; flex-direction: column; gap: 18px;
-  min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
 
-/* ── Result cards ── */
-.result-row {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+/* ── Result bar ── */
+.result-bar {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .result-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 16px 18px;
-  display: flex; align-items: center; gap: 14px;
-  transition: border-color 0.3s;
+  padding: 18px 24px;
+  display: flex; align-items: center; gap: 16px;
+  border-right: 1px solid var(--border);
+  transition: background 0.2s;
 }
-.result-card.success { border-color: rgba(34,211,161,0.3); }
-.result-card.error   { border-color: rgba(255,87,87,0.3); }
-.result-icon { font-size: 22px; flex-shrink: 0; }
+.result-card:last-child { border-right: none; }
+.result-card:hover { background: rgba(255,255,255,0.02); }
+.result-card.success { border-bottom: 2px solid var(--green); }
+.result-card.error   { border-bottom: 2px solid var(--red); }
+
+.result-icon-wrap {
+  width: 42px; height: 42px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.result-icon-wrap.neutral { background: var(--surface3); color: var(--text-mid); }
+.result-icon-wrap.success { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+.result-icon-wrap.error   { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red-border); }
+
 .result-label {
-  font-size: 11px; color: var(--text-lo);
+  font-size: 11.5px; color: var(--text-mid);
   font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
+  font-weight: 600;
 }
 .result-value {
-  font-size: 24px; font-weight: 700; font-family: var(--font-mono);
-  line-height: 1; color: var(--text-hi); margin-top: 2px;
+  font-size: 30px; font-weight: 800; font-family: var(--font-mono);
+  line-height: 1; color: var(--text-hi); margin-top: 3px;
+  letter-spacing: -0.02em;
 }
 .result-value.green { color: var(--green); }
 .result-value.red   { color: var(--red); }
 
+/* ── Terminal wrapper ── */
+.terminal-wrapper {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; padding: 20px;
+  gap: 0;
+}
+
 /* ── Terminal ── */
 .terminal {
-  background: #030507;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
   flex: 1;
+  background: #080c12;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
   display: flex; flex-direction: column;
   overflow: hidden;
-  min-height: 460px;
-  box-shadow: inset 0 2px 16px rgba(0,0,0,0.6);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), inset 0 2px 16px rgba(0,0,0,0.5);
 }
 .terminal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--surface2);
+  padding: 12px 18px;
+  background: rgba(255,255,255,0.03);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.terminal-dots { display: flex; gap: 6px; }
-.terminal-dots span { width: 11px; height: 11px; border-radius: 50%; }
+.terminal-dots { display: flex; gap: 7px; align-items: center; }
+.terminal-dots span { width: 12px; height: 12px; border-radius: 50%; }
 .td-red   { background: #ff5f57; }
 .td-amber { background: #febc2e; }
 .td-green { background: #28c840; }
+
+.terminal-title-wrap { display: flex; align-items: center; gap: 10px; }
 .terminal-title {
-  font-family: var(--font-mono); font-size: 11px;
-  color: var(--text-lo); letter-spacing: 0.05em;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--text-mid); letter-spacing: 0.04em; font-weight: 500;
 }
-.terminal-actions { display: flex; gap: 8px; }
+.terminal-badge {
+  padding: 2px 9px;
+  border-radius: 100px;
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.terminal-badge.ready { background: rgba(255,255,255,0.07); color: var(--text-lo); }
+.terminal-badge.running { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+.terminal-badge.done { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+.terminal-badge.error { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); }
+
+.terminal-actions { display: flex; gap: 6px; }
 .btn-clear {
-  padding: 3px 10px;
+  padding: 4px 12px;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 5px;
   color: var(--text-lo);
-  font-family: var(--font-mono); font-size: 10px;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
   cursor: pointer; letter-spacing: 0.04em; transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px;
 }
 .btn-clear:hover { border-color: var(--border-hi); color: var(--text); }
 
 .terminal-body {
   flex: 1; overflow-y: auto;
-  padding: 16px;
-  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.8;
+  padding: 18px 20px;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.85;
   scrollbar-width: thin; scrollbar-color: var(--surface3) transparent;
 }
 .terminal-body::-webkit-scrollbar { width: 5px; }
@@ -471,13 +515,13 @@ main {
 .terminal-body::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
 
 .log-line { display: block; white-space: pre-wrap; word-break: break-all; }
-.log-line.success { color: #34d399; }
-.log-line.error   { color: #fc8181; }
+.log-line.success { color: #2dd4a0; }
+.log-line.error   { color: #f87171; }
 .log-line.warning { color: #fbbf24; }
 .log-line.info    { color: #60a5fa; }
 .log-line.muted   { color: var(--text-lo); }
-.log-line.header  { color: var(--amber); font-weight: 600; }
-.log-line.default { color: #9eb5cc; }
+.log-line.header  { color: var(--amber); font-weight: 600; letter-spacing: 0.02em; }
+.log-line.default { color: #aabfd8; }
 
 .cursor-blink::after {
   content: '▋'; color: var(--amber);
@@ -488,19 +532,26 @@ main {
 .terminal-empty {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  height: 100%; gap: 10px; color: var(--text-lo);
+  height: 100%; gap: 14px; color: var(--text-lo);
 }
-.terminal-empty-icon { font-size: 28px; opacity: 0.25; }
-.terminal-empty-text { font-size: 12px; font-family: var(--font-mono); }
+.terminal-empty-icon { opacity: 0.2; }
+.terminal-empty-text {
+  font-size: 13px; font-family: var(--font-mono); font-weight: 500;
+  color: var(--text-lo); letter-spacing: 0.03em;
+}
+.terminal-empty-sub {
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-lo); opacity: 0.6;
+}
 
 /* ═══════════════════════════════════════════
    TOAST
 ═══════════════════════════════════════════ */
 #toast {
   position: fixed; bottom: 24px; right: 24px;
-  padding: 12px 20px;
+  padding: 13px 20px;
   border-radius: var(--r);
-  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 500;
   letter-spacing: 0.02em;
   display: flex; align-items: center; gap: 10px;
   z-index: 1000;
@@ -510,17 +561,17 @@ main {
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
 }
 #toast.show { transform: translateY(0); opacity: 1; }
-#toast.success { background: rgba(34,211,161,0.12); border: 1px solid rgba(34,211,161,0.35); color: #34d399; }
-#toast.error   { background: rgba(255,87,87,0.12);  border: 1px solid rgba(255,87,87,0.35);  color: #fc8181; }
-#toast.info    { background: rgba(79,158,255,0.12); border: 1px solid rgba(79,158,255,0.35); color: #93c5fd; }
+#toast.success { background: rgba(16,217,160,0.1); border: 1px solid var(--green-border); color: #2dd4a0; }
+#toast.error   { background: rgba(240,82,82,0.1);  border: 1px solid var(--red-border);   color: #f87171; }
+#toast.info    { background: rgba(79,158,255,0.1); border: 1px solid var(--blue-border);  color: #93c5fd; }
 
 /* ═══════════════════════════════════════════
    CONFIRM OVERLAY
 ═══════════════════════════════════════════ */
 #confirm-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
   z-index: 200; align-items: center; justify-content: center;
 }
 #confirm-overlay.show { display: flex; }
@@ -528,45 +579,52 @@ main {
 .confirm-box {
   background: var(--surface);
   border: 1px solid var(--border-hi);
-  border-radius: var(--r-lg);
-  padding: 30px 34px;
-  max-width: 440px; width: 90%;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  border-radius: var(--r-xl);
+  padding: 32px 36px;
+  max-width: 460px; width: 90%;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7);
   animation: fadeSlideUp 0.25s ease;
 }
-.confirm-icon { font-size: 38px; margin-bottom: 14px; }
+.confirm-icon-wrap {
+  width: 56px; height: 56px;
+  border-radius: var(--r);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px;
+  background: var(--amber-glow);
+  border: 1px solid rgba(245,166,35,0.25);
+}
 .confirm-title {
-  font-size: 20px; font-weight: 700; color: var(--text-hi); margin-bottom: 10px;
+  font-size: 21px; font-weight: 800; color: var(--text-hi);
+  margin-bottom: 10px; letter-spacing: -0.01em;
 }
 .confirm-body {
-  font-size: 13.5px; color: var(--text-mid); line-height: 1.65; margin-bottom: 22px;
+  font-size: 14px; color: var(--text-mid); line-height: 1.7;
+  margin-bottom: 26px; font-weight: 500;
 }
-.confirm-body strong { color: var(--amber); }
+.confirm-body strong { color: var(--amber); font-weight: 700; }
+.confirm-body .blue  { color: var(--blue); font-weight: 700; }
 .confirm-actions { display: flex; gap: 10px; }
 .btn-cancel {
-  flex: 1; padding: 12px;
+  flex: 1; padding: 13px;
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 14px;
   cursor: pointer; transition: all 0.15s;
 }
-.btn-cancel:hover { border-color: var(--border-hi); }
+.btn-cancel:hover { border-color: var(--border-hi); color: var(--text-hi); }
 .btn-ok {
-  flex: 1; padding: 12px;
-  background: linear-gradient(135deg, var(--amber-dim), var(--amber));
+  flex: 1; padding: 13px;
   border: none; border-radius: var(--r-sm);
-  color: #18100a;
-  font-family: var(--font-ui); font-weight: 700; font-size: 13.5px;
+  font-family: var(--font-ui); font-weight: 700; font-size: 14px;
   cursor: pointer; transition: opacity 0.15s;
 }
+.btn-ok.amber { background: linear-gradient(135deg, var(--amber-dim), var(--amber)); color: #14100a; }
+.btn-ok.blue  { background: var(--blue); color: #0a0e1a; }
 .btn-ok:hover { opacity: 0.88; }
-
-/* ── Separator ── */
-.sep { height: 1px; background: var(--border); margin: 4px 0; }
 
 /* ── Spinner ── */
 .spinner {
-  width: 14px; height: 14px;
+  width: 15px; height: 15px;
   border: 2px solid transparent; border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.7s linear infinite; flex-shrink: 0;
@@ -578,19 +636,23 @@ main {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.card, .terminal, .result-card { animation: fadeSlideUp 0.4s ease both; }
-.card:nth-child(2)  { animation-delay: 0.05s; }
-.card:nth-child(3)  { animation-delay: 0.10s; }
-.result-card:nth-child(2) { animation-delay: 0.04s; }
-.result-card:nth-child(3) { animation-delay: 0.08s; }
+.stat-box { animation: fadeSlideUp 0.4s ease both; }
+.stat-box:nth-child(2) { animation-delay: 0.05s; }
+.stat-box:nth-child(3) { animation-delay: 0.10s; }
+.stat-box:nth-child(4) { animation-delay: 0.15s; }
+.result-card { animation: fadeSlideUp 0.4s ease both; }
+.result-card:nth-child(2) { animation-delay: 0.05s; }
+.result-card:nth-child(3) { animation-delay: 0.10s; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
-  main { grid-template-columns: 1fr; padding: 16px; }
-  .sidebar { padding-right: 0; border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
-  .content-area { padding-left: 0; }
-  .result-row { grid-template-columns: 1fr 1fr; }
+  main { grid-template-columns: 1fr; height: auto; overflow: visible; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .result-bar { grid-template-columns: 1fr 1fr; }
+  .result-bar .result-card:last-child { grid-column: span 2; border-right: none; }
   .header-center { display: none; }
+  .content-area { min-height: 600px; }
+  .terminal-wrapper { padding: 14px; }
 }
 </style>
 </head>
@@ -599,17 +661,28 @@ main {
 <!-- ════ HEADER ════ -->
 <header>
   <div class="logo">
-    <div class="logo-icon">✈️</div>
+    <div class="logo-icon">
+      <!-- Plane SVG -->
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(20,16,10,0.9)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z"/>
+      </svg>
+    </div>
     <div>
       <div class="logo-text">YesAgain FZC</div>
       <div class="logo-sub">DHL Booking Dashboard</div>
     </div>
   </div>
 
-  <!-- Centered mode indicator in header -->
+  <!-- Mode switcher -->
   <div class="header-center">
-    <button class="hc-mode active-test" id="hc-test" onclick="setMode('test')">🧪&nbsp; Test Mode</button>
-    <button class="hc-mode" id="hc-prod" onclick="setMode('prod')">🚀&nbsp; Production</button>
+    <button class="hc-mode active-test" id="hc-test" onclick="setMode('test')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Test Mode
+    </button>
+    <button class="hc-mode" id="hc-prod" onclick="setMode('prod')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Production
+    </button>
   </div>
 
   <div class="header-right">
@@ -627,9 +700,9 @@ main {
   <aside class="sidebar">
 
     <!-- Session stats -->
-    <div>
+    <div class="sidebar-section">
       <div class="section-label">Session Stats</div>
-      <div class="stats-row">
+      <div class="stats-grid">
         <div class="stat-box">
           <div class="stat-value amber" id="stat-runs">0</div>
           <div class="stat-label">Runs Today</div>
@@ -643,74 +716,89 @@ main {
           <div class="stat-label">Failed</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value" id="stat-time">—</div>
+          <div class="stat-value mono" id="stat-time">—</div>
           <div class="stat-label">Last Run</div>
         </div>
       </div>
     </div>
 
-    <div class="sep"></div>
-
     <!-- Mode card -->
-    <div class="card">
+    <div class="sidebar-section">
       <div class="section-label">Booking Mode</div>
       <div class="mode-toggle">
-        <button class="mode-btn test active" id="mode-test" onclick="setMode('test')">🧪&nbsp; Test</button>
-        <button class="mode-btn prod"        id="mode-prod" onclick="setMode('prod')">🚀&nbsp; Production</button>
+        <button class="mode-btn test active" id="mode-test" onclick="setMode('test')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Test
+        </button>
+        <button class="mode-btn prod" id="mode-prod" onclick="setMode('prod')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Production
+        </button>
       </div>
       <div id="notice-test" class="notice-box notice-test">
-        <span>ℹ️</span>
+        <svg width="14" height="14" style="flex-shrink:0;margin-top:2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span><strong>Test Mode:</strong> Script runs fully but no real DHL call is made. Fake tracking numbers returned. Airtable is NOT updated.</span>
       </div>
       <div id="notice-prod" class="notice-box notice-prod hidden">
-        <span>⚠️</span>
+        <svg width="14" height="14" style="flex-shrink:0;margin-top:2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span><strong>Production:</strong> Real DHL shipments will be booked. Real labels generated. Airtable will be updated. Cannot be undone.</span>
       </div>
     </div>
 
     <!-- Action button -->
-    <div style="display:flex;flex-direction:column;gap:10px;">
+    <div class="sidebar-section">
       <button class="btn-run test-btn" id="btn-book" onclick="confirmRun()">
-        <span id="btn-icon">🧪</span>
+        <span id="btn-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </span>
         <span id="btn-label">Run Test Booking</span>
       </button>
-    </div>
 
-    <!-- Progress bar -->
-    <div class="progress-wrap" id="progress-wrap">
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill running" id="progress-bar"></div>
+      <!-- Progress bar -->
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill running" id="progress-bar"></div>
+        </div>
+        <div class="progress-label" id="progress-label">Initialising…</div>
       </div>
-      <div class="progress-label" id="progress-label">Initialising…</div>
     </div>
 
-    <div class="sep"></div>
-
-    <!-- ★ Downloads (shown after successful run) ★ -->
-    <div id="downloads-card">
-      <div class="section-label">Downloads</div>
+    <!-- Downloads (shown after successful run) -->
+    <div class="sidebar-section" id="downloads-card">
+      <div class="section-label" style="color:var(--green)">
+        Downloads
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 8px var(--green);"></span>
+      </div>
 
       <a class="dl-btn" id="dl-csv" href="#" onclick="downloadFile('csv'); return false;">
-        <span class="dl-icon">📊</span>
+        <span class="dl-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </span>
         <div class="dl-btn-inner">
           <div>DHL Order CSV</div>
           <div class="dl-meta">DHL-Order-File · latest run</div>
         </div>
-        <span style="font-size:13px;color:var(--text-lo);">↓</span>
+        <span class="dl-arrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </span>
       </a>
 
       <a class="dl-btn" id="dl-labels" href="#" onclick="downloadFile('labels'); return false;">
-        <span class="dl-icon">🏷️</span>
+        <span class="dl-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </span>
         <div class="dl-btn-inner">
           <div>Shipping Labels (ZIP)</div>
           <div class="dl-meta">All PDF labels · latest run</div>
         </div>
-        <span style="font-size:13px;color:var(--text-lo);">↓</span>
+        <span class="dl-arrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </span>
       </a>
     </div>
 
     <!-- Log history -->
-    <div>
+    <div class="sidebar-section" style="flex:1;">
       <div class="section-label">Log Files</div>
       <div class="history-list" id="history-list">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">Loading…</div>
@@ -722,24 +810,30 @@ main {
   <!-- ───── CONTENT ───── -->
   <section class="content-area">
 
-    <!-- Result cards -->
-    <div class="result-row">
+    <!-- Result bar -->
+    <div class="result-bar">
       <div class="result-card" id="rc-total">
-        <span class="result-icon">📦</span>
+        <div class="result-icon-wrap neutral">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0123 7.24v9.53a2 2 0 01-1.11 1.79l-8 4a2 2 0 01-1.78 0l-8-4a2 2 0 01-1.11-1.8V7.24a2 2 0 011.11-1.79l8-4a2 2 0 011.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg>
+        </div>
         <div>
           <div class="result-label">Processed</div>
           <div class="result-value" id="rv-total">—</div>
         </div>
       </div>
       <div class="result-card success" id="rc-ok">
-        <span class="result-icon">✅</span>
+        <div class="result-icon-wrap success">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
         <div>
           <div class="result-label">Succeeded</div>
           <div class="result-value green" id="rv-ok">—</div>
         </div>
       </div>
       <div class="result-card error" id="rc-fail">
-        <span class="result-icon">❌</span>
+        <div class="result-icon-wrap error">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
         <div>
           <div class="result-label">Failed</div>
           <div class="result-value red" id="rv-fail">—</div>
@@ -748,23 +842,39 @@ main {
     </div>
 
     <!-- Terminal -->
-    <div class="terminal">
-      <div class="terminal-header">
-        <div class="terminal-dots">
-          <span class="td-red"></span>
-          <span class="td-amber"></span>
-          <span class="td-green"></span>
+    <div class="terminal-wrapper">
+      <div class="terminal">
+        <div class="terminal-header">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="terminal-dots">
+              <span class="td-red"></span>
+              <span class="td-amber"></span>
+              <span class="td-green"></span>
+            </div>
+            <div class="terminal-title-wrap">
+              <span class="terminal-title" id="terminal-title">airtable_transform.py</span>
+              <span class="terminal-badge ready" id="terminal-badge">READY</span>
+            </div>
+          </div>
+          <div class="terminal-actions">
+            <button class="btn-clear" onclick="clearTerminal(true)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Clear
+            </button>
+            <button class="btn-clear" onclick="scrollBottom()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              Bottom
+            </button>
+          </div>
         </div>
-        <span class="terminal-title" id="terminal-title">READY — airtable_transform.py</span>
-        <div class="terminal-actions">
-          <button class="btn-clear" onclick="clearTerminal(true)">Clear</button>
-          <button class="btn-clear" onclick="scrollBottom()">↓ Bottom</button>
-        </div>
-      </div>
-      <div class="terminal-body" id="terminal">
-        <div class="terminal-empty" id="terminal-empty">
-          <div class="terminal-empty-icon">⌚</div>
-          <div class="terminal-empty-text">Waiting for a booking run…</div>
+        <div class="terminal-body" id="terminal">
+          <div class="terminal-empty" id="terminal-empty">
+            <div class="terminal-empty-icon">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="terminal-empty-text">Waiting for a booking run…</div>
+            <div class="terminal-empty-sub">Select a mode and click the run button to start</div>
+          </div>
         </div>
       </div>
     </div>
@@ -778,12 +888,14 @@ main {
 <!-- ════ CONFIRM OVERLAY ════ -->
 <div id="confirm-overlay">
   <div class="confirm-box">
-    <div class="confirm-icon" id="confirm-icon">🧪</div>
+    <div class="confirm-icon-wrap" id="confirm-icon-wrap">
+      <svg id="confirm-icon-svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
     <div class="confirm-title" id="confirm-title">Run Test Booking?</div>
     <div class="confirm-body" id="confirm-body"></div>
     <div class="confirm-actions">
       <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
-      <button class="btn-ok" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
+      <button class="btn-ok amber" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
     </div>
   </div>
 </div>
@@ -809,6 +921,7 @@ const sessionStats = { runs: 0, booked: 0, failed: 0 };
 const $term    = document.getElementById('terminal');
 const $empty   = document.getElementById('terminal-empty');
 const $ttitle  = document.getElementById('terminal-title');
+const $tbadge  = document.getElementById('terminal-badge');
 const $btnBook = document.getElementById('btn-book');
 const $btnIcon = document.getElementById('btn-icon');
 const $btnLbl  = document.getElementById('btn-label');
@@ -816,6 +929,10 @@ const $progW   = document.getElementById('progress-wrap');
 const $progB   = document.getElementById('progress-bar');
 const $progL   = document.getElementById('progress-label');
 const $toast   = document.getElementById('toast');
+
+// SVG icon strings for button swaps
+const SVG_TEST = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
+const SVG_PROD = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
 
 // ════════════════════════════════════════════
 //  API HEALTH
@@ -843,26 +960,21 @@ function setStatus(state, text) {
 function setMode(mode) {
   currentMode = mode;
 
-  // Sidebar buttons
   document.getElementById('mode-test').className = 'mode-btn test' + (mode === 'test' ? ' active' : '');
   document.getElementById('mode-prod').className = 'mode-btn prod' + (mode === 'prod' ? ' active' : '');
+  document.getElementById('hc-test').className   = 'hc-mode' + (mode === 'test' ? ' active-test' : '');
+  document.getElementById('hc-prod').className   = 'hc-mode' + (mode === 'prod' ? ' active-prod' : '');
 
-  // Header pills
-  document.getElementById('hc-test').className = 'hc-mode' + (mode === 'test' ? ' active-test' : '');
-  document.getElementById('hc-prod').className = 'hc-mode' + (mode === 'prod' ? ' active-prod' : '');
-
-  // Notices
   document.getElementById('notice-test').classList.toggle('hidden', mode !== 'test');
   document.getElementById('notice-prod').classList.toggle('hidden', mode !== 'prod');
 
-  // Action button
   if (mode === 'prod') {
-    $btnBook.className = 'btn-run prod-btn';
-    $btnIcon.textContent = '🚀';
+    $btnBook.className   = 'btn-run prod-btn';
+    $btnIcon.innerHTML   = SVG_PROD;
     $btnLbl.textContent  = 'Book Real Shipments';
   } else {
-    $btnBook.className = 'btn-run test-btn';
-    $btnIcon.textContent = '🧪';
+    $btnBook.className   = 'btn-run test-btn';
+    $btnIcon.innerHTML   = SVG_TEST;
     $btnLbl.textContent  = 'Run Test Booking';
   }
 }
@@ -873,23 +985,30 @@ function setMode(mode) {
 function confirmRun() {
   if (isRunning) return;
   const overlay = document.getElementById('confirm-overlay');
-  const icon    = document.getElementById('confirm-icon');
+  const wrap    = document.getElementById('confirm-icon-wrap');
+  const svg     = document.getElementById('confirm-icon-svg');
   const title   = document.getElementById('confirm-title');
   const body    = document.getElementById('confirm-body');
   const okBtn   = document.getElementById('confirm-ok-btn');
 
   if (currentMode === 'prod') {
-    icon.textContent  = '🚀';
+    wrap.style.background = 'var(--amber-glow)';
+    wrap.style.borderColor = 'rgba(245,166,35,0.25)';
+    svg.setAttribute('stroke','var(--amber)');
+    svg.innerHTML = `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`;
     title.textContent = 'Book Real Shipments?';
-    body.innerHTML    = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
+    body.innerHTML = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
     okBtn.textContent = 'Confirm & Book';
-    okBtn.style.background = 'linear-gradient(135deg, #c2831a, #f5a623)';
+    okBtn.className = 'btn-ok amber';
   } else {
-    icon.textContent  = '🧪';
+    wrap.style.background = 'var(--blue-dim)';
+    wrap.style.borderColor = 'var(--blue-border)';
+    svg.setAttribute('stroke','var(--blue)');
+    svg.innerHTML = `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>`;
     title.textContent = 'Run Test Booking?';
-    body.innerHTML    = 'This will run in <strong style="color:var(--blue)">TEST MODE</strong>.<br><br>No real DHL call will be made. Fake tracking numbers will be returned. Airtable will NOT be updated.';
+    body.innerHTML = 'This will run in <span class="blue">TEST MODE</span>.<br><br>No real DHL call will be made. Fake tracking numbers will be returned. Airtable will NOT be updated.';
     okBtn.textContent = 'Run Test';
-    okBtn.style.background = 'var(--blue)';
+    okBtn.className = 'btn-ok blue';
   }
   overlay.classList.add('show');
 }
@@ -913,8 +1032,8 @@ function executeRun() {
   const url = `${API_BASE}/stream-dhl?test=${testMode ? '1' : '0'}`;
 
   $ttitle.textContent = testMode
-    ? 'RUNNING — TEST MODE — airtable_transform.py --send-to-dhl --test'
-    : 'RUNNING — PRODUCTION — airtable_transform.py --send-to-dhl';
+    ? 'airtable_transform.py --send-to-dhl --test'
+    : 'airtable_transform.py --send-to-dhl';
 
   if (eventSource) eventSource.close();
   eventSource = new EventSource(url);
@@ -929,7 +1048,7 @@ function executeRun() {
   };
 
   eventSource.onerror = function() {
-    appendLog('⚠️  Connection to API lost.', 'error');
+    appendLog('Connection to API lost.', 'error');
     finishRun(false);
   };
 }
@@ -937,7 +1056,7 @@ function executeRun() {
 function handleSSEMessage(msg) {
   switch (msg.type) {
     case 'start':
-      appendLog(`\n▶  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
+      appendLog(`\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
       break;
 
     case 'log':
@@ -947,11 +1066,11 @@ function handleSSEMessage(msg) {
         const pct = Math.round((parseInt(m[1]) / parseInt(m[2])) * 100);
         setProgress(pct, `${m[1]} / ${m[2]} shipments`);
       }
-      if (msg.line.includes('✅ Success')) {
+      if (msg.line.includes('Success')) {
         const n = msg.line.match(/Success\s*:\s*(\d+)/);
         if (n) updateResultCard('ok', n[1]);
       }
-      if (msg.line.includes('❌ Failed')) {
+      if (msg.line.includes('Failed')) {
         const n = msg.line.match(/Failed\s*:\s*(\d+)/);
         if (n) updateResultCard('fail', n[1]);
       }
@@ -959,7 +1078,6 @@ function handleSSEMessage(msg) {
         const n = msg.line.match(/(\d+)\s+order/);
         if (n) updateResultCard('total', n[1]);
       }
-      // Track timestamp for download filenames
       if (msg.line.includes('DHL-Order-File-')) {
         const t = msg.line.match(/DHL-Order-File-(\d{8}_\d{6})/);
         if (t) lastRunTimestamp = t[1];
@@ -968,11 +1086,11 @@ function handleSSEMessage(msg) {
 
     case 'done':
       if (msg.success) {
-        appendLog('\n✅  Run completed successfully.', 'success');
+        appendLog('\n  Run completed successfully.', 'success');
         showToast('Booking run completed!', 'success');
         showDownloads();
       } else {
-        appendLog('\n❌  Run completed with errors.', 'error');
+        appendLog('\n  Run completed with errors.', 'error');
         showToast('Run finished with failures.', 'error');
       }
       sessionStats.runs++;
@@ -983,7 +1101,7 @@ function handleSSEMessage(msg) {
       break;
 
     case 'error':
-      appendLog(`\n❌  ${msg.message}`, 'error');
+      appendLog(`\n  ${msg.message}`, 'error');
       showToast(msg.message, 'error');
       finishRun(false);
       break;
@@ -999,22 +1117,13 @@ function showDownloads() {
 
 function downloadFile(type) {
   let url;
-  if (type === 'csv') {
-    url = `${API_BASE}/download/csv`;
-  } else if (type === 'labels') {
-    url = `${API_BASE}/download/labels`;
-  }
+  if (type === 'csv')    url = `${API_BASE}/download/csv`;
+  if (type === 'labels') url = `${API_BASE}/download/labels`;
   if (!url) return;
-
   showToast(`Preparing ${type === 'csv' ? 'CSV' : 'Labels ZIP'} for download…`, 'info');
-
-  // Trigger download
   const a = document.createElement('a');
-  a.href = url;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = url; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 // ════════════════════════════════════════════
@@ -1022,11 +1131,11 @@ function downloadFile(type) {
 // ════════════════════════════════════════════
 function classifyLine(line) {
   if (!line) return 'muted';
-  if (line.includes('✅') || line.includes('Success')) return 'success';
-  if (line.includes('❌') || line.includes('FAILED') || line.includes('Error') || line.includes('error')) return 'error';
-  if (line.includes('⚠️') || line.includes('WARNING'))  return 'warning';
-  if (line.includes('🌐') || line.includes('ℹ️') || line.includes('TEST')) return 'info';
-  if (line.startsWith('=') || line.startsWith('─') || line.includes('BATCH')) return 'header';
+  if (line.includes('Success') || line.includes('completed successfully')) return 'success';
+  if (line.includes('FAILED') || line.includes('Error') || line.includes('error') || line.includes('failed')) return 'error';
+  if (line.includes('WARNING') || line.includes('warning')) return 'warning';
+  if (line.includes('TEST') || line.includes('INFO') || line.includes('info')) return 'info';
+  if (line.startsWith('=') || line.startsWith('-') || line.includes('BATCH') || line.includes('Starting')) return 'header';
   return 'default';
 }
 
@@ -1043,7 +1152,7 @@ function appendLog(line, forcedClass) {
     sessionStats.booked++;
     document.getElementById('stat-booked').textContent = sessionStats.booked;
   }
-  if (line.includes('DHL FAILED') || line.includes('❌ DHL')) {
+  if (line.includes('DHL FAILED') || line.includes('DHL Error')) {
     sessionStats.failed++;
     document.getElementById('stat-failed').textContent = sessionStats.failed;
   }
@@ -1055,6 +1164,9 @@ function clearTerminal(showEmpty = true) {
   updateResultCard('total', '—');
   updateResultCard('ok', '—');
   updateResultCard('fail', '—');
+  $ttitle.textContent = 'airtable_transform.py';
+  $tbadge.textContent = 'READY';
+  $tbadge.className   = 'terminal-badge ready';
 }
 
 function scrollBottom() { $term.scrollTop = $term.scrollHeight; }
@@ -1075,9 +1187,11 @@ function setRunning(running) {
     $progW.classList.add('visible');
     $progB.classList.add('running');
     $progL.textContent = 'Starting…';
-    $btnIcon.textContent = '';
-    $btnLbl.innerHTML = '<span class="spinner"></span> Running…';
+    $btnIcon.innerHTML = `<span class="spinner"></span>`;
+    $btnLbl.textContent = 'Running…';
     setStatus('running', 'Booking in progress…');
+    $tbadge.textContent = 'RUNNING';
+    $tbadge.className   = 'terminal-badge running';
   }
 }
 
@@ -1085,11 +1199,12 @@ function finishRun(success) {
   isRunning = false;
   eventSource?.close();
   $progB.classList.remove('running');
-  setProgress(100, success ? 'Completed ✓' : 'Completed with errors');
-  $btnBook.disabled    = false;
-  $btnIcon.textContent = currentMode === 'prod' ? '🚀' : '🧪';
-  $btnLbl.textContent  = currentMode === 'prod' ? 'Book Real Shipments' : 'Run Test Booking';
-  $ttitle.textContent  = success ? 'COMPLETED — airtable_transform.py' : 'COMPLETED (ERRORS) — airtable_transform.py';
+  setProgress(100, success ? 'Completed successfully' : 'Completed with errors');
+  $btnBook.disabled = false;
+  $btnIcon.innerHTML = currentMode === 'prod' ? SVG_PROD : SVG_TEST;
+  $btnLbl.textContent = currentMode === 'prod' ? 'Book Real Shipments' : 'Run Test Booking';
+  $tbadge.textContent = success ? 'DONE' : 'ERROR';
+  $tbadge.className   = success ? 'terminal-badge done' : 'terminal-badge error';
   setStatus('online', 'API Online');
 }
 
@@ -1103,9 +1218,14 @@ function updateResultCard(type, value) {
 let toastTimer;
 function showToast(message, type = 'info') {
   clearTimeout(toastTimer);
-  $toast.className  = '';
-  $toast.innerHTML  = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span><span>${message}</span>`;
-  $toast.className  = type;
+  const icons = {
+    success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    info:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+  };
+  $toast.className = '';
+  $toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+  $toast.className = type;
   requestAnimationFrame(() => $toast.classList.add('show'));
   toastTimer = setTimeout(() => $toast.classList.remove('show'), 4000);
 }
@@ -1122,11 +1242,13 @@ async function loadHistory() {
       list.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">No log files yet.</div>`;
       return;
     }
+    const logIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+    const errIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
     list.innerHTML = data.logs.map(f => {
       const isFailed = f.filename.startsWith('failed_orders');
       const date = new Date(f.modified * 1000).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       return `<div class="history-item" title="${f.filename}">
-        <span style="font-size:13px;">${isFailed ? '❌' : '📋'}</span>
+        <span class="history-item-icon" style="color:${isFailed ? 'var(--red)' : 'var(--text-lo)'}">${isFailed ? errIcon : logIcon}</span>
         <span class="history-item-name">${f.filename}</span>
         <span class="history-item-meta">${f.size_kb}kb · ${date}</span>
         <span class="badge ${isFailed ? 'err' : 'ok'}">${isFailed ? 'FAIL' : 'LOG'}</span>
