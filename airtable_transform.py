@@ -310,8 +310,7 @@ def clean_qty(value):
 #        and words → gives exact correct spellings (Ahmed, Mohammed, Eid…)
 #     2. A letter-by-letter phonetic fallback for anything not in the dict.
 #
-#   Example: احمد عيد الشعراوي مهندس → Ahmed Eid El Shaarawy Eng
-#
+
 ARABIC_NAME_DICT = {
     # Common first names (male)
     'احمد':'Ahmed','احمد':'Ahmed','أحمد':'Ahmed','محمد':'Mohammed',
@@ -1209,14 +1208,24 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
                     price = round(looked_up_price, 2)
                     print(f"   ✅ {order_number} ({source_label}) → SO {sales_order} → €{price}")
                 else:
-                    print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
-                          f"found but no price in Sales Order Lines")
+                    # Path A: Sales Order found but no price in Sales Order Lines
+                    if rma_source == "crs":
+                        price = 200.0
+                        print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
+                              f"found but no price in Sales Order Lines — defaulting to €200.00")
+                    else:
+                        print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
+                              f"found but no price in Sales Order Lines")
             else:
+                # Path B: RMA key not found in the map at all
                 rma_map_used = ya_rma_map if rma_source == "ya" else crs_rma_map
                 print(f"   ⚠️  {order_number} ({source_label}) → "
                       f"RMA key '{clean_rma}' not found in map.")
                 print(f"        Map has {len(rma_map_used)} entries: "
                       f"{list(rma_map_used.keys())[:10]}")
+                if rma_source == "crs":
+                    price = 200.0
+                    print(f"   🔄 {order_number} (RMAC) → RMA not in map — defaulting to €200.00")
  
         qty = clean_qty(r.get("Sold Qty per line", 1))
  
