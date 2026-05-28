@@ -1975,11 +1975,14 @@ def cancel_dhl_shipment(tracking_number):
 
     # Parse error from DHL
     try:
-        err_body = response.json()
-        # DHL error detail is usually in 'detail' or 'title'
-        error_msg = err_body.get("detail") or err_body.get("title") or json.dumps(err_body)
+        error_body = response.json()
+        error_msg = error_body.get("detail", json.dumps(error_body))
     except Exception:
-        error_msg = response.text or f"HTTP {response.status_code}"
+        raw = response.text.strip()
+        if raw.startswith("<"):
+            error_msg = "DHL returned an XML/SOAP error — check API credentials or endpoint URL"
+        else:
+            error_msg = raw
 
     print(f"   ❌ DHL cancellation failed — HTTP {response.status_code}")
     print(f"   {error_msg[:400]}")
