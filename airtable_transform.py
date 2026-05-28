@@ -129,7 +129,7 @@ FIXED = {
     "account_duty_eu"     : 229887839,   # YA France — pays EU duties
     "account_duty_us_gcc" : 961923318,   # PT UAE — pays US & GCC duties
  
-    "account_crs_shipper" : 952629100,   # CRS UK (RMAC API shipments only)
+    "account_crs_shipper" : 952629100,   # CRS UK 
     "account_crs_duty"    : 952629100,   # CRS UK — pays UK duties
  
     # ── Shipping config ──
@@ -1907,6 +1907,151 @@ def validate_credentials_dhl():
         return False
  
  
+# ============================================================
+# CANCEL DHL SHIPMENT
+# ============================================================
+
+def cancel_dhl_shipment(tracking_number):
+    """
+    Cancel a booked DHL shipment using its AWB / tracking number.
+
+    HOW IT WORKS
+    ─────────────────────────────────────────────────────────────
+    DHL Express API:  DELETE /mydhlapi/shipments/{trackingNumber}
+    Returns 200 or 204 on success.
+
+    IMPORTANT RULES
+    ─────────────────────────────────────────────────────────────
+    ✅  Works ONLY if DHL has NOT yet scanned / picked up the parcel.
+    ❌  Once DHL scans it, this API call returns an error.
+        → You must call DHL customer service: +971 600 567 567
+        → Or ask the recipient to refuse delivery.
+
+    Args:
+        tracking_number  – DHL AWB string (e.g. "1234567890")
+
+    Returns dict:
+        { success, tracking_number, message }   on success
+        { success, tracking_number, error }     on failure
+    """
+    if not DHL_API_KEY or not DHL_API_SECRET:
+        print("❌ DHL_API_KEY or DHL_API_SECRET missing — cannot cancel.")
+        return {"success": False, "error": "Missing DHL credentials"}
+
+    tracking_number = str(tracking_number).strip()
+
+    if not tracking_number or tracking_number.startswith("TEST-"):
+        return {
+            "success": False,
+            "error"  : "Invalid or simulated tracking number — nothing to cancel."
+        }
+
+    url = f"{DHL_BASE_URL_PROD}/shipments/{tracking_number}"
+    print(f"\n🗑️  Cancelling DHL shipment: {tracking_number}")
+    print(f"   URL: DELETE {url}")
+
+    try:
+        response = requests.delete(
+            url,
+            headers={"Accept": "application/json"},
+            auth=(DHL_API_KEY, DHL_API_SECRET),
+            timeout=30
+        )
+    except requests.exceptions.Timeout:
+        print(f"   ❌ Timeout cancelling {tracking_number}")
+        return {"success": False, "tracking_number": tracking_number, "error": "Timeout"}
+    except requests.exceptions.ConnectionError as e:
+        print(f"   ❌ Connection error: {e}")
+        return {"success": False, "tracking_number": tracking_number, "error": str(e)}
+
+    # DHL returns 200 or 204 on successful cancellation
+    if response.status_code in (200, 204):
+        print(f"   ✅ DHL confirmed cancellation: {tracking_number}")
+        return {
+            "success"         : True,
+            "tracking_number" : tracking_number,
+            "message"         : "Shipment cancelled successfully at DHL."
+        }
+
+    # Parse error from DHL
+    try:
+        err_body = response.json()
+        # DHL error detail is usually in 'detail' or 'title'
+        error_msg = err_body.get("detail") or err_body.get("title") or json.dumps(err_body)
+    except Exception:
+        error_msg = response.text or f"HTTP {response.status_code}"
+
+    print(f"   ❌ DHL cancellation failed — HTTP {response.status_code}")
+    print(f"   {error_msg[:400]}")
+
+    return {
+        "success"         : False,
+        "tracking_number" : tracking_number,
+        "status_code"     : response.status_code,
+        "error"           : error_msg
+    }
+
+
+# ============================================================
+# UNDO AIRTABLE BOOKING
+# After a successful DHL cancellation, clear the Airtable fields
+# that were written during the original booking (Steps 1–3).
+# ============================================================
+
+def undo_airtable_booking(record_id, order_number):
+    """
+    Clear Airtable writeback fields for a cancelled shipment.
+
+    Clears:
+      • Shipment Tracking Number  → empty string
+      • Shipment Courier          → empty string
+      • Shipment Label Created    → False (untick checkbox)
+
+    Args:
+        record_id    – Airtable record ID (e.g. "recXXXXXXXXXXXXXX")
+        order_number – for log messages only
+
+    Returns True on success, False on failure.
+    """
+    if not record_id:
+        print(f"   ⚠️  No Airtable record_id for {order_number} — skipping Airtable undo.")
+        return False
+
+    base_id  = TABLE_CONFIG["orders"]["base_id"]
+    table_id = TABLE_CONFIG["orders"]["table_id"]
+    api_key  = AIRTABLE_API_KEY
+
+    encoded_table = quote(str(table_id), safe="")
+    url = f"https://api.airtable.com/v0/{base_id}/{encoded_table}/{record_id}"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type" : "application/json",
+    }
+    body = {
+        "fields": {
+            "Shipment Tracking Number": "",
+            "Shipment Courier"        : "",
+            "Shipment Label Created"  : False,
+        }
+    }
+
+    print(f"   🔄 Undoing Airtable booking for {order_number} (record: {record_id})...")
+    resp = airtable_patch_with_retry(url, body, headers, label=f"Undo/{order_number}")
+
+    if resp is None:
+        print(f"   ❌ Airtable undo failed (all retries exhausted) for {order_number}")
+        return False
+
+    if resp.status_code == 200:
+        print(f"   ✅ Airtable fields cleared for {order_number}")
+        return True
+    else:
+        print(f"   ❌ Airtable undo PATCH failed ({resp.status_code}) for {order_number}: "
+              f"{resp.text[:300]}")
+        return False
+
+
 # ============================================================
 # MAIN
 # ============================================================

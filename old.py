@@ -108,6 +108,18 @@ PLT_COUNTRIES = {
 }
  
 # ============================================================
+# EUROPEAN COUNTRIES — used to distinguish EU (YesAgain France
+# as importer) from "Others not listed" (YesAgain UAE as importer)
+# GB is intentionally excluded — handled separately as UK rule.
+# ============================================================
+EU_COUNTRIES = {
+    'AT','BE','BG','CH','CY','CZ','DE','DK','EE','ES','FI','FR',
+    'GR','HR','HU','IE','IS','IT','LI','LT','LU','LV','MC','MT',
+    'NL','NO','PL','PT','RO','SE','SI','SK','SM','AL','BA','ME',
+    'MK','RS','XK',
+}
+ 
+# ============================================================
 # FIXED VALUES
 # ============================================================
 FIXED = {
@@ -240,8 +252,8 @@ def split_phone(telephone, country):
     if cc and tel.startswith(cc):
         return cc, tel[len(cc):]
     return cc, tel
-
-
+ 
+ 
 def clean_postal_code(postcode, country_code):
     """Ensure postal code matches DHL format. LU must be exactly 4 digits."""
     if not postcode:
@@ -286,6 +298,117 @@ def clean_qty(value):
         return 1
  
  
+# ============================================================
+# ARABIC → LATIN TRANSLITERATION
+# ============================================================
+#
+# Why transliteration is imperfect for Arabic:
+#   Arabic is normally written WITHOUT short vowels (harakat). So "احمد"
+#   could be Ahmed, Ahmad or Ahmd — the script cannot know which without
+#   the vowel marks. We solve this with two layers:
+#     1. A name dictionary for the most common Arabic first names, titles
+#        and words → gives exact correct spellings (Ahmed, Mohammed, Eid…)
+#     2. A letter-by-letter phonetic fallback for anything not in the dict.
+#
+
+ARABIC_NAME_DICT = {
+    # Common first names (male)
+    'احمد':'Ahmed','احمد':'Ahmed','أحمد':'Ahmed','محمد':'Mohammed',
+    'محمود':'Mahmoud','عبدالله':'Abdullah','عبد الله':'Abdullah',
+    'عبدالرحمن':'Abdulrahman','عبدالعزيز':'Abdulaziz','علي':'Ali',
+    'عمر':'Omar','خالد':'Khalid','يوسف':'Youssef','ابراهيم':'Ibrahim',
+    'إبراهيم':'Ibrahim','سامي':'Sami','سالم':'Salem','سعد':'Saad',
+    'سعيد':'Saeed','صالح':'Saleh','طارق':'Tariq','عادل':'Adel',
+    'عثمان':'Othman','عصام':'Essam','علاء':'Alaa','فاروق':'Farouk',
+    'فيصل':'Faisal','كريم':'Karim','ماجد':'Majid','مازن':'Mazen',
+    'منصور':'Mansour','موسى':'Moussa','نبيل':'Nabil','هاني':'Hani',
+    'هشام':'Hisham','وليد':'Walid','ياسر':'Yasser','زياد':'Ziad',
+    'رامي':'Rami','رياض':'Riyad','زيد':'Zaid','بلال':'Bilal',
+    'تركي':'Turki','جمال':'Jamal','حسن':'Hassan','حسين':'Hussein',
+    'حمد':'Hamad','حمزة':'Hamza','راشد':'Rashed','زكريا':'Zakaria',
+    'شاكر':'Shaker','شريف':'Sherif','صلاح':'Salah','طلال':'Talal',
+    'عزيز':'Aziz','مجدي':'Magdy','مصطفى':'Mostafa','مصطفا':'Mostafa',
+    'ناصر':'Nasser','نادر':'Nader','نواف':'Nawaf','هلال':'Hilal',
+    'وائل':'Wael','وسام':'Wissam','يحيى':'Yahya','بدر':'Badr',
+    'جاسم':'Jasim','رضا':'Reda','سلطان':'Sultan','سمير':'Samir',
+    'صقر':'Saqr','فهد':'Fahad','قاسم':'Qasim','كامل':'Kamel',
+    'نزار':'Nizar','هيثم':'Haitham','امير':'Amir','أمير':'Amir',
+    'بشير':'Bashir','رفيق':'Rafik','رمزي':'Ramzi','سلمان':'Salman',
+    'سيف':'Saif','شادي':'Shadi','فادي':'Fadi','كمال':'Kamal',
+    'مروان':'Marwan','نصر':'Nasr','نور':'Nour','هادي':'Hadi',
+    'ادريس':'Idris','إدريس':'Idris','انس':'Anas','أنس':'Anas',
+    # Common first names (female)
+    'مريم':'Mariam','فاطمة':'Fatima','سارة':'Sara','سارا':'Sara',
+    'رنا':'Rana','لينا':'Lina','منى':'Mona','هيا':'Haya',
+    'ريم':'Reem','دينا':'Dina','رانيا':'Rania','نادية':'Nadia',
+    'هند':'Hind','ياسمين':'Yasmine','اسماء':'Asmaa','بسمة':'Basma',
+    'حنان':'Hanan','خديجة':'Khadija','رشا':'Rasha','سلمى':'Salma',
+    'غادة':'Ghada','ليلى':'Layla','منال':'Manal','نجلاء':'Najla',
+    'نوره':'Noura','هدى':'Huda','وفاء':'Wafa','شيماء':'Shaimaa',
+    # Titles / words that appear in names
+    'مهندس':'Eng','مهندسة':'Eng','دكتور':'Dr','دكتورة':'Dr',
+    'الدكتور':'Dr','الدكتورة':'Dr','استاذ':'Prof','الاستاذ':'Prof',
+    # Common surnames / family name parts
+    'عيد':'Eid','الشعراوي':'El Shaarawy','الشريف':'El Sherif',
+    'الامير':'El Amir','الزهراني':'Al Zahrani','العمري':'Al Omari',
+    'العتيبي':'Al Otaibi','الغامدي':'Al Ghamdi','السبيعي':'Al Subaie',
+    'القحطاني':'Al Qahtani','الدوسري':'Al Dosari','الشهري':'Al Shehri',
+    'المطيري':'Al Mutairi','الرشيدي':'Al Rashidi','المالكي':'Al Maliki',
+    'الحربي':'Al Harbi','العنزي':'Al Anazi','الشمري':'Al Shammari',
+    # Connectors
+    'بن':'Bin','ابن':'Ibn','ابو':'Abu','ام':'Um','بنت':'Bint',
+    'ال':'Al',
+}
+ 
+# Single-char phonetic fallback (for words not in the dictionary)
+ARABIC_LATIN = str.maketrans({
+    'ا':'a','أ':'a','إ':'i','آ':'a','ب':'b',
+    'ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh',
+    'د':'d','ذ':'dh','ر':'r','ز':'z','س':'s',
+    'ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z',
+    'ع':'e','غ':'gh','ف':'f','ق':'q','ك':'k',
+    'ل':'l','م':'m','ن':'n','ه':'h','و':'o',
+    'ي':'i','ى':'a','ة':'a','ء':'','ئ':'i',
+    'ؤ':'o',
+    'ً':'','ٌ':'','ٍ':'','َ':'a','ُ':'u',
+    'ِ':'i','ّ':'','ْ':'',
+})
+ 
+def _arabic_to_latin(text):
+    """
+    Two-layer Arabic → Latin:
+      1. Word-level dictionary lookup (Ahmed, Eid, El Shaarawy, Eng…)
+      2. Letter-by-letter phonetic fallback for unknown words
+    """
+    # Pre-process: strip definite article prefix ال from standalone token
+    text = text.replace('لا', 'la')  # لا → la
+    words = text.split()
+    result = []
+    for word in words:
+        w = word.strip()
+        if not w:
+            continue
+        # Direct dictionary hit
+        if w in ARABIC_NAME_DICT:
+            result.append(ARABIC_NAME_DICT[w])
+            continue
+        # Try stripping leading ال (definite article) and look up the rest
+        if w.startswith('ال') and len(w) > 2:
+            root = w[2:]
+            if root in ARABIC_NAME_DICT:
+                result.append('Al ' + ARABIC_NAME_DICT[root])
+                continue
+        # Phonetic fallback
+        fallback = re.sub(r'[^ -~]', '', w.translate(ARABIC_LATIN)).strip()
+        if fallback:
+            result.append(fallback.capitalize())
+    return re.sub(r'\s+', ' ', ' '.join(result)).strip()
+ 
+def _has_arabic(text):
+    """Return True if the text contains Arabic-script characters."""
+    return any('؀' <= c <= 'ۿ' for c in text)
+ 
+ 
 def clean_text(value):
     if pd.isna(value) if not isinstance(value, (list, dict)) else False:
         return ""
@@ -294,7 +417,15 @@ def clean_text(value):
     text = str(value).strip()
     if not text or text.lower() == "nan":
         return ""
-    if HAS_UNIDECODE:
+    # Transliterate Arabic → Latin before any further processing.
+    # We always use our dictionary-based transliterator for Arabic because
+    # unidecode lacks short-vowel knowledge and produces "Ahmd" not "Ahmed".
+    if _has_arabic(text):
+        latin = _arabic_to_latin(text)
+        latin = re.sub(r'[^ -~]', '', latin).strip()
+        latin = re.sub(r'\s+', ' ', latin)
+        text = latin if latin else "CUSTOMER"
+    elif HAS_UNIDECODE:
         text = unidecode(text)
     else:
         CHAR_MAP = str.maketrans({
@@ -351,7 +482,7 @@ def normalize_lookup_key(value):
     if re.fullmatch(r"\d+\.0", text):
         return text[:-2]
     return text
-
+ 
 def normalize_sales_order_number(value):
     """Extract the last part after any slash, e.g. 'RMAY31984/72771270' → '72771270'."""
     text = normalize_lookup_key(value)
@@ -364,8 +495,8 @@ def normalize_rma_number(value):
     text = normalize_lookup_key(value)
     text = re.sub(r"^\s*RMA[-\s]*", "", text, flags=re.IGNORECASE).strip()
     return text.upper()
-
-
+ 
+ 
 def extract_sales_order_from_rma(rma_number_str, rma_map):
     """
     For a given RMA number (e.g. 'RMAY34783/RMAY31984/72771270'),
@@ -405,43 +536,79 @@ def get_address2_and_state(row):
 def get_destination_rules(destination_country, order_id):
     """
     Smart Routing: Chooses the correct Duty Account, Additional Party,
-    and Shipper based on destination: UK, US, GCC, or EU.
+    Shipper and region label based on destination.
+ 
+    Regions (per shipping policy):
+      ┌──────────────────────┬──────────────┬──────────────────┬──────────────────┐
+      │ Destination          │ Shipper      │ Importer         │ Declared Value   │
+      ├──────────────────────┼──────────────┼──────────────────┼──────────────────┤
+      │ GCC Countries        │ YesAgain UAE │ YesAgain UAE     │ 20% of item val  │
+      │ USA                  │ YesAgain UAE │ YesAgain UAE     │ 20% of item val  │
+      │ Others not listed    │ YesAgain UAE │ YesAgain UAE     │ 20% of item val  │
+      │ Europe               │ YesAgain UAE │ YesAgain France  │ Exclude VAT      │
+      │ United Kingdom (UK)  │ YesAgain UAE │ CRS Account      │ Exclude VAT      │
+      └──────────────────────┴──────────────┴──────────────────┴──────────────────┘
+ 
+    NOTE: Saudi Arabia (SA) has an additional override — declared value is
+    always fixed at 164 EUR regardless of item price (applied in transform()).
     """
     country     = str(destination_country).strip().upper()
     order_upper = str(order_id).upper().strip()
  
-    # Base shipper defaults to YA UAE
+    # Shipper is ALWAYS YesAgain UAE regardless of order type or destination.
+    # Per shipping policy: "YesAgain UAE" is shipper for all regions.
+    # RMAC orders still use CRS as importer/duty account for UK, but the
+    # physical shipper on the DHL label must be YesAgain UAE (SHJ origin).
     shipper_party = PARTY_UAE
     shipper_acc   = str(FIXED["account_shipper"])
  
-    # Override shipper if it's an RMAC order (UK origin)
-    if order_upper.startswith("RMAC"):
-        shipper_party = PARTY_UK
-        shipper_acc   = str(FIXED["account_crs_shipper"])
- 
-    # RULE 1: UK (GB)
+    # RULE 1: UK (GB) — Importer: CRS Account | Declared: Exclude VAT
     if country == "GB":
         return {
+            "region"          : "uk",
             "duty_account"    : str(FIXED["account_crs_duty"]),
             "additional_party": PARTY_UK,
             "shipper_party"   : shipper_party,
             "shipper_account" : shipper_acc,
         }
  
-    # RULE 2: USA and GCC countries (AE, SA, OM, QA, BH, KW)
+    # RULE 2: GCC countries — Importer: YesAgain UAE | Declared: 20%
+    # (SA gets an additional 164 EUR fixed override applied in transform())
     gcc_countries = {"AE", "SA", "OM", "QA", "BH", "KW"}
-    if country in {"US", "CA"} or country in gcc_countries:
+    if country in gcc_countries:
         return {
+            "region"          : "gcc",
             "duty_account"    : str(FIXED["account_duty_us_gcc"]),
             "additional_party": PARTY_UAE,
             "shipper_party"   : shipper_party,
             "shipper_account" : shipper_acc,
         }
  
-    # RULE 3: Europe & Rest of World — default to France
+    # RULE 3: USA / Canada — Importer: YesAgain UAE | Declared: 20%
+    if country in {"US", "CA"}:
+        return {
+            "region"          : "us",
+            "duty_account"    : str(FIXED["account_duty_us_gcc"]),
+            "additional_party": PARTY_UAE,
+            "shipper_party"   : shipper_party,
+            "shipper_account" : shipper_acc,
+        }
+ 
+    # RULE 4: Europe — Importer: YesAgain France | Declared: Exclude VAT (full price)
+    if country in EU_COUNTRIES:
+        return {
+            "region"          : "eu",
+            "duty_account"    : str(FIXED["account_duty_eu"]),
+            "additional_party": PARTY_FRANCE,
+            "shipper_party"   : shipper_party,
+            "shipper_account" : shipper_acc,
+        }
+ 
+    # RULE 5: Others not listed — Importer: YesAgain UAE | Declared: 20%
     return {
-        "duty_account"    : str(FIXED["account_duty_eu"]),
-        "additional_party": PARTY_FRANCE,
+        "region"          : "other",
+        "duty_account"    : str(FIXED["account_duty_us_gcc"]),
+        "additional_party": PARTY_UAE,
         "shipper_party"   : shipper_party,
         "shipper_account" : shipper_acc,
     }
@@ -636,7 +803,7 @@ def update_shipment_tracking_in_airtable(record_id, order_number, tracking_numbe
 # WRONG URL:   content.airtable.com/v0/{base_id}/{table_id}/{record_id}/...
 #              (table_id does NOT go in the content upload URL)
 # ============================================================
-
+ 
 def _upload_to_temp_host(pdf_bytes, filename):
     """
     Upload PDF to a temporary public host and return a download URL.
@@ -658,7 +825,7 @@ def _upload_to_temp_host(pdf_bytes, filename):
             "get_link" : lambda r: r.json().get("link", ""),
         },
     ]
-
+ 
     for svc in services:
         try:
             resp = requests.post(
@@ -675,11 +842,11 @@ def _upload_to_temp_host(pdf_bytes, filename):
                 print(f"   ⚠️  {svc['name']} returned {resp.status_code}")
         except Exception as exc:
             print(f"   ⚠️  {svc['name']} failed: {exc}")
-
+ 
     return None
-
-
-
+ 
+ 
+ 
 def upload_docs_to_airtable(record_id, order_number, res_data, max_retries=3):
     """
     Step 2 — Uploads BOTH Shipping Label and Commercial Invoice to Airtable.
@@ -688,22 +855,22 @@ def upload_docs_to_airtable(record_id, order_number, res_data, max_retries=3):
     if not record_id:
         print(f"   ⚠️  No record_id for {order_number} — skipping Step 2.")
         return False
-
+ 
     base_id = TABLE_CONFIG["orders"]["base_id"]
     api_key = AIRTABLE_API_KEY
     
     documents = res_data.get("documents", [])
     if not documents and res_data.get("label_base64"):
         documents = [{"typeCode": "shipping_label", "content": res_data.get("label_base64")}]
-
+ 
     success_tracker = {"label": False, "invoice": False}
-
+ 
     for doc in documents:
         type_code = doc.get("typeCode", "").lower()
         content_b64 = doc.get("content")
         if not content_b64:
             continue
-
+ 
         if "label" in type_code or "waybill" in type_code:
             field_name = "Shipment Label file"
             field_id = "fldG3hmHH8cTPwzxo"
@@ -716,7 +883,7 @@ def upload_docs_to_airtable(record_id, order_number, res_data, max_retries=3):
             doc_key = "invoice"
         else:
             continue
-
+ 
         print(f"   📡 Step 2 — Processing {doc_key} for {order_number}...")
         
         try:
@@ -724,7 +891,7 @@ def upload_docs_to_airtable(record_id, order_number, res_data, max_retries=3):
         except Exception as exc:
             print(f"   ❌ Base64 decode error for {doc_key} on {order_number}: {exc}")
             continue
-
+ 
         # --- ONLY METHOD 2: PATCH with temporary URL ---
         print(f"   📡 Step 2 — Method 2: PATCH with temporary URL for {doc_key} ({order_number})...")
         temp_url = _upload_to_temp_host(pdf_bytes, filename)
@@ -736,42 +903,42 @@ def upload_docs_to_airtable(record_id, order_number, res_data, max_retries=3):
                 "Content-Type": "application/json",
             }
             payload = {"fields": {field_name: [{"url": temp_url, "filename": filename}]}}
-
+ 
             for attempt in range(1, max_retries + 1):
                 try:
                     resp = requests.patch(
                         patch_url, headers=patch_headers, json=payload, timeout=30
                     )
                     print(f"       PATCH response: HTTP {resp.status_code}")
-
+ 
                     if resp.status_code == 200:
                         print(f"   📎 {doc_key.capitalize()} uploaded via Method 2 (PATCH+URL) (Order: {order_number})")
                         success_tracker[doc_key] = True
                         break
-
+ 
                     elif resp.status_code == 422:
                         print(f"       422 Unprocessable — Airtable could not fetch the URL.")
                         print(f"       → Check field name: '{field_name}' must be type 'Attachment' in Airtable.")
                         print(f"       → Response: {resp.text[:300]}")
                         break
-
+ 
                     elif resp.status_code == 429:
                         wait = 2 ** attempt
                         print(f"       Rate limited — retrying in {wait}s...")
                         time.sleep(wait)
-
+ 
                     else:
                         print(f"       Failed ({resp.status_code}): {resp.text[:300]}")
                         if attempt < max_retries:
                             time.sleep(2)
-
+ 
                 except Exception as exc:
                     print(f"       Exception (attempt {attempt}): {exc}")
                     if attempt < max_retries:
                         time.sleep(2)
         else:
             print(f"   ❌ {doc_key.capitalize()} Step 2 FAILED: could not get a temporary URL for {order_number}.")
-
+ 
     return success_tracker["label"]
  
  
@@ -940,23 +1107,23 @@ def fetch_price_map_for_orders(so_numbers, api_key):
  
     df_all = pd.concat(all_rows, ignore_index=True)
     return build_price_map(df_all)
-
-
+ 
+ 
 def fetch_price_map_from_commerce_central(so_numbers):
     """Fetch unit prices from Commerce Central Sales Order Lines table using SO Line Id field."""
     if not so_numbers:
         return {}
-
+ 
     config = TABLE_CONFIG["commerce_central_sales_lines"]
     so_list = list(so_numbers)
     all_rows = []
     CHUNK = 20
-
+ 
     print(f"🌐 Fetching Commerce Central Sales Lines for {len(so_list)} SO(s): {so_list[:5]}...")
-
+ 
     # Normalize each SO number (extract last part after slash)
     normalized_sos = [normalize_sales_order_number(so) for so in so_list]
-
+ 
     for i in range(0, len(normalized_sos), CHUNK):
         chunk = normalized_sos[i:i+CHUNK]
         # Build OR conditions using SO Line Id (e.g., "41178316_74391" starts with "41178316_")
@@ -964,7 +1131,7 @@ def fetch_price_map_from_commerce_central(so_numbers):
         for so in chunk:
             conditions.append(f'LEFT({{SO Line Id}}, LEN("{so}") + 1) = "{so}_"')
         formula = "OR(" + ",".join(conditions) + ")"
-
+ 
         df_chunk = fetch_table(
             base_id=config["base_id"], table_id=config["table_id"],
             view_id=config["view_id"],
@@ -973,11 +1140,11 @@ def fetch_price_map_from_commerce_central(so_numbers):
         )
         if not df_chunk.empty:
             all_rows.append(df_chunk)
-
+ 
     if not all_rows:
         print("⚠️  No Commerce Central Sales Order Lines found.")
         return {}
-
+ 
     df_all = pd.concat(all_rows, ignore_index=True)
     price_map = {}
     for _, row in df_all.iterrows():
@@ -992,7 +1159,7 @@ def fetch_price_map_from_commerce_central(so_numbers):
             continue
         if not so:
             continue
-
+ 
         # Get price from "Converted Unit price" (fallback to "Price (Final)")
         price = clean_price(row.get("Converted Unit price", 0))
         if price <= 0:
@@ -1000,7 +1167,7 @@ def fetch_price_map_from_commerce_central(so_numbers):
         if price > 0:
             # Sum prices if multiple lines for the same SO
             price_map[so] = price_map.get(so, 0) + price
-
+ 
     print(f"✅ Commerce Central price map: {len(price_map)} entries")
     return price_map
  
@@ -1041,14 +1208,24 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
                     price = round(looked_up_price, 2)
                     print(f"   ✅ {order_number} ({source_label}) → SO {sales_order} → €{price}")
                 else:
-                    print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
-                          f"found but no price in Sales Order Lines")
+                    # Path A: Sales Order found but no price in Sales Order Lines
+                    if rma_source == "crs":
+                        price = 200.0
+                        print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
+                              f"found but no price in Sales Order Lines — defaulting to €200.00")
+                    else:
+                        print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
+                              f"found but no price in Sales Order Lines")
             else:
+                # Path B: RMA key not found in the map at all
                 rma_map_used = ya_rma_map if rma_source == "ya" else crs_rma_map
                 print(f"   ⚠️  {order_number} ({source_label}) → "
                       f"RMA key '{clean_rma}' not found in map.")
                 print(f"        Map has {len(rma_map_used)} entries: "
                       f"{list(rma_map_used.keys())[:10]}")
+                if rma_source == "crs":
+                    price = 200.0
+                    print(f"   🔄 {order_number} (RMAC) → RMA not in map — defaulting to €200.00")
  
         qty = clean_qty(r.get("Sold Qty per line", 1))
  
@@ -1056,6 +1233,24 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
         shipper_acc = rules["shipper_account"]
         duty_acc    = rules["duty_account"]
         add_party   = rules["additional_party"]
+        region      = rules["region"]
+ 
+        # ── Declared Value Rules ──────────────────────────────────────
+        # Policy (per shipping policy document):
+        #   Saudi Arabia (SA) → FIXED 164 EUR (regardless of item price)
+        #   GCC / USA / Others not listed → 20% of item value
+        #   Europe / UK → full price (Exclude VAT — data is already ex-VAT)
+        country_upper = country.strip().upper()
+        if country_upper == "SA":
+            declared_val = 164.0
+            print(f"   🇸🇦 {order_number} (SA) → Fixed declared value: €164.00")
+        elif region in ("gcc", "us", "other"):
+            declared_val = round(price * 0.20, 2)
+            declared_val = max(declared_val, 1.0)   # DHL minimum
+            print(f"   📦 {order_number} ({region.upper()}) → 20% declared: €{declared_val} (item: €{price})")
+        else:
+            # eu / uk — full price, exclude VAT (DHL minimum 1.0)
+            declared_val = max(price, 1.0)
  
         addr2, state = get_address2_and_state(r)
         state_full = STATE_FULL_NAMES.get(state, state) if state else ""
@@ -1095,7 +1290,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
             "Total Weight (Required)"                   : round(qty * F["weight"], 2),
             "Piece Weight (Unit of Measure)"            : F["weight_unit"],
             "Declared Value Currency (Required)"        : F["currency"],
-            "Declared Value (Required)"                 : price,
+            "Declared Value (Required)"                 : declared_val,
             "Product Code (3 Letter)"                   : F["product_code"],
             "Summary of Contents"                       : F["contents"],
             "SHIPMENT TYPE"                             : F["shipment_type"],
@@ -1113,7 +1308,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
             "ITEM COMMODITY"                            : F["commodity"],
             "ITM QTY"                                   : qty,
             "ITM UNITS"                                 : F["item_units"],
-            "ITM VALUE"                                 : round(price, 2),
+            "ITM VALUE"                                 : round(declared_val, 2),
             "ITM CRNCY"                                 : F["currency"],
             "ITM NET"                                   : F["item_net"],
             "ITM GRSS"                                  : F["item_gross"],
@@ -1148,18 +1343,22 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
 def build_dhl_payload(row):
     F = FIXED
     from datetime import timedelta
+    
+    # DHL prefers an explicit offset structure for timezones
     ship_date = (datetime.now(timezone.utc) + timedelta(days=1)).strftime(
-        "%Y-%m-%dT10:00:00GMT+00:00"
+        "%Y-%m-%dT10:00:00GMT+04:00"
     )
  
     order_id = str(row.get("Shipment Reference 1", "")).strip()
     country  = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
  
+    # Get structural variables from mapping logic
     rules           = get_destination_rules(country, order_id)
     party           = rules["shipper_party"]
     shipper_account = rules["shipper_account"]
     duty_account    = rules["duty_account"]
  
+    # Phone number sanitation and formatting
     phone_cc  = str(row.get("Phone Country Code (Ship TO) (Required)", "")).strip()
     phone_num = str(row.get("Phone Number (Ship TO) (Required)", "")).strip()
     if not phone_cc:
@@ -1167,38 +1366,48 @@ def build_dhl_payload(row):
     if not phone_num:
         phone_num = "0000000000"
     phone_num_clean = re.sub(r'\D', '', phone_num)
-    full_phone = f"{phone_cc}{phone_num_clean}"
+    
+    # --- FIXED LINE HERE ---
+    full_phone = f"+{phone_cc}{phone_num_clean}" if not str(phone_cc).startswith('+') else f"{phone_cc}{phone_num_clean}"
  
     shipper_phone_cc   = str(party["PhoneCC"])
     shipper_phone_num  = re.sub(r'\D', '', str(party["Phone"]))
-    shipper_full_phone = f"{shipper_phone_cc}{shipper_phone_num}"
+    shipper_full_phone = f"+{shipper_phone_cc}{shipper_phone_num}"
  
+    # Smart address splitting to prevent truncation data loss
+    raw_address = str(row.get("Address 1 (Ship TO) (Required)", "")).strip()
+    addr2       = str(row.get("Address 2 (Ship TO)", "")).strip()
+    
     postal_address = {
         "postalCode"  : clean_postal_code(str(row.get("ZIP Postal Code (Ship TO)", "")).strip(), country),
         "cityName"    : str(row.get("City (Ship TO) (Required)", "")).strip(),
         "countryCode" : country,
-        "addressLine1": (str(row.get("Address 1 (Ship TO) (Required)", "")).strip())[:45],
+        "addressLine1": raw_address[:45],
     }
-
-    addr2 = str(row.get("Address 2 (Ship TO)", "")).strip()
-    if addr2:
-        postal_address["addressLine2"] = addr2
+ 
+    # Overflow remainder of address line 1 safely into address line 2 if line 2 is empty
+    if len(raw_address) > 45:
+        postal_address["addressLine2"] = (raw_address[45:] + " " + addr2).strip()[:45]
+    elif addr2:
+        postal_address["addressLine2"] = addr2[:45]
+        
     state = str(row.get("State Province (Ship TO)", "")).strip()
     if state and country == "US":
         postal_address["provinceCode"] = state
  
+    # Accurate unit-level pricing calculation 
     itm_qty    = max(int(row.get("ITM QTY", 1)), 1)
     total_val  = float(row.get("Declared Value (Required)", 0))
-    unit_price = max(round(total_val / itm_qty, 2), 0.01)  # min 0.01 — DHL rejects 0.0
+    unit_price = max(round(total_val / itm_qty, 2), 0.01)
  
     payload = {
         "plannedShippingDateAndTime": ship_date,
         "pickup": {"isRequested": False},
         "productCode": F["product_code_api"],
         "accounts": [
-            {"typeCode": "shipper", "number": shipper_account},
-            {"typeCode": "payer",   "number": shipper_account},
-            # {"typeCode": "duties-taxes", "number": duty_account},
+            {"typeCode": "shipper", "number": str(shipper_account)},
+            {"typeCode": "payer",   "number": str(shipper_account)},
+            {"typeCode": "duties-taxes", "number": str(duty_account)}, # Bound dynamically via accounting routing Matrix
         ],
         "outputImageProperties": {
             "printerDPI"    : 300,
@@ -1237,7 +1446,7 @@ def build_dhl_payload(row):
             "receiverDetails": {
                 "postalAddress": postal_address,
                 "contactInformation": {
-                    "companyName": str(row.get("Company (Ship TO) (Required)", "")).strip()[:35],
+                    "companyName": str(row.get("Company (Ship TO) (Required)", "")).strip()[:35] or str(row.get("Name (Ship TO) (Required)", "")).strip()[:35],
                     "fullName"   : str(row.get("Name (Ship TO) (Required)", "")).strip()[:35],
                     "email"      : str(row.get("Email Address (Ship TO)", "")).strip(),
                     "phone"      : full_phone,
@@ -1250,8 +1459,7 @@ def build_dhl_payload(row):
                     "weight"    : float(row.get("Total Weight (Required)", F["weight"])),
                     "dimensions": {"length": F["length"], "width": F["width"], "height": F["height"]},
                     "customerReferences": [
-                        {"typeCode": "CU",  "value": str(row.get("Shipment Reference 1", ""))[:35]},
-                        {"typeCode": "AAO", "value": str(row.get("Shipment Reference 1", ""))[:35]},
+                        {"typeCode": "CU",  "value": order_id[:35]},
                     ]
                 }
             ],
@@ -1264,7 +1472,7 @@ def build_dhl_payload(row):
                         "number"             : i + 1,
                         "description"        : F["item_desc"],
                         "price"              : unit_price,
-                        "priceCurrency"      : F["currency"],
+                        "priceCurrency"      : str(row.get("Declared Value Currency (Required)", F["currency"])),
                         "commodityCodes"     : [
                             {"typeCode": "outbound", "value": F["commodity"]},
                             {"typeCode": "inbound",  "value": F["commodity"]},
@@ -1277,14 +1485,14 @@ def build_dhl_payload(row):
                     for i in range(itm_qty)
                 ],
                 "invoice": {
-                    "number": str(row.get("INVOICE NO.", "")),
+                    "number": str(row.get("INVOICE NO.", "")) or order_id,
                     "date"  : datetime.now().strftime("%Y-%m-%d"),
                 },
                 "exportReason": F["export_reason"],
             },
             "description"       : F["contents"],
-            "incoterm"          : F["incoterms_api"],
-            "unitOfMeasurement" : "metric",
+            "incoterm"          : "DDP", # Forced to DDP to match owner instructions
+            "unitOfMeasurement": "metric",
         },
         "shipmentNotification": [
             {
@@ -1294,12 +1502,10 @@ def build_dhl_payload(row):
             }
         ] if str(row.get("Email Address (Ship TO)", "")).strip() else [],
         "valueAddedServices": [
-            {"serviceCode": "DD"},
-            *([ {"serviceCode": "WY"} ] if country in PLT_COUNTRIES else []),
+            {"serviceCode": "WY"}, # Changed from DD to WY (Duties Taxes Paid) to avoid double billing bugs!
         ],
         "customerReferences": [
-            {"typeCode": "CU",  "value": str(row.get("Shipment Reference 1", ""))[:35]},
-            {"typeCode": "AAO", "value": str(row.get("Shipment Reference 1", ""))[:35]},
+            {"typeCode": "CU",  "value": order_id[:35]},
         ],
     }
  
@@ -1530,11 +1736,44 @@ def send_to_dhl(row, verbose=False):
     if not DHL_API_KEY or not DHL_API_SECRET:
         print("❌ DHL_API_KEY or DHL_API_SECRET missing in .env — cannot send to DHL.")
         return {"success": False, "error": "Missing DHL credentials"}
- 
+    
     use_test     = DHL_TEST_MODE
-    base_url     = DHL_BASE_URL_TEST if use_test else DHL_BASE_URL_PROD
+    base_url     = DHL_BASE_URL_PROD   # always production URL — test bypass handled below
     order_number = str(row.get("Shipment Reference 1", "unknown")).strip()
-    url          = f"{base_url}/shipments"
+ 
+    # ── TEST MODE BYPASS ──────────────────────────────────────────────────────
+    # DHL error 803 "Account not allowed for this service" happens because the
+    # DHL TEST SANDBOX does not recognise real production account numbers.
+    # The test sandbox requires special dummy test accounts provided by DHL.
+    # Since we don't have those dummy accounts, calling the sandbox will always
+    # fail with 803.
+    #
+    # Solution: in --test mode we skip the real DHL call entirely and return a
+    # simulated success. This lets you safely test the full pipeline:
+    #   ✅  Airtable fetch
+    #   ✅  Price / RMA lookup
+    #   ✅  CSV generation
+    #   ✅  Payload building & printing (use --verbose to inspect)
+    #   ✅  Airtable writeback is STILL SKIPPED (test mode already guards this)
+    #   ❌  No real DHL call (by design — no fake AWB)
+    #
+    # To test the actual DHL connection without booking a real shipment, run
+    # python airtable_transform.py --send-to-dhl --validate
+    # which calls /shipments/validate on PRODUCTION with your real accounts.
+    if use_test:
+        fake_awb = f"TEST-{order_number}-SIM"
+        print(f"   ✅ TEST SIMULATION — Payload built OK (use --verbose to print)")
+        print(f"   ℹ️  No DHL call made — fake AWB: {fake_awb}")
+        return {
+            "success"         : True,
+            "order_number"    : order_number,
+            "tracking_number" : fake_awb,
+            "label_base64"    : None,
+            "raw_response"    : {},
+            "simulated"       : True,
+        }
+ 
+    url = f"{base_url}/shipments"
  
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     payload = build_dhl_payload(row)
@@ -1571,7 +1810,7 @@ def send_to_dhl(row, verbose=False):
             type_code    = doc.get("typeCode", "")
             image_format = doc.get("imageFormat", "")
             content      = doc.get("content", "")
-
+ 
             # DHL production API returns typeCode="label".
             # DHL sandbox/test API often omits typeCode entirely, returning only
             # imageFormat="PDF". Accept EITHER so the label is never silently dropped.
@@ -1579,7 +1818,7 @@ def send_to_dhl(row, verbose=False):
                 type_code == "label"
                 or (not type_code and image_format.upper() == "PDF" and content)
             )
-
+ 
             if is_label and content:
                 label_b64  = content
                 os.makedirs("labels", exist_ok=True)
@@ -1592,7 +1831,7 @@ def send_to_dhl(row, verbose=False):
                 save_label_index(order_number, tracking_number or pkg_tracking,
                                  label_path, recipient_name, destination_country)
                 break
-
+ 
         if not label_b64:
             print(f"   ⚠️  No label found in DHL response for {order_number}.")
             docs_summary = [
@@ -1805,7 +2044,7 @@ if __name__ == "__main__":
             price_map_sh = fetch_price_map_for_orders(needed_so_numbers, AIRTABLE_API_KEY)
             # Merge: Commerce Central overrides
             price_map = {**price_map_sh, **price_map_cc}
-
+ 
         else:
             if ya_rma_keys or crs_rma_keys:
                 print("⚠️  RMA orders found but no External Sales Order numbers in RMA records.")
