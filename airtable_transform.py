@@ -1519,7 +1519,9 @@ def build_dhl_payload(row):
                     for i in range(itm_qty)
                 ],
                 "invoice": {
-                    "number": str(row.get("INVOICE NO.", "")) or order_id,
+                    # DHL limits the invoice number to 35 characters. Some order IDs
+                    # (e.g. Airtable UUIDs) are 36 chars and caused HTTP 422 rejections.
+                    "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
                     "date"  : datetime.now().strftime("%Y-%m-%d"),
                 },
                 "exportReason": F["export_reason"],
@@ -2612,6 +2614,31 @@ if __name__ == "__main__":
 # }
  
 # # ============================================================
+# # DESTINATION-BASED VAT (YesAgain's local VAT per EU country)
+# # ============================================================
+# # The VAT number declared is chosen by the DESTINATION country.
+# # e.g. an order shipping to Belgium declares the Belgian VAT.
+# # Anything not listed here falls back to the importer entity's
+# # default VAT (France for EU, UK for GB) — see importer_vat_for().
+# EU_VAT_BY_COUNTRY = {
+#     "AT": "ATU79670679",      # Austria
+#     "BE": "BE0803906108",     # Belgium
+#     "DK": "DK13394814",       # Denmark
+#     "IT": "IT00358559995",    # Italy  (confirm the "IT" prefix with accountant)
+#     "NL": "NL827367090B01",   # Netherlands
+#     "SE": "SE502096226101",   # Sweden
+#     "DE": "DE362263608",      # Germany
+#     "FR": "FR04919345207",    # France
+#     "GB": "GB450944880",      # United Kingdom
+# }
+ 
+# def importer_vat_for(country, fallback_vat=""):
+#     """Return YesAgain's VAT registered in the destination country.
+#     Falls back to the importer entity's default VAT when the destination
+#     has no specific registration in EU_VAT_BY_COUNTRY."""
+#     return EU_VAT_BY_COUNTRY.get(str(country).strip().upper(), fallback_vat) or fallback_vat
+ 
+# # ============================================================
 # # PHONE / STATE LOOKUPS
 # # ============================================================
 # PHONE_CODES = {
@@ -3392,7 +3419,6 @@ if __name__ == "__main__":
 #     body = {
 #         "fields": {
 #             "Shipment Label Created": True,                  # ✅ checkbox — ONLY set after upload confirmed
-#             # "Shipment Tracking URL": dhl_tracking_url,       # 🔗 real clickable DHL tracking URL
 #         }
 #     }
  
@@ -3731,7 +3757,7 @@ if __name__ == "__main__":
 #             "ADD  EMAIL"                                : add_party["Email"],
 #             "Phone Country Code (Additional Party)"     : add_party["PhoneCC"],
 #             "Phone Number (Additional Party)"           : add_party["Phone"],
-#             "ADD  VAT"                                  : add_party["VAT"],
+#             "ADD  VAT"                                  : importer_vat_for(country, add_party["VAT"]),
 #             "ADD  EORI"                                 : add_party["EORI"],
 #             "ADD  RELATIONSHIP"                         : add_party["Rel"],
 #             "Account Number (Duty Tax)"                 : int(duty_acc),
@@ -3761,6 +3787,14 @@ if __name__ == "__main__":
 #     party           = rules["shipper_party"]
 #     shipper_account = rules["shipper_account"]
 #     duty_account    = rules["duty_account"]
+ 
+#     # Destination-based importer VAT/EORI (YesAgain's local registration for
+#     # the country the goods are imported into). Falls back to the importer
+#     # entity's default VAT when the destination has no specific registration.
+#     importer_party = rules["additional_party"]
+#     importer_vat   = importer_vat_for(country, importer_party.get("VAT", ""))
+#     importer_eori  = importer_party.get("EORI", "")
+#     vat_issuer     = (importer_vat[:2].upper() if importer_vat else importer_party.get("Country", ""))
  
 #     # Phone number sanitation and formatting
 #     phone_cc  = str(row.get("Phone Country Code (Ship TO) (Required)", "")).strip()
@@ -3845,6 +3879,8 @@ if __name__ == "__main__":
 #                 "registrationNumbers": [
 #                     *([{"typeCode": "VAT", "number": party["VAT"],  "issuerCountryCode": party["Country"]}] if party.get("VAT")  else []),
 #                     *([{"typeCode": "EOR", "number": party["EORI"], "issuerCountryCode": party["Country"]}] if party.get("EORI") else []),
+#                     *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if importer_vat  else []),
+#                     *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if importer_eori else []),
 #                 ],
 #             },
 #             "receiverDetails": {
