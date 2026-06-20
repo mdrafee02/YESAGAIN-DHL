@@ -208,31 +208,6 @@ PARTY_FRANCE = {
 }
  
 # ============================================================
-# DESTINATION-BASED VAT (YesAgain's local VAT per EU country)
-# ============================================================
-# The VAT number declared is chosen by the DESTINATION country.
-# e.g. an order shipping to Belgium declares the Belgian VAT.
-# Anything not listed here falls back to the importer entity's
-# default VAT (France for EU, UK for GB) — see importer_vat_for().
-EU_VAT_BY_COUNTRY = {
-    "AT": "ATU79670679",      # Austria
-    "BE": "BE0803906108",     # Belgium
-    "DK": "DK13394814",       # Denmark
-    "IT": "IT00358559995",    # Italy  (confirm the "IT" prefix with accountant)
-    "NL": "NL827367090B01",   # Netherlands
-    "SE": "SE502096226101",   # Sweden
-    "DE": "DE362263608",      # Germany
-    "FR": "FR04919345207",    # France
-    "GB": "GB450944880",      # United Kingdom
-}
- 
-def importer_vat_for(country, fallback_vat=""):
-    """Return YesAgain's VAT registered in the destination country.
-    Falls back to the importer entity's default VAT when the destination
-    has no specific registration in EU_VAT_BY_COUNTRY."""
-    return EU_VAT_BY_COUNTRY.get(str(country).strip().upper(), fallback_vat) or fallback_vat
- 
-# ============================================================
 # PHONE / STATE LOOKUPS
 # ============================================================
 PHONE_CODES = {
@@ -1351,7 +1326,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
             "ADD  EMAIL"                                : add_party["Email"],
             "Phone Country Code (Additional Party)"     : add_party["PhoneCC"],
             "Phone Number (Additional Party)"           : add_party["Phone"],
-            "ADD  VAT"                                  : importer_vat_for(country, add_party["VAT"]),
+            "ADD  VAT"                                  : add_party["VAT"],
             "ADD  EORI"                                 : add_party["EORI"],
             "ADD  RELATIONSHIP"                         : add_party["Rel"],
             "Account Number (Duty Tax)"                 : int(duty_acc),
@@ -1381,14 +1356,6 @@ def build_dhl_payload(row):
     party           = rules["shipper_party"]
     shipper_account = rules["shipper_account"]
     duty_account    = rules["duty_account"]
- 
-    # Destination-based importer VAT/EORI (YesAgain's local registration for
-    # the country the goods are imported into). Falls back to the importer
-    # entity's default VAT when the destination has no specific registration.
-    importer_party = rules["additional_party"]
-    importer_vat   = importer_vat_for(country, importer_party.get("VAT", ""))
-    importer_eori  = importer_party.get("EORI", "")
-    vat_issuer     = (importer_vat[:2].upper() if importer_vat else importer_party.get("Country", ""))
  
     # Phone number sanitation and formatting
     phone_cc  = str(row.get("Phone Country Code (Ship TO) (Required)", "")).strip()
@@ -1473,8 +1440,6 @@ def build_dhl_payload(row):
                 "registrationNumbers": [
                     *([{"typeCode": "VAT", "number": party["VAT"],  "issuerCountryCode": party["Country"]}] if party.get("VAT")  else []),
                     *([{"typeCode": "EOR", "number": party["EORI"], "issuerCountryCode": party["Country"]}] if party.get("EORI") else []),
-                    *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if importer_vat  else []),
-                    *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if importer_eori else []),
                 ],
             },
             "receiverDetails": {
@@ -1519,9 +1484,7 @@ def build_dhl_payload(row):
                     for i in range(itm_qty)
                 ],
                 "invoice": {
-                    # DHL limits the invoice number to 35 characters. Some order IDs
-                    # (e.g. Airtable UUIDs) are 36 chars and caused HTTP 422 rejections.
-                    "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
+                    "number": str(row.get("INVOICE NO.", "")) or order_id,
                     "date"  : datetime.now().strftime("%Y-%m-%d"),
                 },
                 "exportReason": F["export_reason"],
@@ -2072,6 +2035,8 @@ def undo_airtable_booking(record_id, order_number):
             "Shipment Tracking Number": "",
             "Shipment Courier"        : "",
             "Shipment Label Created"  : False,
+            "Shipment Label file"     : [],   # clear attachment so a re-book makes a fresh label
+            "Commercial invoice file" : [],   # clear attachment so a re-book makes a fresh invoice
         }
     }
 
@@ -2092,6 +2057,90 @@ def undo_airtable_booking(record_id, order_number):
 
 
 # ============================================================
+# FIND ORDER BY TRACKING NUMBER
+# Locates the Airtable orders record that holds a given AWB so
+# we know which record to reset after a cancellation.
+# ============================================================
+
+def find_order_record_by_tracking(tracking_number):
+    """
+    Find the Airtable orders record whose 'Shipment Tracking Number'
+    matches the given AWB.
+
+    Returns:
+        (record_id, order_number)  on success
+        (None, None)               if no matching record is found
+    """
+    tracking_number = str(tracking_number).strip()
+    if not tracking_number:
+        return None, None
+
+    cfg = TABLE_CONFIG["orders"]
+    formula = f'{{Shipment Tracking Number}}="{tracking_number}"'
+    df = fetch_table(
+        base_id=cfg["base_id"], table_id=cfg["table_id"],
+        view_id=None, label="Orders (cancel lookup)",
+        api_key=cfg["api_key"], filter_formula=formula,
+    )
+    if df.empty:
+        return None, None
+
+    row = df.iloc[0]
+    record_id    = str(row.get("_airtable_id", "")).strip()
+    order_number = str(row.get("Order Number", "")).strip()
+    return (record_id or None), (order_number or None)
+
+
+# ============================================================
+# CANCEL + RESET  (single entry point for the dashboard)
+# Cancels the shipment at DHL, then clears the Airtable booking
+# fields so the order returns to the queue and can be re-booked.
+# ============================================================
+
+def cancel_and_reset_shipment(tracking_number):
+    """
+    Cancel a DHL shipment AND reset its Airtable record so it can be
+    booked again. This is the function the dashboard / api.py should call
+    for the "cancel" action.
+
+    Flow:
+      1. DELETE the shipment at DHL (cancel_dhl_shipment).
+      2. If DHL cancellation succeeds → find the Airtable record by AWB.
+      3. Clear the booking fields (undo_airtable_booking) so duplicate
+         prevention no longer skips it → the order can be re-booked.
+
+    If the DHL cancel fails, Airtable is left untouched (so we never
+    "reset" an order that is still live at DHL).
+    """
+    result = cancel_dhl_shipment(tracking_number)
+
+    # DHL cancel failed → do NOT touch Airtable
+    if not result.get("success"):
+        result["airtable_reset"] = False
+        return result
+
+    # DHL cancel succeeded → find the order and reset it
+    record_id, order_number = find_order_record_by_tracking(tracking_number)
+
+    if record_id:
+        reset_ok = undo_airtable_booking(record_id, order_number or tracking_number)
+        result["airtable_reset"] = reset_ok
+        result["order_number"]   = order_number
+        if reset_ok:
+            result["message"] = ("Shipment cancelled at DHL and the order was reset — "
+                                 "it can now be booked again.")
+        else:
+            result["message"] = ("Shipment cancelled at DHL, but clearing the Airtable "
+                                 "fields failed — reset it manually to allow re-booking.")
+    else:
+        result["airtable_reset"] = False
+        result["message"] = ("Shipment cancelled at DHL, but no Airtable order was found "
+                             f"with tracking number {tracking_number} to reset.")
+
+    return result
+
+
+# ============================================================
 # MAIN
 # ============================================================
 if __name__ == "__main__":
@@ -2105,7 +2154,21 @@ if __name__ == "__main__":
     if test_override:
         DHL_TEST_MODE = True
         print("⚠️  --test flag: DHL_TEST_MODE forced ON")
- 
+
+    # ── CANCEL + RESET (early exit) ──────────────────────────
+    # Usage: python airtable_transform.py --cancel <TRACKING_NUMBER>
+    # Cancels the shipment at DHL and resets the Airtable order so it
+    # can be booked again. Does not run the booking flow.
+    if "--cancel" in sys.argv:
+        try:
+            awb = sys.argv[sys.argv.index("--cancel") + 1]
+        except IndexError:
+            print("❌ Usage: python airtable_transform.py --cancel <TRACKING_NUMBER>")
+            sys.exit(1)
+        cancel_result = cancel_and_reset_shipment(awb)
+        print(json.dumps(cancel_result, indent=2, default=str))
+        sys.exit(0 if cancel_result.get("success") else 1)
+
     # ── Initialise maps (will be populated below for RMA orders) ──
     ya_rma_map  = {}
     crs_rma_map = {}
@@ -3925,7 +3988,9 @@ if __name__ == "__main__":
 #                     for i in range(itm_qty)
 #                 ],
 #                 "invoice": {
-#                     "number": str(row.get("INVOICE NO.", "")) or order_id,
+#                     # DHL limits the invoice number to 35 characters. Some order IDs
+#                     # (e.g. Airtable UUIDs) are 36 chars and caused HTTP 422 rejections.
+#                     "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
 #                     "date"  : datetime.now().strftime("%Y-%m-%d"),
 #                 },
 #                 "exportReason": F["export_reason"],
