@@ -85,27 +85,31 @@ def stream_dhl():
 @app.route("/cancel-dhl", methods=["POST"])
 def cancel_dhl():
     """
-    Cancel a booked DHL shipment and (optionally) undo Airtable writeback.
+    Cancel a booked DHL shipment AND reset the Airtable order so it
+    can be booked again.
 
     Request body (JSON):
     {
-        "tracking_number"   : "1234567890",       ← required
-        "airtable_record_id": "recXXXXXXXXXXXXX", ← optional, to clear Airtable
-        "order_number"      : "SO-12345"          ← optional, for log messages
+        "tracking_number": "1234567890"   ← required (DHL AWB)
     }
+
+    What this does:
+      1. Calls DHL DELETE /shipments/{tracking_number} to void the shipment.
+      2. Finds the matching Airtable order by tracking number automatically.
+      3. Clears: Shipment Tracking Number, Courier, Label Created checkbox,
+         label file, and invoice file — so the order can be re-booked.
 
     Returns:
     {
-        "dhl_cancelled"       : true/false,
-        "airtable_cleared"    : true/false/null,
-        "tracking_number"     : "...",
-        "message"             : "...",
-        "error"               : "..."   (only on failure)
+        "dhl_cancelled"  : true/false,
+        "airtable_reset" : true/false,
+        "tracking_number": "...",
+        "order_number"   : "...",
+        "message"        : "..."
     }
 
     IMPORTANT: DHL cancellation only works BEFORE the parcel is
-    scanned / picked up. If DHL already has the package, the API
-    will return an error — you must call DHL directly.
+    scanned / picked up. If DHL already has the package, call:
     DHL UAE: +971 600 567 567
     """
     data = request.get_json(silent=True)
@@ -115,52 +119,36 @@ def cancel_dhl():
             "error": "tracking_number is required in the request body."
         }), 400
 
-    tracking_number    = str(data["tracking_number"]).strip()
-    airtable_record_id = str(data.get("airtable_record_id", "")).strip()
-    order_number       = str(data.get("order_number", tracking_number)).strip()
+    tracking_number = str(data["tracking_number"]).strip()
 
-    print(f"\n🗑️  /cancel-dhl called — AWB: {tracking_number} | Order: {order_number}")
+    print(f"\n🗑️  /cancel-dhl called — AWB: {tracking_number}")
 
-    # ── Import from airtable_transform ───────────────────────────────
+    # ── Import cancel_and_reset from airtable_transform ──────────────
     try:
-        from airtable_transform import cancel_dhl_shipment, undo_airtable_booking
+        from airtable_transform import cancel_and_reset_shipment
     except ImportError as e:
         return jsonify({"error": f"Could not import airtable_transform: {e}"}), 500
 
-    # ── Step 1: Cancel at DHL ─────────────────────────────────────────
-    dhl_result = cancel_dhl_shipment(tracking_number)
+    # ── Cancel at DHL + reset Airtable in one call ───────────────────
+    result = cancel_and_reset_shipment(tracking_number)
 
-    response_body = {
-        "tracking_number": tracking_number,
-        "order_number"   : order_number,
-        "dhl_cancelled"  : dhl_result.get("success", False),
-        "airtable_cleared": None,   # will be filled below if applicable
-    }
-
-    if dhl_result.get("success"):
-        response_body["message"] = dhl_result.get("message", "Shipment cancelled at DHL.")
-
-        # ── Step 2: Undo Airtable (only if record_id given) ──────────
-        if airtable_record_id:
-            airtable_ok = undo_airtable_booking(airtable_record_id, order_number)
-            response_body["airtable_cleared"] = airtable_ok
-            if airtable_ok:
-                response_body["message"] += " Airtable fields cleared."
-            else:
-                response_body["message"] += " WARNING: Airtable update failed — clear manually."
-        else:
-            response_body["airtable_cleared"] = None
-            response_body["message"] += " No airtable_record_id provided — Airtable not updated."
-
-        return jsonify(response_body), 200
-
+    if result.get("success"):
+        return jsonify({
+            "tracking_number": tracking_number,
+            "order_number"   : result.get("order_number", ""),
+            "dhl_cancelled"  : True,
+            "airtable_reset" : result.get("airtable_reset", False),
+            "message"        : result.get("message", "Shipment cancelled."),
+        }), 200
     else:
-        # DHL cancellation failed
-        response_body["error"] = dhl_result.get("error", "DHL cancellation failed.")
-        response_body["dhl_status_code"] = dhl_result.get("status_code", "")
-
-        # Add helpful guidance based on error type
-        sc = dhl_result.get("status_code", 0)
+        response_body = {
+            "tracking_number": tracking_number,
+            "dhl_cancelled"  : False,
+            "airtable_reset" : False,
+            "error"          : result.get("error", "DHL cancellation failed."),
+            "dhl_status_code": result.get("status_code", ""),
+        }
+        sc = result.get("status_code", 0)
         if sc in (400, 422):
             response_body["guidance"] = (
                 "Parcel may already be in DHL network. "
@@ -170,7 +158,7 @@ def cancel_dhl():
         elif sc == 401:
             response_body["guidance"] = "DHL credentials invalid. Check DHL_API_KEY and DHL_API_SECRET in .env"
         elif sc == 404:
-            response_body["guidance"] = "AWB not found at DHL. It may have already been cancelled or the number is wrong."
+            response_body["guidance"] = "AWB not found at DHL. It may already be cancelled or the number is wrong."
 
         return jsonify(response_body), 400
 
@@ -282,6 +270,7 @@ if __name__ == "__main__":
 
 
 
+
 # from flask import Flask, jsonify, request, Response, send_from_directory, send_file
 # import subprocess
 # import os
@@ -289,9 +278,13 @@ if __name__ == "__main__":
 # import glob
 # import zipfile
 # import json
+# import sys
 
 # app = Flask(__name__)
 # SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# # Make sure our script directory is importable
+# sys.path.insert(0, SCRIPT_DIR)
 
 # # Serve the HTML dashboard at the root URL
 # @app.route("/")
@@ -360,6 +353,99 @@ if __name__ == "__main__":
 #         yield f"data: {json.dumps({'type': 'done', 'success': success})}\n\n"
 
 #     return Response(generate(), mimetype="text/event-stream")
+
+# # ── Cancel a DHL shipment by tracking number ─────────────────────────
+# @app.route("/cancel-dhl", methods=["POST"])
+# def cancel_dhl():
+#     """
+#     Cancel a booked DHL shipment and (optionally) undo Airtable writeback.
+
+#     Request body (JSON):
+#     {
+#         "tracking_number"   : "1234567890",       ← required
+#         "airtable_record_id": "recXXXXXXXXXXXXX", ← optional, to clear Airtable
+#         "order_number"      : "SO-12345"          ← optional, for log messages
+#     }
+
+#     Returns:
+#     {
+#         "dhl_cancelled"       : true/false,
+#         "airtable_cleared"    : true/false/null,
+#         "tracking_number"     : "...",
+#         "message"             : "...",
+#         "error"               : "..."   (only on failure)
+#     }
+
+#     IMPORTANT: DHL cancellation only works BEFORE the parcel is
+#     scanned / picked up. If DHL already has the package, the API
+#     will return an error — you must call DHL directly.
+#     DHL UAE: +971 600 567 567
+#     """
+#     data = request.get_json(silent=True)
+
+#     if not data or not data.get("tracking_number"):
+#         return jsonify({
+#             "error": "tracking_number is required in the request body."
+#         }), 400
+
+#     tracking_number    = str(data["tracking_number"]).strip()
+#     airtable_record_id = str(data.get("airtable_record_id", "")).strip()
+#     order_number       = str(data.get("order_number", tracking_number)).strip()
+
+#     print(f"\n🗑️  /cancel-dhl called — AWB: {tracking_number} | Order: {order_number}")
+
+#     # ── Import from airtable_transform ───────────────────────────────
+#     try:
+#         from airtable_transform import cancel_dhl_shipment, undo_airtable_booking
+#     except ImportError as e:
+#         return jsonify({"error": f"Could not import airtable_transform: {e}"}), 500
+
+#     # ── Step 1: Cancel at DHL ─────────────────────────────────────────
+#     dhl_result = cancel_dhl_shipment(tracking_number)
+
+#     response_body = {
+#         "tracking_number": tracking_number,
+#         "order_number"   : order_number,
+#         "dhl_cancelled"  : dhl_result.get("success", False),
+#         "airtable_cleared": None,   # will be filled below if applicable
+#     }
+
+#     if dhl_result.get("success"):
+#         response_body["message"] = dhl_result.get("message", "Shipment cancelled at DHL.")
+
+#         # ── Step 2: Undo Airtable (only if record_id given) ──────────
+#         if airtable_record_id:
+#             airtable_ok = undo_airtable_booking(airtable_record_id, order_number)
+#             response_body["airtable_cleared"] = airtable_ok
+#             if airtable_ok:
+#                 response_body["message"] += " Airtable fields cleared."
+#             else:
+#                 response_body["message"] += " WARNING: Airtable update failed — clear manually."
+#         else:
+#             response_body["airtable_cleared"] = None
+#             response_body["message"] += " No airtable_record_id provided — Airtable not updated."
+
+#         return jsonify(response_body), 200
+
+#     else:
+#         # DHL cancellation failed
+#         response_body["error"] = dhl_result.get("error", "DHL cancellation failed.")
+#         response_body["dhl_status_code"] = dhl_result.get("status_code", "")
+
+#         # Add helpful guidance based on error type
+#         sc = dhl_result.get("status_code", 0)
+#         if sc in (400, 422):
+#             response_body["guidance"] = (
+#                 "Parcel may already be in DHL network. "
+#                 "Call DHL UAE: +971 600 567 567 and give them the AWB number. "
+#                 "Or ask the recipient to refuse delivery."
+#             )
+#         elif sc == 401:
+#             response_body["guidance"] = "DHL credentials invalid. Check DHL_API_KEY and DHL_API_SECRET in .env"
+#         elif sc == 404:
+#             response_body["guidance"] = "AWB not found at DHL. It may have already been cancelled or the number is wrong."
+
+#         return jsonify(response_body), 400
 
 # # ── List log files ───────────────────────────────────────────────────
 # @app.route("/logs/list", methods=["GET"])
