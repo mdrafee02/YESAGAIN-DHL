@@ -2008,19 +2008,45 @@ def cancel_dhl_shipment(tracking_number):
             "message"         : "Shipment cancelled successfully at DHL."
         }
 
-    # Parse error from DHL
+    # Parse error from DHL — log the real status and body so it's diagnosable
+    print(f"   ❌ DHL cancellation failed — HTTP {response.status_code}")
+    print(f"   Raw response (first 600 chars): {response.text[:600]}")
+
     try:
         error_body = response.json()
-        error_msg = error_body.get("detail", json.dumps(error_body))
+        # DHL error responses use "detail" or "message" field
+        error_msg  = error_body.get("detail") or error_body.get("message") or json.dumps(error_body)
     except Exception:
         raw = response.text.strip()
         if raw.startswith("<"):
-            error_msg = "DHL returned an XML/SOAP error — check API credentials or endpoint URL"
+            # DHL returns HTML/XML when the AWB is already picked up / in transit
+            # or when the request hits a gateway error (403/503).
+            # Map by HTTP status so the dashboard shows a clear actionable message.
+            if response.status_code == 403:
+                error_msg = (
+                    "DHL rejected the request (403 Forbidden). "
+                    "This usually means the shipment has already been picked up or scanned by DHL. "
+                    "You cannot cancel it via API — call DHL UAE: +971 600 567 567."
+                )
+            elif response.status_code == 404:
+                error_msg = (
+                    f"Tracking number {tracking_number} not found at DHL (404). "
+                    "It may already be cancelled or the number is incorrect."
+                )
+            elif response.status_code in (500, 503):
+                error_msg = (
+                    f"DHL server error ({response.status_code}). "
+                    "Try again in a few minutes. If it persists, call DHL UAE: +971 600 567 567."
+                )
+            else:
+                error_msg = (
+                    f"DHL returned HTTP {response.status_code} with an unexpected response. "
+                    "The shipment may already be in transit — call DHL UAE: +971 600 567 567."
+                )
         else:
-            error_msg = raw
+            error_msg = raw or f"DHL returned HTTP {response.status_code} with no detail."
 
-    print(f"   ❌ DHL cancellation failed — HTTP {response.status_code}")
-    print(f"   {error_msg[:400]}")
+    print(f"   Error: {error_msg[:400]}")
 
     return {
         "success"         : False,
@@ -2691,7 +2717,7 @@ if __name__ == "__main__":
 #     "EORI"     : "FR91934520700022",
 #     "Rel"      : "IP",
 # }
- 
+
 # # ============================================================
 # # DESTINATION-BASED VAT (YesAgain's local VAT per EU country)
 # # ============================================================
@@ -2703,20 +2729,20 @@ if __name__ == "__main__":
 #     "AT": "ATU79670679",      # Austria
 #     "BE": "BE0803906108",     # Belgium
 #     "DK": "DK13394814",       # Denmark
-#     "IT": "IT00358559995",    # Italy  (confirm the "IT" prefix with accountant)
+#     "IT": "IT00358559995",    # Italy
 #     "NL": "NL827367090B01",   # Netherlands
 #     "SE": "SE502096226101",   # Sweden
 #     "DE": "DE362263608",      # Germany
 #     "FR": "FR04919345207",    # France
 #     "GB": "GB450944880",      # United Kingdom
 # }
- 
+
 # def importer_vat_for(country, fallback_vat=""):
 #     """Return YesAgain's VAT registered in the destination country.
 #     Falls back to the importer entity's default VAT when the destination
 #     has no specific registration in EU_VAT_BY_COUNTRY."""
 #     return EU_VAT_BY_COUNTRY.get(str(country).strip().upper(), fallback_vat) or fallback_vat
- 
+
 # # ============================================================
 # # PHONE / STATE LOOKUPS
 # # ============================================================
@@ -3866,7 +3892,7 @@ if __name__ == "__main__":
 #     party           = rules["shipper_party"]
 #     shipper_account = rules["shipper_account"]
 #     duty_account    = rules["duty_account"]
- 
+
 #     # Destination-based importer VAT/EORI (YesAgain's local registration for
 #     # the country the goods are imported into). Falls back to the importer
 #     # entity's default VAT when the destination has no specific registration.
@@ -4004,8 +4030,7 @@ if __name__ == "__main__":
 #                     for i in range(itm_qty)
 #                 ],
 #                 "invoice": {
-#                     # DHL limits the invoice number to 35 characters. Some order IDs
-#                     # (e.g. Airtable UUIDs) are 36 chars and caused HTTP 422 rejections.
+#                     # DHL limits invoice number to 35 chars. Airtable UUIDs are 36 → HTTP 422.
 #                     "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
 #                     "date"  : datetime.now().strftime("%Y-%m-%d"),
 #                 },
@@ -4557,6 +4582,8 @@ if __name__ == "__main__":
 #             "Shipment Tracking Number": "",
 #             "Shipment Courier"        : "",
 #             "Shipment Label Created"  : False,
+#             "Shipment Label file"     : [],   # clear so re-book produces a fresh label
+#             "Commercial invoice file" : [],   # clear so re-book produces a fresh invoice
 #         }
 #     }
 
@@ -4577,6 +4604,72 @@ if __name__ == "__main__":
 
 
 # # ============================================================
+# # FIND ORDER BY TRACKING NUMBER
+# # ============================================================
+
+# def find_order_record_by_tracking(tracking_number):
+#     """Find the Airtable orders record whose Shipment Tracking Number matches the AWB."""
+#     tracking_number = str(tracking_number).strip()
+#     if not tracking_number:
+#         return None, None
+#     cfg = TABLE_CONFIG["orders"]
+#     formula = f'{{Shipment Tracking Number}}="{tracking_number}"'
+#     df = fetch_table(
+#         base_id=cfg["base_id"], table_id=cfg["table_id"],
+#         view_id=None, label="Orders (cancel lookup)",
+#         api_key=cfg["api_key"], filter_formula=formula,
+#     )
+#     if df.empty:
+#         return None, None
+#     row = df.iloc[0]
+#     record_id    = str(row.get("_airtable_id", "")).strip()
+#     order_number = str(row.get("Order Number", "")).strip()
+#     return (record_id or None), (order_number or None)
+
+
+# # ============================================================
+# # CANCEL + RESET  (single entry point for the dashboard)
+# # ============================================================
+
+# def cancel_and_reset_shipment(tracking_number):
+#     """
+#     Cancel a DHL shipment AND reset its Airtable record so it can be
+#     booked again. Call this from the dashboard / api.py cancel action.
+
+#     Flow:
+#       1. DELETE the shipment at DHL.
+#       2. If DHL cancellation succeeds → find the Airtable record by AWB.
+#       3. Clear all booking fields so the order returns to the queue.
+
+#     If the DHL cancel fails, Airtable is left untouched.
+#     """
+#     result = cancel_dhl_shipment(tracking_number)
+
+#     if not result.get("success"):
+#         result["airtable_reset"] = False
+#         return result
+
+#     record_id, order_number = find_order_record_by_tracking(tracking_number)
+
+#     if record_id:
+#         reset_ok = undo_airtable_booking(record_id, order_number or tracking_number)
+#         result["airtable_reset"] = reset_ok
+#         result["order_number"]   = order_number
+#         if reset_ok:
+#             result["message"] = ("Shipment cancelled at DHL and the order was reset — "
+#                                  "it can now be booked again.")
+#         else:
+#             result["message"] = ("Shipment cancelled at DHL, but clearing the Airtable "
+#                                  "fields failed — reset it manually to allow re-booking.")
+#     else:
+#         result["airtable_reset"] = False
+#         result["message"] = (f"Shipment cancelled at DHL, but no Airtable order was found "
+#                              f"with tracking number {tracking_number} to reset.")
+
+#     return result
+
+
+# # ============================================================
 # # MAIN
 # # ============================================================
 # if __name__ == "__main__":
@@ -4590,7 +4683,19 @@ if __name__ == "__main__":
 #     if test_override:
 #         DHL_TEST_MODE = True
 #         print("⚠️  --test flag: DHL_TEST_MODE forced ON")
- 
+
+#     # ── CANCEL + RESET (early exit) ──────────────────────────
+#     # Usage: python airtable_transform.py --cancel <TRACKING_NUMBER>
+#     if "--cancel" in sys.argv:
+#         try:
+#             awb = sys.argv[sys.argv.index("--cancel") + 1]
+#         except IndexError:
+#             print("❌ Usage: python airtable_transform.py --cancel <TRACKING_NUMBER>")
+#             sys.exit(1)
+#         cancel_result = cancel_and_reset_shipment(awb)
+#         print(json.dumps(cancel_result, indent=2, default=str))
+#         sys.exit(0 if cancel_result.get("success") else 1)
+
 #     # ── Initialise maps (will be populated below for RMA orders) ──
 #     ya_rma_map  = {}
 #     crs_rma_map = {}
