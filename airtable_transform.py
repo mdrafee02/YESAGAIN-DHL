@@ -830,148 +830,86 @@ def update_shipment_tracking_in_airtable(record_id, order_number, tracking_numbe
 #              (table_id does NOT go in the content upload URL)
 # ============================================================
  
-def _upload_to_temp_host(pdf_bytes, filename):
-    """
-    Upload PDF to a temporary public host and return a DIRECT download URL.
-    Tries multiple services so there is always a fallback.
 
-    CRITICAL: The URL must serve raw PDF bytes directly — NOT an HTML wrapper page.
-    tmpfiles.org/dl/ returns an HTML page, so Airtable stored HTML instead of PDF.
-    That is why labels appeared blank. Both services below return direct binary URLs.
-    """
-    services = [
-        {
-            # file.io: direct binary download, single-use, expires 1 day
-            "name"     : "file.io",
-            "url"      : "https://file.io/?expires=1d",
-            "get_link" : lambda r: r.json().get("link", ""),
-            "field"    : "file",
-        },
-        {
-            # 0x0.st: direct binary download, reliable fallback
-            "name"     : "0x0.st",
-            "url"      : "https://0x0.st",
-            "get_link" : lambda r: r.text.strip(),
-            "field"    : "file",
-        },
-    ]
- 
-    for svc in services:
-        try:
-            field = svc.get("field", "file")
-            resp = requests.post(
-                svc["url"],
-                files={field: (filename, pdf_bytes, "application/pdf")},
-                timeout=30,
-            )
-            if resp.status_code == 200:
-                url = svc["get_link"](resp)
-                if url and url.startswith("http"):
-                    print(f"   🌐 Temp URL ({svc['name']}): {url}")
-                    return url
-                else:
-                    print(f"   ⚠️  {svc['name']} returned unexpected URL: {url[:80] if url else 'empty'}")
-            else:
-                print(f"   ⚠️  {svc['name']} returned HTTP {resp.status_code}")
-        except Exception as exc:
-            print(f"   ⚠️  {svc['name']} failed: {exc}")
- 
-    return None
- 
- 
- 
 def upload_docs_to_airtable(record_id, order_number, res_data, max_retries=3):
     """
-    Step 2 — Uploads BOTH Shipping Label and Commercial Invoice to Airtable.
-    Uses ONLY Method 2 (PATCH with temporary URL) – faster and more reliable.
+    Step 2 — Uploads label and invoice PDFs directly to Airtable via
+    Airtable's Content Upload API (base64, no third-party host needed).
+
+    POST https://content.airtable.com/v0/{base_id}/{record_id}/{field_id}/uploadAttachment
+    Body: { "contentType": "application/pdf", "file": "<base64>", "filename": "..." }
+
+    This is the most reliable method — no external services, no expiry, no
+    network blocks. Airtable stores the file immediately and permanently.
     """
     if not record_id:
         print(f"   ⚠️  No record_id for {order_number} — skipping Step 2.")
         return False
- 
+
     base_id = TABLE_CONFIG["orders"]["base_id"]
     api_key = AIRTABLE_API_KEY
-    
+
     documents = res_data.get("documents", [])
     if not documents and res_data.get("label_base64"):
         documents = [{"typeCode": "shipping_label", "content": res_data.get("label_base64")}]
- 
+
     success_tracker = {"label": False, "invoice": False}
- 
+
     for doc in documents:
-        type_code = doc.get("typeCode", "").lower()
+        type_code   = doc.get("typeCode", "").lower()
         content_b64 = doc.get("content")
         if not content_b64:
             continue
- 
+
         if "label" in type_code or "waybill" in type_code:
-            field_name = "Shipment Label file"
-            field_id = "fldG3hmHH8cTPwzxo"
-            filename = f"label_{order_number}.pdf"
-            doc_key = "label"
+            field_id  = "fldG3hmHH8cTPwzxo"
+            filename  = f"label_{order_number}.pdf"
+            doc_key   = "label"
         elif "invoice" in type_code:
-            field_name = "Commercial invoice file"
-            field_id = "fldp7fi4xvhqCybQ7"
-            filename = f"invoice_{order_number}.pdf"
-            doc_key = "invoice"
+            field_id  = "fldp7fi4xvhqCybQ7"
+            filename  = f"invoice_{order_number}.pdf"
+            doc_key   = "invoice"
         else:
             continue
- 
-        print(f"   📡 Step 2 — Processing {doc_key} for {order_number}...")
-        
-        try:
-            pdf_bytes = base64.b64decode(content_b64)
-        except Exception as exc:
-            print(f"   ❌ Base64 decode error for {doc_key} on {order_number}: {exc}")
-            continue
- 
-        # --- ONLY METHOD 2: PATCH with temporary URL ---
-        print(f"   📡 Step 2 — Method 2: PATCH with temporary URL for {doc_key} ({order_number})...")
-        temp_url = _upload_to_temp_host(pdf_bytes, filename)
-        if temp_url:
-            table_id = TABLE_CONFIG["orders"]["table_id"]
-            patch_url = f"https://api.airtable.com/v0/{base_id}/{quote(str(table_id))}/{record_id}"
-            patch_headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-            payload = {"fields": {field_name: [{"url": temp_url, "filename": filename}]}}
- 
-            for attempt in range(1, max_retries + 1):
-                try:
-                    resp = requests.patch(
-                        patch_url, headers=patch_headers, json=payload, timeout=30
-                    )
-                    print(f"       PATCH response: HTTP {resp.status_code}")
- 
-                    if resp.status_code == 200:
-                        print(f"   📎 {doc_key.capitalize()} uploaded via Method 2 (PATCH+URL) (Order: {order_number})")
-                        success_tracker[doc_key] = True
-                        break
- 
-                    elif resp.status_code == 422:
-                        print(f"       422 Unprocessable — Airtable could not fetch the URL.")
-                        print(f"       → Check field name: '{field_name}' must be type 'Attachment' in Airtable.")
-                        print(f"       → Response: {resp.text[:300]}")
-                        break
- 
-                    elif resp.status_code == 429:
-                        wait = 2 ** attempt
-                        print(f"       Rate limited — retrying in {wait}s...")
-                        time.sleep(wait)
- 
-                    else:
-                        print(f"       Failed ({resp.status_code}): {resp.text[:300]}")
-                        if attempt < max_retries:
-                            time.sleep(2)
- 
-                except Exception as exc:
-                    print(f"       Exception (attempt {attempt}): {exc}")
+
+        print(f"   📡 Step 2 — Uploading {doc_key} for {order_number} (direct to Airtable)...")
+
+        url = f"https://content.airtable.com/v0/{base_id}/{record_id}/{field_id}/uploadAttachment"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type" : "application/json",
+        }
+        body = {
+            "contentType": "application/pdf",
+            "file"       : content_b64,
+            "filename"   : filename,
+        }
+
+        uploaded = False
+        for attempt in range(1, max_retries + 1):
+            try:
+                resp = requests.post(url, headers=headers, json=body, timeout=60)
+                if resp.status_code == 200:
+                    print(f"   📎 {doc_key.capitalize()} uploaded directly to Airtable (Order: {order_number})")
+                    success_tracker[doc_key] = True
+                    uploaded = True
+                    break
+                elif resp.status_code == 429:
+                    wait = 2 ** attempt
+                    print(f"       Rate limited — retrying in {wait}s...")
+                    time.sleep(wait)
+                else:
+                    print(f"       ❌ Upload failed HTTP {resp.status_code}: {resp.text[:300]}")
                     if attempt < max_retries:
                         time.sleep(2)
-        else:
-            print(f"   ❌ {doc_key.capitalize()} Step 2 FAILED: could not get a temporary URL for {order_number}.")
- 
+            except Exception as exc:
+                print(f"       ❌ Exception (attempt {attempt}): {exc}")
+                if attempt < max_retries:
+                    time.sleep(2)
+
+        if not uploaded:
+            print(f"   ❌ {doc_key.capitalize()} upload failed for {order_number} after {max_retries} attempts.")
+
     return success_tracker["label"]
  
  
