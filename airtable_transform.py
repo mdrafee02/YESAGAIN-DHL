@@ -1488,7 +1488,7 @@ def build_dhl_payload(row):
                     for i in range(itm_qty)
                 ],
                 "invoice": {
-                    "number": str(row.get("INVOICE NO.", "")) or order_id,
+                    "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
                     "date"  : datetime.now().strftime("%Y-%m-%d"),
                 },
                 "exportReason": F["export_reason"],
