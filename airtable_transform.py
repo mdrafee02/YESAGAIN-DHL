@@ -609,9 +609,19 @@ def get_destination_rules(destination_country, order_id):
             "shipper_account" : shipper_acc,
         }
  
+    # RULE 1b: UAE domestic — no duties/taxes account (no import duties AE→AE)
+    if country == "AE":
+        return {
+            "region"          : "domestic_uae",
+            "duty_account"    : None,
+            "additional_party": PARTY_UAE,
+            "shipper_party"   : shipper_party,
+            "shipper_account" : shipper_acc,
+        }
+
     # RULE 2: GCC countries — Importer: YesAgain UAE | Declared: 20%
     # (SA gets an additional 164 EUR fixed override applied in transform())
-    gcc_countries = {"AE", "SA", "OM", "QA", "BH", "KW"}
+    gcc_countries = {"SA", "OM", "QA", "BH", "KW"}
     if country in gcc_countries:
         return {
             "region"          : "gcc",
@@ -1503,7 +1513,7 @@ def build_dhl_payload(row):
         "accounts": [
             {"typeCode": "shipper", "number": str(shipper_account)},
             {"typeCode": "payer",   "number": str(shipper_account)},
-            {"typeCode": "duties-taxes", "number": str(duty_account)}, # Bound dynamically via accounting routing Matrix
+            *([{"typeCode": "duties-taxes", "number": str(duty_account)}] if duty_account is not None else []),  # omitted for domestic UAE
         ],
         "outputImageProperties": {
             "printerDPI"    : 300,
