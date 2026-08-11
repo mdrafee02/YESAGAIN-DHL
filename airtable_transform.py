@@ -178,6 +178,22 @@ PARTY_UAE = {
     "Rel"      : "IP",
 }
  
+PARTY_UAE_MAINLAND = {
+    "Company"  : "YESAGAIN LLC",
+    "Name"     : "YESAGAIN LLC",
+    "Address1" : "DHL INDUSTRIAL AREA 10",
+    "Address2" : "INDUSTRIAL AREA 3",
+    "Country"  : "AE",
+    "City"     : "SHARJAH",
+    "ZIP"      : "00000",
+    "Email"    : "support@yesagain.ae",
+    "PhoneCC"  : 971,
+    "Phone"    : "508893656",
+    "VAT"      : "",
+    "EORI"     : "",
+    "Rel"      : "IP",
+}
+ 
 PARTY_UK = {
     "Company"  : "Computer Remarketing Services Ltd",
     "Name"     : "Computer Remarketing Services Ltd",
@@ -608,12 +624,13 @@ def get_destination_rules(destination_country, order_id):
         }
  
     # RULE 1b: UAE domestic — no duties/taxes account (no import duties AE→AE)
+    # Shipper for domestic is PARTY_UAE_MAINLAND (LLC, Industrial Area 3, Sharjah)
     if country == "AE":
         return {
             "region"          : "domestic_uae",
             "duty_account"    : None,
             "additional_party": PARTY_UAE,
-            "shipper_party"   : shipper_party,
+            "shipper_party"   : PARTY_UAE_MAINLAND,
             "shipper_account" : shipper_acc,
         }
 
@@ -1447,6 +1464,7 @@ def build_dhl_payload(row):
                     "cityName"    : party["City"],
                     "countryCode" : party["Country"],
                     "addressLine1": party["Address1"],
+                    **( {"addressLine2": party["Address2"]} if party.get("Address2") else {} ),
                 },
                 "contactInformation": {
                     "companyName": party["Company"],
