@@ -239,9 +239,7 @@ def get_dhl_product_code(origin_country, destination_country):
     origin = str(origin_country).strip().upper()
     dest   = str(destination_country).strip().upper()
     if origin == "AE" and dest == "AE":
-        print("   🇦🇪 Local UAE shipment → DHL API product code: N")
         return FIXED["product_code_api_local_uae"]
-    print("   🌍 International shipment → DHL API product code: P")
     return FIXED["product_code_api"]
 
 # ============================================================
@@ -1031,7 +1029,6 @@ def build_rma_maps(df_ya_rma, df_crs_rma):
     crs_rma_map = {}
  
     if not df_ya_rma.empty:
-        print(f"\n   YA RMA columns: {list(df_ya_rma.columns)}")
         for _, row in df_ya_rma.iterrows():
             rma_no = normalize_rma_number(
                 get_first_value(row, ["RMA #", "RMA Number", "RMA No", "RMA"])
@@ -1044,7 +1041,6 @@ def build_rma_maps(df_ya_rma, df_crs_rma):
                 ya_rma_map[rma_no] = sales_order
  
     if not df_crs_rma.empty:
-        print(f"   CRS RMA columns: {list(df_crs_rma.columns)}")
         for _, row in df_crs_rma.iterrows():
             rma_no = normalize_rma_number(
                 get_first_value(row, ["RMA #", "RMA Number", "RMA No", "RMA"])
@@ -1061,8 +1057,8 @@ def build_rma_maps(df_ya_rma, df_crs_rma):
             if rma_no and sales_order:
                 crs_rma_map[rma_no] = sales_order
  
-    print(f"✅ YA RMA map : {len(ya_rma_map)} entries  → {dict(list(ya_rma_map.items())[:5])}")
-    print(f"✅ CRS RMA map: {len(crs_rma_map)} entries → {dict(list(crs_rma_map.items())[:5])}")
+    if ya_rma_map or crs_rma_map:
+        print(f"   RMA maps loaded — YA: {len(ya_rma_map)} | CRS: {len(crs_rma_map)}")
     return ya_rma_map, crs_rma_map
  
  
@@ -1071,7 +1067,6 @@ def build_price_map(df_sales_lines):
     if df_sales_lines.empty:
         return price_map
  
-    print(f"\n   Sales Order Lines columns: {list(df_sales_lines.columns)}")
     for _, row in df_sales_lines.iterrows():
         so = normalize_lookup_key(
             get_first_value(row, ["Sales Order Number", "Sales Order",
@@ -1568,7 +1563,7 @@ def save_label_index(order_number, tracking_number, label_path,
     with open(LABEL_INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=2, ensure_ascii=False)
  
-    print(f"   📋 Label index updated: {LABEL_INDEX_FILE}")
+
  
  
 def generate_lookup_html():
@@ -1804,9 +1799,6 @@ def send_to_dhl(row, verbose=False):
     country = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
     rules   = get_destination_rules(country, order_number)
     party   = rules["shipper_party"]
-    print(f"   Shipper: {party['Company']} ({party['Country']})  "
-          f"Duty account: {rules['duty_account']}  Dest: {country}")
- 
     if verbose:
         print(f"   Payload:\n{json.dumps(payload, indent=2)}")
  
@@ -1848,7 +1840,6 @@ def send_to_dhl(row, verbose=False):
                 label_path = f"labels/label_{order_number}.pdf"
                 with open(label_path, "wb") as f:
                     f.write(base64.b64decode(label_b64))
-                print(f"   🏷️  Label saved locally: {label_path}")
                 recipient_name      = str(row.get("Name (Ship TO) (Required)", "")).strip()
                 destination_country = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
                 save_label_index(order_number, tracking_number or pkg_tracking,
@@ -1902,25 +1893,15 @@ def validate_credentials_dhl():
         f"&plannedShippingDate={datetime.now().strftime('%Y-%m-%d')}"
     )
  
-    print(f"\n🔑 Testing DHL credentials {'[TEST]' if DHL_TEST_MODE else '[PRODUCTION]'}...")
- 
     try:
         response = requests.get(url, auth=(DHL_API_KEY, DHL_API_SECRET),
                                 headers={"Accept": "application/json"}, timeout=15)
-        print(f"   HTTP Status: {response.status_code}")
- 
-        if response.status_code == 200:
-            print("   ✅ DHL credentials are VALID!")
-            return True
-        elif response.status_code == 401:
-            print("   ❌ 401 Unauthorized — credentials are WRONG.")
+        status = response.status_code
+        ok = status in (200, 403)
+        print(f"\n🔑 DHL credentials {'[TEST]' if DHL_TEST_MODE else '[PRODUCTION]'} — HTTP {status} {'✅' if ok else '❌'}")
+        if status == 401:
             return False
-        elif response.status_code == 403:
-            print("   ⚠️  403 Forbidden — credentials work but account may not have this endpoint.")
-            return True
-        else:
-            print(f"   ⚠️  Unexpected status {response.status_code} — assuming credentials valid.")
-            return True
+        return True
  
     except requests.exceptions.ConnectionError:
         print("   ❌ Cannot reach DHL API — check internet connection.")
@@ -2257,7 +2238,6 @@ if __name__ == "__main__":
                 filter_formula=build_rma_filter(ya_rma_keys),
             )
         else:
-            print("\nℹ️  No RMAY orders — skipping YA RMA fetch.")
             df_ya_rma = pd.DataFrame()
  
         if crs_rma_keys:
@@ -2268,7 +2248,6 @@ if __name__ == "__main__":
                 filter_formula=build_rma_filter(crs_rma_keys),
             )
         else:
-            print("\nℹ️  No RMAC orders — skipping CRS RMA fetch.")
             df_crs_rma = pd.DataFrame()
  
         ya_rma_map, crs_rma_map = build_rma_maps(df_ya_rma, df_crs_rma)
@@ -2297,8 +2276,6 @@ if __name__ == "__main__":
         else:
             if ya_rma_keys or crs_rma_keys:
                 print("⚠️  RMA orders found but no External Sales Order numbers in RMA records.")
-            else:
-                print("ℹ️  No RMA orders — price lookup not needed.")
  
     # ── 4. TRANSFORM → CSV ───────────────────────────────────
     print("\n⚙️  Transforming data...")
@@ -2318,7 +2295,6 @@ if __name__ == "__main__":
     print(f"\n{'='*60}")
     print(f"🚀 BATCH START: {len(result)} shipment(s)")
     print(f"   Mode    : {'⚠️  TEST (no real shipments)' if DHL_TEST_MODE else '✅ PRODUCTION'}")
-    print(f"   Verbose : {'ON (full payload)' if verbose_flag else 'OFF (use --verbose to enable)'}")
     print(f"{'='*60}")
  
     # Build order_number → Airtable record_id map for writeback
@@ -2329,7 +2305,6 @@ if __name__ == "__main__":
             rid = str(r.get("_airtable_id", "")).strip()
             if on and rid and rid != "nan":
                 record_id_map[on] = rid
-        print(f"   Airtable record map: {len(record_id_map)} order(s) mapped\n")
     else:
         print("   ℹ️  CSV mode — Airtable writeback skipped (no record IDs)\n")
  
@@ -2344,82 +2319,68 @@ if __name__ == "__main__":
     total = len(result)
     for idx, (_, row) in enumerate(result.iterrows(), start=1):
         order_number = str(row.get("Shipment Reference 1", "unknown"))
-        print(f"\n[{idx}/{total}] ── {order_number} ──────────────────────")
-        print_progress(idx, total)
- 
+        dest_country = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
+        declared     = row.get("Declared Value (Required)", "")
+        region       = get_destination_rules(dest_country, order_number).get("region", "?")
+        product      = get_dhl_product_code(PARTY_UAE["Country"], dest_country)
+        print(f"\n[{idx}/{total}] ── {order_number} {'─'*30}")
+        print(f"  Dest: {dest_country}  │  Region: {region.upper()}  │  Product: {product}  │  Declared: €{declared}")
+
         try:
-            # ── DHL API call ──────────────────────────────────
+            # ── DHL API call ──────────────────
             result_data = send_to_dhl(row, verbose=verbose_flag)
             dhl_results.append(result_data)
- 
+
             if result_data.get("success"):
                 success_count  += 1
                 tracking_number = result_data.get("tracking_number", "")
                 airtable_rec_id = record_id_map.get(order_number, "")
-                label_b64       = result_data.get("label_base64", "")
- 
+
+                print(f"  DHL      ✅  AWB: {tracking_number}")
+
                 if DHL_TEST_MODE:
-                    # ── TEST MODE: never touch production Airtable ────────
-                    # DHL gives us a fake tracking number from their sandbox.
-                    # Writing it to Airtable would corrupt live records.
-                    print(f"   ⏭️  TEST MODE — Airtable writeback skipped.")
-                    print(f"   ℹ️  Fake tracking (NOT written): {tracking_number}")
- 
+                    print(f"  Airtable ⏭️   TEST MODE — writeback skipped")
+
                 else:
-                    # ── PRODUCTION: 3-step Airtable writeback ─────────────
-                    #
-                    # STEP 1 → Write tracking number + courier
-                    # STEP 2 → Upload label PDF
-                    # STEP 3 → Tick checkbox + write tracking URL
-                    #          (ONLY runs if Step 2 succeeds)
-                    #
-                    # If Step 2 fails, the checkbox stays unticked.
-                    # The order will be skipped on re-run (it has a
-                    # tracking number). Use the recovery script to
-                    # re-upload labels for orders in failed_orders log.
- 
                     if airtable_rec_id and tracking_number:
-                        # Step 1
-                        print(f"   📡 Step 1/3: Writing tracking to Airtable...")
-                        update_shipment_tracking_in_airtable(
+                        step1_ok = update_shipment_tracking_in_airtable(
                             airtable_rec_id, order_number, tracking_number
                         )
- 
-                        # Step 2
+                        print(f"  Airtable {'✅' if step1_ok else '❌'}  Tracking written")
+
                         raw_response = result_data.get("raw_response", {})
                         if raw_response:
-                            print(f"   📡 Step 2/3: Uploading label + invoice PDFs...")
                             label_ok = upload_docs_to_airtable(
                                 airtable_rec_id, order_number, raw_response
                             )
- 
-                            # Step 3 — ONLY if Step 2 succeeded
+
                             if label_ok:
-                                print(f"   📡 Step 3/3: Ticking 'Label Created'...")
-                                dest_country = str(row.get("Country Code (Ship TO) (Required)", "AE")).strip()
-                                mark_label_created_in_airtable(
+                                tracking_url = dhl_tracking_url_for(dest_country, tracking_number)
+                                step3_ok = mark_label_created_in_airtable(
                                     airtable_rec_id, order_number, tracking_number, dest_country
                                 )
+                                print(f"  Label    ✅  Uploaded")
+                                print(f"  Invoice  ✅  Uploaded")
+                                print(f"  Checkbox {'✅' if step3_ok else '❌'}  {'Ticked' if step3_ok else 'Failed'}  │  {tracking_url}")
                             else:
-                                print(f"   ⚠️  Step 2 failed → Step 3 skipped. "
-                                      f"Checkbox NOT ticked.")
+                                print(f"  Label    ❌  Upload failed — checkbox NOT ticked")
                         else:
-                            print(f"   ⚠️  No raw_response data returned — Steps 2 & 3 skipped.")
- 
+                            print(f"  Airtable ⚠️   No DHL response data — Steps 2 & 3 skipped")
+
                     elif not airtable_rec_id:
-                        print(f"   ℹ️  No Airtable record ID for {order_number} — "
-                              f"writeback skipped (CSV mode).")
- 
+                        print(f"  Airtable ℹ️   No record ID — writeback skipped (CSV mode)")
+
             else:
                 fail_count += 1
+                error_msg = result_data.get("error", "Unknown DHL error")
                 failed_orders.append({
                     "order"      : order_number,
-                    "error"      : result_data.get("error", "Unknown DHL error"),
+                    "error"      : error_msg,
                     "status_code": result_data.get("status_code", ""),
                     "failed_at"  : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 })
-                print(f"   ❌ DHL FAILED: {result_data.get('error', 'Unknown error')[:200]}")
- 
+                print(f"  DHL      ❌  FAILED: {error_msg[:200]}")
+
         except Exception as e:
             fail_count += 1
             failed_orders.append({
@@ -2427,7 +2388,7 @@ if __name__ == "__main__":
                 "error"     : str(e),
                 "failed_at" : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             })
-            print(f"   💥 EXCEPTION on {order_number}: {e}")
+            print(f"  💥 EXCEPTION: {e}")
             # continue to next order — never crash the whole batch
  
         # ── Rate limit: 1s between orders ────────────────────
@@ -2456,8 +2417,6 @@ if __name__ == "__main__":
     print(f"   ✅ Success : {success_count}/{total}")
     print(f"   ❌ Failed  : {fail_count}/{total}")
     print(f"   Full log  : {response_file}")
-    if os.path.exists("labels"):
-        print(f"   Labels    : {len(os.listdir('labels'))} file(s) in labels/")
     print(f"{'='*60}")
  
     generate_lookup_html()
