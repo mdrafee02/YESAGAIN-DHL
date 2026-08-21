@@ -55,7 +55,7 @@ def stream_dhl():
     test_mode = request.args.get("test", "0") == "1"
 
     def generate():
-        cmd = ["python", "airtable_transform.py", "--send-to-dhl"]
+        cmd = ["python", "-u", "airtable_transform.py", "--send-to-dhl"]
         if test_mode:
             cmd.append("--test")
         env = os.environ.copy()
