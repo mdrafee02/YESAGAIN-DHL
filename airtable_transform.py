@@ -1449,14 +1449,14 @@ def build_dhl_payload(row):
             "encodingFormat": "pdf",
             "imageOptions"  : [
                 {"typeCode": "label", "templateName": "ECOM26_84_001", "isRequested": True},
-                {
+                *( [] if is_domestic else [{
                     "typeCode"           : "invoice",
                     "templateName"       : "COMMERCIAL_INVOICE_P_10",
                     "isRequested"        : True,
                     "invoiceType"        : "commercial",
                     "languageCode"       : "eng",
                     "languageCountryCode": "US",
-                },
+                }]),
             ]
         },
         "customerDetails": {
