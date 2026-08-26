@@ -2227,7 +2227,7 @@ def book_return_label(original_awb):
                     "companyName": receiver_party["Company"],
                     "fullName"   : receiver_party["Name"],
                     "email"      : receiver_party["Email"],
-                    "phone"      : f"+{receiver_party['PhoneCC']}{re.sub(r'\D', '', str(receiver_party['Phone']))}",
+                    "phone": "+" + str(receiver_party['PhoneCC']) + re.sub(r'\D', '', str(receiver_party['Phone'])),
                 },
             },
         },
