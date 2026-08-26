@@ -677,6 +677,35 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
       </div>
     </div>
 
+    <!-- Return Label -->
+    <div class="sidebar-section">
+      <div class="section-label" style="color:var(--blue)">
+        Return Label
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;opacity:0.7;"></span>
+      </div>
+
+      <div class="cancel-input-row">
+        <input
+          type="text"
+          class="cancel-input"
+          id="return-awb-input"
+          placeholder="Original AWB / Tracking Number"
+          onkeydown="if(event.key==='Enter') bookReturn()"
+        />
+      </div>
+
+      <button class="btn-cancel-shipment" id="btn-return" onclick="bookReturn()" style="background:var(--blue);border-color:var(--blue);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+        Book Return Label
+      </button>
+
+      <div class="cancel-result" id="return-result">
+        <div class="cr-label" id="return-label-status">Result</div>
+        <div class="cr-msg"  id="return-msg">—</div>
+        <div class="cr-hint" id="return-hint"></div>
+      </div>
+    </div>
+
     <!-- Log history -->
     <div class="sidebar-section" style="flex:1;">
       <div class="section-label">Log Files</div>
@@ -1163,6 +1192,57 @@ async function loadHistory() {
 }
 
 // ════════════════════════════════════════════
+//  RETURN LABEL
+// ─────────────────────────────────────────────────────────────
+async function bookReturn() {
+  const awb = document.getElementById('return-awb-input').value.trim();
+  if (!awb) {
+    document.getElementById('return-label-status').textContent = 'Error';
+    document.getElementById('return-msg').textContent = 'Please enter an AWB number.';
+    document.getElementById('return-result').style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btn-return');
+  btn.disabled = true;
+  btn.textContent = 'Booking…';
+  document.getElementById('return-result').style.display = 'none';
+
+  try {
+    const resp = await fetch('/book-return', {
+      method : 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body   : JSON.stringify({ awb }),
+    });
+    const data = await resp.json();
+
+    const statusEl = document.getElementById('return-label-status');
+    const msgEl    = document.getElementById('return-msg');
+    const hintEl   = document.getElementById('return-hint');
+
+    if (data.success) {
+      statusEl.textContent = '✅ Return Label Booked';
+      statusEl.style.color = 'var(--green)';
+      msgEl.textContent    = `Return AWB: ${data.return_awb}`;
+      hintEl.textContent   = `Order: ${data.order_number} — Label uploaded to Airtable`;
+    } else {
+      statusEl.textContent = '❌ Failed';
+      statusEl.style.color = 'var(--red)';
+      msgEl.textContent    = data.error || 'Unknown error';
+      hintEl.textContent   = 'Check the original AWB and try again.';
+    }
+    document.getElementById('return-result').style.display = 'block';
+  } catch (err) {
+    document.getElementById('return-label-status').textContent = '❌ Error';
+    document.getElementById('return-msg').textContent = err.message;
+    document.getElementById('return-result').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Book Return Label';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  CANCEL SHIPMENT
 // ════════════════════════════════════════════
 
