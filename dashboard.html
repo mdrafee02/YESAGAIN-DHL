@@ -1251,8 +1251,8 @@ function setMode(mode) {
 
   document.getElementById('mode-test').className = 'mode-btn test' + (mode === 'test' ? ' active' : '');
   document.getElementById('mode-prod').className = 'mode-btn prod' + (mode === 'prod' ? ' active' : '');
-  document.getElementById('hc-test').className   = 'hc-mode' + (mode === 'test' ? ' active-test' : '');
-  document.getElementById('hc-prod').className   = 'hc-mode' + (mode === 'prod' ? ' active-prod' : '');
+  document.getElementById('hc-test').className = 'hdr-seg-btn' + (mode === 'test' ? ' active-test' : '');
+  document.getElementById('hc-prod').className = 'hdr-seg-btn' + (mode === 'prod' ? ' active-prod' : '');
 
   document.getElementById('notice-test').classList.toggle('hidden', mode !== 'test');
   document.getElementById('notice-prod').classList.toggle('hidden', mode !== 'prod');
@@ -1639,7 +1639,7 @@ async function executeCancelShipment() {
     }
 
   } catch (err) {
-    document.getElementById('action-result').className = 'cancel-result visible err';
+    document.getElementById('action-result').className = 'action-result visible err';
     document.getElementById('cr-label').textContent = '❌ Network Error';
     document.getElementById('cr-msg').textContent   = String(err);
     document.getElementById('cr-hint').textContent  = 'Check the API server is running.';
