@@ -2396,11 +2396,12 @@ def book_return_label(original_awb):
                 label_fname = f"return_label_{order_number}.pdf"
 
                 # Look up the Sales Orders record ID by AWB (SOL record_id won't work)
-                orders_record_id = record_id  # fallback: use what we have
-                orders_rec = find_order_record_by_tracking(original_awb)
-                if orders_rec:
-                    orders_record_id = orders_rec.get("_airtable_id", record_id)
+                orders_record_id, _ = find_order_record_by_tracking(original_awb)
+                if orders_record_id:
                     print(f"   🔗 Orders record ID: {orders_record_id}")
+                else:
+                    orders_record_id = record_id  # fallback
+                    print(f"   ⚠️  Orders record not found — using SOL record ID as fallback")
 
                 if orders_record_id:
                     base_id  = TABLE_CONFIG["orders"]["base_id"]
