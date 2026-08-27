@@ -2306,7 +2306,7 @@ def book_return_label(original_awb):
     base_url = "https://express.api.dhl.com/mydhlapi/test" if DHL_TEST_MODE else "https://express.api.dhl.com/mydhlapi"
     url      = f"{base_url}/shipments"
     headers  = {"Content-Type": "application/json", "Accept": "application/json",
-                 "Message-Reference": f"RETURN-{order_number[:20]}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                 "Message-Reference": f"RET-{order_number[:15]}-{datetime.now().strftime('%Y%m%d%H%M%S')}"[:36],
                  "Message-Reference-Date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S GMT+04:00"),
                  "Plugin-Name": "YesAgain-DHL-Return", "Plugin-Version": "1.0",
                  "Shipping-System-Platform-Name": "Python", "Shipping-System-Platform-Version": "3.12",
