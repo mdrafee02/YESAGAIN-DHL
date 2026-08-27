@@ -159,6 +159,29 @@ FIXED = {
     "origin"              : "CN",
 }
  
+# ── Country name to ISO-2 code map (for Sales Order Lines "Shipping Country") ──
+COUNTRY_NAME_TO_CODE = {
+    "UNITED ARAB EMIRATES": "AE", "UAE": "AE",
+    "SAUDI ARABIA": "SA", "KSA": "SA",
+    "UNITED KINGDOM": "GB", "UK": "GB", "GREAT BRITAIN": "GB",
+    "UNITED STATES": "US", "USA": "US", "UNITED STATES OF AMERICA": "US",
+    "FRANCE": "FR", "GERMANY": "DE", "SPAIN": "ES", "ITALY": "IT",
+    "NETHERLANDS": "NL", "BELGIUM": "BE", "AUSTRIA": "AT", "SWEDEN": "SE",
+    "DENMARK": "DK", "FINLAND": "FI", "NORWAY": "NO", "PORTUGAL": "PT",
+    "IRELAND": "IE", "POLAND": "PL", "SWITZERLAND": "CH", "CZECH REPUBLIC": "CZ",
+    "HUNGARY": "HU", "ROMANIA": "RO", "GREECE": "GR", "CROATIA": "HR",
+    "OMAN": "OM", "QATAR": "QA", "BAHRAIN": "BH", "KUWAIT": "KW",
+    "CANADA": "CA", "AUSTRALIA": "AU", "JAPAN": "JP", "CHINA": "CN",
+    "INDIA": "IN", "SINGAPORE": "SG", "HONG KONG": "HK",
+}
+
+def resolve_country_code(raw):
+    """Convert full country name or 2-letter code to ISO-2 code."""
+    raw = str(raw).strip()
+    if len(raw) == 2:
+        return raw.upper()
+    return COUNTRY_NAME_TO_CODE.get(raw.upper(), raw.upper()[:2])
+
 # ============================================================
 # PARTY DETAILS
 # ============================================================
@@ -2156,19 +2179,20 @@ def book_return_label(original_awb):
 
     row          = df.iloc[0]
     record_id    = str(row.get("_airtable_id", "")).strip()
-    order_number = str(row.get("External Sales Order", row.get("Order Number", original_awb))).strip()
-    dest_country = str(row.get("Shipping Country", row.get("Country Code (Ship TO) (Required)", "AE"))).strip().upper()
+    order_number = str(row.get("Sales Order Number", row.get("External Sales Order", row.get("Order Number", original_awb)))).strip()
+    raw_country  = str(row.get("Shipping Country", row.get("Country Code (Ship TO) (Required)", "AE"))).strip()  # already 2-letter code in SOL
+    dest_country = resolve_country_code(raw_country)
     is_domestic  = (dest_country == "AE")
 
     print(f"   ✅ Found order: {order_number}  |  Country: {dest_country}  |  Domestic: {is_domestic}")
 
     # ── Step 2: Build customer shipper details ────────────────────────────
     raw_cust_name    = clean_text(str(row.get("Shipping Name", row.get("Name (Ship TO) (Required)", "Customer")))).strip()[:35]
-    raw_cust_addr1   = clean_text(str(row.get("Shipping address 1", row.get("Address 1 (Ship TO) (Required)", "")))).strip()[:45]
-    raw_cust_addr2   = clean_text(str(row.get("Shipping address 2", row.get("Address 2 (Ship TO)", "")))).strip()[:45]
-    raw_cust_city    = clean_text(str(row.get("Shipping City",    row.get("City (Ship TO) (Required)", "")))).strip()
-    raw_cust_zip     = str(row.get("Shipping Postcode",  row.get("ZIP Postal Code (Ship TO)", "00000"))).strip() or "00000"
-    raw_cust_phone   = re.sub(r"\D", "", str(row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000")))).strip() or "0000000000"
+    raw_cust_addr1   = clean_text(str(row.get("ShippingAddress1", row.get("Shipping address 1", row.get("Address 1 (Ship TO) (Required)", ""))))).strip()[:45]
+    raw_cust_addr2   = clean_text(str(row.get("ShippingAddress2", row.get("Shipping address 2", row.get("Address 2 (Ship TO)", ""))))).strip()[:45]
+    raw_cust_city    = clean_text(str(row.get("ShippingCity",     row.get("Shipping City",    row.get("City (Ship TO) (Required)", ""))))).strip() or "NA"
+    raw_cust_zip     = str(row.get("ShippingPostCode",  row.get("Shipping Postcode", row.get("ZIP Postal Code (Ship TO)", "00000")))).strip() or "00000"
+    raw_cust_phone   = re.sub(r"\D", "", str(row.get("Telephone", row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000"))))).strip() or "0000000000"
 
     # phone country code
     phone_cc = str(PHONE_CODES.get(dest_country, "971"))
@@ -2227,7 +2251,7 @@ def book_return_label(original_awb):
                     "companyName": receiver_party["Company"],
                     "fullName"   : receiver_party["Name"],
                     "email"      : receiver_party["Email"],
-                    "phone": "+" + str(receiver_party['PhoneCC']) + re.sub(r'\D', '', str(receiver_party['Phone'])),
+                    "phone"      : "+" + str(receiver_party['PhoneCC']) + re.sub(r'\D', '', str(receiver_party['Phone'])),
                 },
             },
         },
@@ -2246,7 +2270,7 @@ def book_return_label(original_awb):
                 }
             ],
             "isCustomsDeclarable" : False if is_domestic else True,
-            "declaredValue"       : 1.0,
+            "declaredValue"       : 1.0,  # minimal declared value for return label
             "declaredValueCurrency": FIXED["currency"],
             "description"         : FIXED["contents"],
             "unitOfMeasurement"   : "metric",
@@ -2255,7 +2279,7 @@ def book_return_label(original_awb):
                 "lineItems": [{
                     "number"             : 1,
                     "description"        : FIXED["item_desc"],
-                    "price"              : 1.0,
+                    "price"              : 1.0,  # minimal declared value for return label
                     "priceCurrency"      : FIXED["currency"],
                     "commodityCodes"     : [
                         {"typeCode": "outbound", "value": FIXED["commodity"]},
@@ -2276,7 +2300,6 @@ def book_return_label(original_awb):
         "valueAddedServices": (
             [{"serviceCode": "PT"}, {"serviceCode": "PN"}] if is_domestic else []
         ),
-        "shipmentTrackingNumber": "",
     }
 
     # ── Step 4: POST to DHL ───────────────────────────────────────────────
@@ -2685,6 +2708,9 @@ if __name__ == "__main__":
 
 
 
+
+
+
 # """
 # =============================================================
 #   AIRTABLE → DHL SHIPPING AUTOMATION SCRIPT
@@ -2701,7 +2727,7 @@ if __name__ == "__main__":
 # import base64
 # import time
 # import os
-# from datetime import datetime, timezone
+# from datetime import datetime, timezone, timedelta
 # from dotenv import load_dotenv
 # from urllib.parse import quote
  
@@ -4112,7 +4138,14 @@ if __name__ == "__main__":
 #         postal_address["addressLine2"] = (raw_address[45:] + " " + addr2).strip()[:45]
 #     elif addr2:
 #         postal_address["addressLine2"] = addr2[:45]
-        
+#     addr3 = str(row.get("Address 3 (Ship TO)", "")).strip()
+#     if addr3:
+#         postal_address["addressLine3"] = addr3[:45]
+#     if country == "SA":
+#         city = postal_address["cityName"].upper().strip()
+#         if city and city not in SA_VALID_CITIES:
+#             print(f"   ⚠️  SA city '{city}' not in DHL serviceable list — may cause error 420505")
+
 #     state = str(row.get("State Province (Ship TO)", "")).strip()
 #     if state and country == "US":
 #         postal_address["provinceCode"] = state
@@ -4195,9 +4228,9 @@ if __name__ == "__main__":
 #                 "exportDeclaration": {
 #                     "lineItems": [
 #                         {
-#                             "number"             : i + 1,
+#                             "number"             : 1,
 #                             "description"        : F["item_desc"],
-#                             "price"              : unit_price,
+#                             "price"              : total_val,
 #                             "priceCurrency"      : str(row.get("Declared Value Currency (Required)", F["currency"])),
 #                             "commodityCodes"     : [
 #                                 {"typeCode": "outbound", "value": F["commodity"]},
@@ -4205,10 +4238,9 @@ if __name__ == "__main__":
 #                             ],
 #                             "exportReasonType"   : "permanent",
 #                             "manufacturerCountry": F["origin"],
-#                             "weight"             : {"netValue": F["item_net"], "grossValue": F["item_gross"]},
-#                             "quantity"           : {"value": 1, "unitOfMeasurement": "PCS"},
+#                             "weight"             : {"netValue": round(F["item_net"] * itm_qty, 3), "grossValue": round(F["item_gross"] * itm_qty, 3)},
+#                             "quantity"           : {"value": itm_qty, "unitOfMeasurement": "PCS"},
 #                         }
-#                         for i in range(itm_qty)
 #                     ],
 #                     "invoice": {
 #                         "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
@@ -4605,6 +4637,7 @@ if __name__ == "__main__":
 #     )
  
 #     try:
+#         print(f"   🔗 Credentials check URL: {url}")
 #         response = requests.get(url, auth=(DHL_API_KEY, DHL_API_SECRET),
 #                                 headers={"Accept": "application/json"}, timeout=15)
 #         status = response.status_code
@@ -4793,6 +4826,229 @@ if __name__ == "__main__":
 #     record_id    = str(row.get("_airtable_id", "")).strip()
 #     order_number = str(row.get("Order Number", "")).strip()
 #     return (record_id or None), (order_number or None)
+
+
+# # ============================================================
+# # RETURN LABEL
+# # ============================================================
+
+# def book_return_label(original_awb):
+#     """
+#     Book a DHL return label by looking up the original shipment in
+#     Sales Order Lines by AWB, then swapping shipper/receiver.
+
+#     Works for ALL destinations:
+#     - AE domestic: product N, no customs, service codes PT+PN
+#     - International (EU/UK/US/GCC): product P, full customs declaration,
+#       shipper = customer, receiver = PARTY_UAE (FZC)
+
+#     Returns dict: { success, return_awb, label_base64, record_id, order_number, error }
+#     """
+#     original_awb = str(original_awb).strip()
+#     print(f"\n📦 Looking up original AWB: {original_awb}")
+
+#     # ── Step 1: Find original order in Sales Order Lines ─────────────────
+#     cfg     = TABLE_CONFIG["sales_order_lines"]
+#     formula = f'{{Sales Order Tracking Number}}="{original_awb}"'
+#     df = fetch_table(
+#         base_id=cfg["base_id"], table_id=cfg["table_id"],
+#         view_id=None, label="Sales Order Lines (return lookup)",
+#         api_key=cfg["api_key"], filter_formula=formula,
+#     )
+#     if df.empty:
+#         # fallback: try orders table
+#         cfg2     = TABLE_CONFIG["orders"]
+#         formula2 = f'{{Shipment Tracking Number}}="{original_awb}"'
+#         df = fetch_table(
+#             base_id=cfg2["base_id"], table_id=cfg2["table_id"],
+#             view_id=None, label="Orders (return lookup)",
+#             api_key=cfg2["api_key"], filter_formula=formula2,
+#         )
+#         if df.empty:
+#             return {"success": False, "error": f"No order found for AWB {original_awb}"}
+
+#     row          = df.iloc[0]
+#     record_id    = str(row.get("_airtable_id", "")).strip()
+#     order_number = str(row.get("External Sales Order", row.get("Order Number", original_awb))).strip()
+#     dest_country = str(row.get("Shipping Country", row.get("Country Code (Ship TO) (Required)", "AE"))).strip().upper()
+#     is_domestic  = (dest_country == "AE")
+
+#     print(f"   ✅ Found order: {order_number}  |  Country: {dest_country}  |  Domestic: {is_domestic}")
+
+#     # ── Step 2: Build customer shipper details ────────────────────────────
+#     raw_cust_name    = clean_text(str(row.get("Shipping Name", row.get("Name (Ship TO) (Required)", "Customer")))).strip()[:35]
+#     raw_cust_addr1   = clean_text(str(row.get("Shipping address 1", row.get("Address 1 (Ship TO) (Required)", "")))).strip()[:45]
+#     raw_cust_addr2   = clean_text(str(row.get("Shipping address 2", row.get("Address 2 (Ship TO)", "")))).strip()[:45]
+#     raw_cust_city    = clean_text(str(row.get("Shipping City",    row.get("City (Ship TO) (Required)", "")))).strip()
+#     raw_cust_zip     = str(row.get("Shipping Postcode",  row.get("ZIP Postal Code (Ship TO)", "00000"))).strip() or "00000"
+#     raw_cust_phone   = re.sub(r"\D", "", str(row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000")))).strip() or "0000000000"
+
+#     # phone country code
+#     phone_cc = str(PHONE_CODES.get(dest_country, "971"))
+
+#     # receiver = PARTY_UAE_MAINLAND for domestic, PARTY_UAE for international
+#     receiver_party = PARTY_UAE_MAINLAND if is_domestic else PARTY_UAE
+
+#     # ── Step 3: Build DHL payload ─────────────────────────────────────────
+#     product_code = "N" if is_domestic else "P"
+#     ship_date    = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S GMT+04:00")
+
+#     shipper_postal = {
+#         "postalCode" : clean_postal_code(raw_cust_zip, dest_country),
+#         "cityName"   : raw_cust_city,
+#         "countryCode": dest_country,
+#         "addressLine1": raw_cust_addr1,
+#     }
+#     if raw_cust_addr2:
+#         shipper_postal["addressLine2"] = raw_cust_addr2
+
+#     receiver_postal = {
+#         "postalCode"  : receiver_party["ZIP"],
+#         "cityName"    : receiver_party["City"],
+#         "countryCode" : receiver_party["Country"],
+#         "addressLine1": receiver_party["Address1"],
+#         **( {"addressLine2": receiver_party["Address2"]} if receiver_party.get("Address2") else {} ),
+#     }
+
+#     payload = {
+#         "plannedShippingDateAndTime": ship_date,
+#         "pickup"     : {"isRequested": False},
+#         "productCode": product_code,
+#         "accounts"   : [
+#             {"typeCode": "shipper", "number": str(FIXED["account_shipper"])},
+#             {"typeCode": "payer",   "number": str(FIXED["account_shipper"])},
+#         ],
+#         "outputImageProperties": {
+#             "printerDPI"    : 300,
+#             "encodingFormat": "pdf",
+#             "imageOptions"  : [
+#                 {"typeCode": "label", "templateName": "ECOM26_84_001", "isRequested": True},
+#             ],
+#         },
+#         "customerDetails": {
+#             "shipperDetails": {
+#                 "postalAddress"     : shipper_postal,
+#                 "contactInformation": {
+#                     "companyName": raw_cust_name,
+#                     "fullName"   : raw_cust_name,
+#                     "phone"      : f"+{phone_cc}{raw_cust_phone}"[:25],
+#                 },
+#             },
+#             "receiverDetails": {
+#                 "postalAddress"     : receiver_postal,
+#                 "contactInformation": {
+#                     "companyName": receiver_party["Company"],
+#                     "fullName"   : receiver_party["Name"],
+#                     "email"      : receiver_party["Email"],
+#                     "phone": "+" + str(receiver_party['PhoneCC']) + re.sub(r'\D', '', str(receiver_party['Phone'])),
+#                 },
+#             },
+#         },
+#         "content": {
+#             "packages": [
+#                 {
+#                     "weight"    : FIXED["weight"],
+#                     "dimensions": {
+#                         "length": FIXED["length"],
+#                         "width" : FIXED["width"],
+#                         "height": FIXED["height"],
+#                     },
+#                     "customerReferences": [
+#                         {"typeCode": "CU", "value": order_number[:35]},
+#                     ],
+#                 }
+#             ],
+#             "isCustomsDeclarable" : False if is_domestic else True,
+#             "declaredValue"       : 1.0,
+#             "declaredValueCurrency": FIXED["currency"],
+#             "description"         : FIXED["contents"],
+#             "unitOfMeasurement"   : "metric",
+#             **({"incoterm": "DDP"} if not is_domestic else {}),
+#             **({"exportDeclaration": {
+#                 "lineItems": [{
+#                     "number"             : 1,
+#                     "description"        : FIXED["item_desc"],
+#                     "price"              : 1.0,
+#                     "priceCurrency"      : FIXED["currency"],
+#                     "commodityCodes"     : [
+#                         {"typeCode": "outbound", "value": FIXED["commodity"]},
+#                         {"typeCode": "inbound",  "value": FIXED["commodity"]},
+#                     ],
+#                     "exportReasonType"   : "permanent",
+#                     "manufacturerCountry": FIXED["origin"],
+#                     "weight"             : {"netValue": FIXED["item_net"], "grossValue": FIXED["item_gross"]},
+#                     "quantity"           : {"value": 1, "unitOfMeasurement": "PCS"},
+#                 }],
+#                 "invoice": {
+#                     "number": order_number[:35],
+#                     "date"  : datetime.now().strftime("%Y-%m-%d"),
+#                 },
+#                 "exportReason": FIXED["export_reason"],
+#             }} if not is_domestic else {}),
+#         },
+#         "valueAddedServices": (
+#             [{"serviceCode": "PT"}, {"serviceCode": "PN"}] if is_domestic else []
+#         ),
+#         "shipmentTrackingNumber": "",
+#     }
+
+#     # ── Step 4: POST to DHL ───────────────────────────────────────────────
+#     base_url = "https://express.api.dhl.com/mydhlapi/test" if DHL_TEST_MODE else "https://express.api.dhl.com/mydhlapi"
+#     url      = f"{base_url}/shipments"
+#     headers  = {"Content-Type": "application/json", "Accept": "application/json",
+#                  "Message-Reference": f"RETURN-{order_number[:20]}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+#                  "Message-Reference-Date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S GMT+04:00"),
+#                  "Plugin-Name": "YesAgain-DHL-Return", "Plugin-Version": "1.0",
+#                  "Shipping-System-Platform-Name": "Python", "Shipping-System-Platform-Version": "3.12",
+#                  "Shipper-System-Platform-Name": "YesAgain", "Shipper-System-Platform-Version": "1.0"}
+
+#     try:
+#         resp = requests.post(url, json=payload, auth=(DHL_API_KEY, DHL_API_SECRET),
+#                              headers=headers, timeout=30)
+#         if resp.status_code in (200, 201):
+#             data         = resp.json()
+#             return_awb   = data.get("shipmentTrackingNumber", "")
+#             documents    = data.get("documents", [])
+#             label_b64    = next((d["content"] for d in documents if "label" in d.get("typeCode","").lower()), None)
+#             print(f"   ✅ Return label booked — AWB: {return_awb}")
+
+#             # ── Step 5: Upload return label to Airtable ───────────────────
+#             if record_id and label_b64:
+#                 label_bytes = base64.b64decode(label_b64)
+#                 label_fname = f"return_label_{order_number}.pdf"
+#                 label_path  = os.path.join("labels", label_fname)
+#                 os.makedirs("labels", exist_ok=True)
+#                 with open(label_path, "wb") as f:
+#                     f.write(label_bytes)
+#                 print(f"   🏷️  Return label saved: {label_path}")
+
+#                 # Upload to Airtable — Shipment Label file field
+#                 base_id  = TABLE_CONFIG["orders"]["base_id"]
+#                 field_id = "fldG3hmHH8cTPwzxo"
+#                 up_url   = f"https://content.airtable.com/v0/{base_id}/{record_id}/{field_id}/uploadAttachment"
+#                 up_body  = {"contentType": "application/pdf", "file": label_b64, "filename": label_fname}
+#                 up_resp  = requests.post(up_url,
+#                     headers={"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"},
+#                     json=up_body, timeout=60)
+#                 if up_resp.status_code == 200:
+#                     print(f"   📎 Return label uploaded to Airtable")
+#                 else:
+#                     print(f"   ⚠️  Airtable upload failed: {up_resp.status_code}")
+
+#             return {
+#                 "success"     : True,
+#                 "return_awb"  : return_awb,
+#                 "label_b64"   : label_b64,
+#                 "record_id"   : record_id,
+#                 "order_number": order_number,
+#             }
+#         else:
+#             error = resp.text[:500]
+#             print(f"   ❌ DHL return label failed HTTP {resp.status_code}: {error}")
+#             return {"success": False, "error": error}
+#     except Exception as e:
+#         print(f"   ❌ Exception booking return label: {e}")
+#         return {"success": False, "error": str(e)}
 
 
 # # ============================================================
@@ -5071,7 +5327,8 @@ if __name__ == "__main__":
 #                                     airtable_rec_id, order_number, tracking_number, dest_country
 #                                 )
 #                                 print(f"  Label    ✅  Uploaded")
-#                                 print(f"  Invoice  ✅  Uploaded")
+#                                 if not is_domestic:
+#                                     print(f"  Invoice  ✅  Uploaded")
 #                                 print(f"  Checkbox {'✅' if step3_ok else '❌'}  {'Ticked' if step3_ok else 'Failed'}  │  {tracking_url}")
 #                             else:
 #                                 print(f"  Label    ❌  Upload failed — checkbox NOT ticked")
