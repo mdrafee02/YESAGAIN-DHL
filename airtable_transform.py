@@ -2246,7 +2246,7 @@ def book_return_label(original_awb):
                 }
             ],
             "isCustomsDeclarable" : False if is_domestic else True,
-            "declaredValue"       : FIXED["declared_value"],
+            "declaredValue"       : 1.0,
             "declaredValueCurrency": FIXED["currency"],
             "description"         : FIXED["contents"],
             "unitOfMeasurement"   : "metric",
@@ -2255,7 +2255,7 @@ def book_return_label(original_awb):
                 "lineItems": [{
                     "number"             : 1,
                     "description"        : FIXED["item_desc"],
-                    "price"              : FIXED["declared_value"],
+                    "price"              : 1.0,
                     "priceCurrency"      : FIXED["currency"],
                     "commodityCodes"     : [
                         {"typeCode": "outbound", "value": FIXED["commodity"]},
