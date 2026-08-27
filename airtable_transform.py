@@ -2391,27 +2391,32 @@ def book_return_label(original_awb):
             )
             print(f"   ✅ Return AWB: {return_awb}")
 
-            # ── Step 5: Save + upload label to Airtable ───────────────────
-            if record_id and label_b64:
-                os.makedirs("labels", exist_ok=True)
+            # ── Step 5: Upload return label to Airtable ──────────────────
+            if label_b64:
                 label_fname = f"return_label_{order_number}.pdf"
-                label_path  = os.path.join("labels", label_fname)
-                with open(label_path, "wb") as lf:
-                    lf.write(base64.b64decode(label_b64))
-                print(f"   🏷️  Saved: {label_path}")
 
-                base_id  = TABLE_CONFIG["orders"]["base_id"]
-                field_id = "fldG3hmHH8cTPwzxo"
-                up_resp  = requests.post(
-                    f"https://content.airtable.com/v0/{base_id}/{record_id}/{field_id}/uploadAttachment",
-                    headers={"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"},
-                    json={"contentType": "application/pdf", "file": label_b64, "filename": label_fname},
-                    timeout=60,
-                )
-                if up_resp.status_code == 200:
-                    print(f"   📎 Return label uploaded to Airtable")
+                # Look up the Sales Orders record ID by AWB (SOL record_id won't work)
+                orders_record_id = record_id  # fallback: use what we have
+                orders_rec = find_order_record_by_tracking(original_awb)
+                if orders_rec:
+                    orders_record_id = orders_rec.get("_airtable_id", record_id)
+                    print(f"   🔗 Orders record ID: {orders_record_id}")
+
+                if orders_record_id:
+                    base_id  = TABLE_CONFIG["orders"]["base_id"]
+                    field_id = "fldG3hmHH8cTPwzxo"  # Shipment Label file field
+                    up_resp  = requests.post(
+                        f"https://content.airtable.com/v0/{base_id}/{orders_record_id}/{field_id}/uploadAttachment",
+                        headers={"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"},
+                        json={"contentType": "application/pdf", "file": label_b64, "filename": label_fname},
+                        timeout=60,
+                    )
+                    if up_resp.status_code == 200:
+                        print(f"   📎 Return label uploaded to Airtable alongside original label")
+                    else:
+                        print(f"   ⚠️  Airtable upload failed: HTTP {up_resp.status_code} — {up_resp.text[:200]}")
                 else:
-                    print(f"   ⚠️  Airtable upload failed: HTTP {up_resp.status_code}")
+                    print(f"   ⚠️  Could not find Sales Orders record for AWB {original_awb}")
 
             return {
                 "success"     : True,
