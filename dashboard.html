@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>YesAgain FZC — DHL Booking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <style>
 /* ─────────────────────────────────────────────
    RESET + TOKENS
@@ -43,8 +46,8 @@
   --amber-bd:   #FDE68A;
 
   /* Typography */
-  --font: 'Inter', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code', monospace;
 
   /* Radius */
   --r-xs: 6px;
@@ -73,6 +76,17 @@ body {
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  opacity: 1;
+  transition: none;
+}
+
+/* Prevent FOUC — hide until CSS is parsed */
+body.loading {
+  opacity: 0;
+}
+body.ready {
+  opacity: 1;
+  transition: opacity 0.15s ease;
 }
 
 /* ─────────────────────────────────────────────
@@ -880,6 +894,13 @@ button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
   .stats-row { grid-template-columns: 1fr; }
 }
 </style>
+<script>
+// Prevent flash of unstyled content
+document.documentElement.style.visibility = 'hidden';
+document.addEventListener('DOMContentLoaded', function() {
+  document.documentElement.style.visibility = '';
+});
+</script>
 </head>
 <body>
 
