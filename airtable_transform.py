@@ -342,7 +342,10 @@ def clean_postal_code(postcode, country_code):
             return digits.zfill(4)
         else:
             return "9999"   # fallback
-    return postcode
+    if country_code == "US":
+        # US ZIP: strip ZIP+4 suffix (e.g. 81621-0154 → 81621)
+        postcode = postcode.split("-")[0].strip()
+    return postcode[:12]  # DHL max postalCode length is 12
  
  
 def clean_price(value):
@@ -2192,7 +2195,10 @@ def book_return_label(original_awb):
     raw_cust_addr2   = clean_text(str(row.get("ShippingAddress2", row.get("Shipping address 2", row.get("Address 2 (Ship TO)", ""))))).strip()[:45]
     raw_cust_city    = clean_text(str(row.get("ShippingCity",     row.get("Shipping City",    row.get("City (Ship TO) (Required)", ""))))).strip() or "NA"
     raw_cust_zip     = str(row.get("ShippingPostCode",  row.get("Shipping Postcode", row.get("ZIP Postal Code (Ship TO)", "00000")))).strip() or "00000"
-    raw_cust_phone   = re.sub(r"\D", "", str(row.get("Telephone", row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000"))))).strip() or "0000000000"
+    _raw_phone       = re.sub(r"\D", "", str(row.get("Telephone", row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000"))))).strip() or "0000000000"
+    _phone_cc_str    = str(PHONE_CODES.get(dest_country, "971"))
+    # Strip leading country code if already included in the number
+    raw_cust_phone   = _raw_phone[len(_phone_cc_str):] if _raw_phone.startswith(_phone_cc_str) else _raw_phone
 
     # phone country code
     phone_cc = str(PHONE_CODES.get(dest_country, "971"))
@@ -2710,7 +2716,6 @@ if __name__ == "__main__":
 
 
 
-
 # """
 # =============================================================
 #   AIRTABLE → DHL SHIPPING AUTOMATION SCRIPT
@@ -2872,6 +2877,29 @@ if __name__ == "__main__":
 #     "origin"              : "CN",
 # }
  
+# # ── Country name to ISO-2 code map (for Sales Order Lines "Shipping Country") ──
+# COUNTRY_NAME_TO_CODE = {
+#     "UNITED ARAB EMIRATES": "AE", "UAE": "AE",
+#     "SAUDI ARABIA": "SA", "KSA": "SA",
+#     "UNITED KINGDOM": "GB", "UK": "GB", "GREAT BRITAIN": "GB",
+#     "UNITED STATES": "US", "USA": "US", "UNITED STATES OF AMERICA": "US",
+#     "FRANCE": "FR", "GERMANY": "DE", "SPAIN": "ES", "ITALY": "IT",
+#     "NETHERLANDS": "NL", "BELGIUM": "BE", "AUSTRIA": "AT", "SWEDEN": "SE",
+#     "DENMARK": "DK", "FINLAND": "FI", "NORWAY": "NO", "PORTUGAL": "PT",
+#     "IRELAND": "IE", "POLAND": "PL", "SWITZERLAND": "CH", "CZECH REPUBLIC": "CZ",
+#     "HUNGARY": "HU", "ROMANIA": "RO", "GREECE": "GR", "CROATIA": "HR",
+#     "OMAN": "OM", "QATAR": "QA", "BAHRAIN": "BH", "KUWAIT": "KW",
+#     "CANADA": "CA", "AUSTRALIA": "AU", "JAPAN": "JP", "CHINA": "CN",
+#     "INDIA": "IN", "SINGAPORE": "SG", "HONG KONG": "HK",
+# }
+
+# def resolve_country_code(raw):
+#     """Convert full country name or 2-letter code to ISO-2 code."""
+#     raw = str(raw).strip()
+#     if len(raw) == 2:
+#         return raw.upper()
+#     return COUNTRY_NAME_TO_CODE.get(raw.upper(), raw.upper()[:2])
+
 # # ============================================================
 # # PARTY DETAILS
 # # ============================================================
@@ -4869,19 +4897,20 @@ if __name__ == "__main__":
 
 #     row          = df.iloc[0]
 #     record_id    = str(row.get("_airtable_id", "")).strip()
-#     order_number = str(row.get("External Sales Order", row.get("Order Number", original_awb))).strip()
-#     dest_country = str(row.get("Shipping Country", row.get("Country Code (Ship TO) (Required)", "AE"))).strip().upper()
+#     order_number = str(row.get("Sales Order Number", row.get("External Sales Order", row.get("Order Number", original_awb)))).strip()
+#     raw_country  = str(row.get("Shipping Country", row.get("Country Code (Ship TO) (Required)", "AE"))).strip()  # already 2-letter code in SOL
+#     dest_country = resolve_country_code(raw_country)
 #     is_domestic  = (dest_country == "AE")
 
 #     print(f"   ✅ Found order: {order_number}  |  Country: {dest_country}  |  Domestic: {is_domestic}")
 
 #     # ── Step 2: Build customer shipper details ────────────────────────────
 #     raw_cust_name    = clean_text(str(row.get("Shipping Name", row.get("Name (Ship TO) (Required)", "Customer")))).strip()[:35]
-#     raw_cust_addr1   = clean_text(str(row.get("Shipping address 1", row.get("Address 1 (Ship TO) (Required)", "")))).strip()[:45]
-#     raw_cust_addr2   = clean_text(str(row.get("Shipping address 2", row.get("Address 2 (Ship TO)", "")))).strip()[:45]
-#     raw_cust_city    = clean_text(str(row.get("Shipping City",    row.get("City (Ship TO) (Required)", "")))).strip()
-#     raw_cust_zip     = str(row.get("Shipping Postcode",  row.get("ZIP Postal Code (Ship TO)", "00000"))).strip() or "00000"
-#     raw_cust_phone   = re.sub(r"\D", "", str(row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000")))).strip() or "0000000000"
+#     raw_cust_addr1   = clean_text(str(row.get("ShippingAddress1", row.get("Shipping address 1", row.get("Address 1 (Ship TO) (Required)", ""))))).strip()[:45]
+#     raw_cust_addr2   = clean_text(str(row.get("ShippingAddress2", row.get("Shipping address 2", row.get("Address 2 (Ship TO)", ""))))).strip()[:45]
+#     raw_cust_city    = clean_text(str(row.get("ShippingCity",     row.get("Shipping City",    row.get("City (Ship TO) (Required)", ""))))).strip() or "NA"
+#     raw_cust_zip     = str(row.get("ShippingPostCode",  row.get("Shipping Postcode", row.get("ZIP Postal Code (Ship TO)", "00000")))).strip() or "00000"
+#     raw_cust_phone   = re.sub(r"\D", "", str(row.get("Telephone", row.get("Shipping Phone", row.get("Phone Number (Ship TO) (Required)", "0000000000"))))).strip() or "0000000000"
 
 #     # phone country code
 #     phone_cc = str(PHONE_CODES.get(dest_country, "971"))
@@ -4940,7 +4969,7 @@ if __name__ == "__main__":
 #                     "companyName": receiver_party["Company"],
 #                     "fullName"   : receiver_party["Name"],
 #                     "email"      : receiver_party["Email"],
-#                     "phone": "+" + str(receiver_party['PhoneCC']) + re.sub(r'\D', '', str(receiver_party['Phone'])),
+#                     "phone"      : "+" + str(receiver_party['PhoneCC']) + re.sub(r'\D', '', str(receiver_party['Phone'])),
 #                 },
 #             },
 #         },
@@ -4959,7 +4988,7 @@ if __name__ == "__main__":
 #                 }
 #             ],
 #             "isCustomsDeclarable" : False if is_domestic else True,
-#             "declaredValue"       : 1.0,
+#             "declaredValue"       : 1.0,  # minimal declared value for return label
 #             "declaredValueCurrency": FIXED["currency"],
 #             "description"         : FIXED["contents"],
 #             "unitOfMeasurement"   : "metric",
@@ -4968,7 +4997,7 @@ if __name__ == "__main__":
 #                 "lineItems": [{
 #                     "number"             : 1,
 #                     "description"        : FIXED["item_desc"],
-#                     "price"              : 1.0,
+#                     "price"              : 1.0,  # minimal declared value for return label
 #                     "priceCurrency"      : FIXED["currency"],
 #                     "commodityCodes"     : [
 #                         {"typeCode": "outbound", "value": FIXED["commodity"]},
@@ -4989,14 +5018,13 @@ if __name__ == "__main__":
 #         "valueAddedServices": (
 #             [{"serviceCode": "PT"}, {"serviceCode": "PN"}] if is_domestic else []
 #         ),
-#         "shipmentTrackingNumber": "",
 #     }
 
 #     # ── Step 4: POST to DHL ───────────────────────────────────────────────
 #     base_url = "https://express.api.dhl.com/mydhlapi/test" if DHL_TEST_MODE else "https://express.api.dhl.com/mydhlapi"
 #     url      = f"{base_url}/shipments"
 #     headers  = {"Content-Type": "application/json", "Accept": "application/json",
-#                  "Message-Reference": f"RETURN-{order_number[:20]}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+#                  "Message-Reference": f"RET-{order_number[:15]}-{datetime.now().strftime('%Y%m%d%H%M%S')}"[:36],
 #                  "Message-Reference-Date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S GMT+04:00"),
 #                  "Plugin-Name": "YesAgain-DHL-Return", "Plugin-Version": "1.0",
 #                  "Shipping-System-Platform-Name": "Python", "Shipping-System-Platform-Version": "3.12",
