@@ -52,11 +52,14 @@
   --r:    12px;
   --r-lg: 16px;
 
-  /* Shadows */
-  --sh-xs: 0 1px 2px rgba(0,0,0,0.05);
-  --sh-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
-  --sh:    0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-  --sh-lg: 0 20px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+  /* Shadows — layered for depth */
+  --sh-xs: 0 1px 2px rgba(0,0,0,0.06);
+  --sh-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --sh:    0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
+  --sh-lg: 0 24px 56px rgba(0,0,0,0.14), 0 6px 16px rgba(0,0,0,0.08);
+  --sh-3d: 0 2px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.12);
+  --sh-orange-3d: 0 2px 0 #B83D08, 0 4px 14px rgba(232,80,10,0.35);
+  --sh-ink-3d: 0 2px 0 #0A0908, 0 4px 12px rgba(0,0,0,0.30);
 }
 
 html, body { height: 100%; }
@@ -76,17 +79,18 @@ body {
    HEADER
 ───────────────────────────────────────────── */
 header {
-  height: 60px;
+  height: 64px;
   background: var(--white);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
+  padding: 0 32px;
   position: sticky;
   top: 0;
   z-index: 50;
   flex-shrink: 0;
+  box-shadow: 0 1px 0 var(--border), 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .hdr-brand {
@@ -124,38 +128,42 @@ header {
 /* Segmented control in header */
 .hdr-seg {
   display: flex;
-  background: var(--paper);
-  border: 1.5px solid var(--border-hi);
-  border-radius: 10px;
-  padding: 4px;
-  gap: 3px;
-  box-shadow: var(--sh-xs);
+  background: #EDEBE8;
+  border: 1px solid #D8D5D0;
+  border-radius: 12px;
+  padding: 5px;
+  gap: 4px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.8);
 }
 
 .hdr-seg-btn {
-  padding: 8px 20px;
-  border-radius: 7px;
+  padding: 9px 22px;
+  border-radius: 8px;
   border: none;
   font-family: var(--font);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.18s;
+  transition: all 0.16s cubic-bezier(0.34,1.2,0.64,1);
   color: var(--muted);
   background: transparent;
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; gap: 8px;
   letter-spacing: -0.01em;
+  position: relative;
 }
-.hdr-seg-btn:hover { color: var(--ink); background: rgba(0,0,0,0.03); }
+.hdr-seg-btn:hover { color: var(--ink-2); }
 .hdr-seg-btn.active-test {
   background: var(--white);
   color: var(--ink);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.10), 0 1px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+  transform: translateY(-1px);
 }
 .hdr-seg-btn.active-prod {
-  background: var(--orange);
+  background: linear-gradient(180deg, #F06020 0%, var(--orange) 50%, #D44808 100%);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(232,80,10,0.30);
+  box-shadow: var(--sh-orange-3d);
+  transform: translateY(-1px);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.20);
 }
 
 .hdr-right { display: flex; align-items: center; gap: 10px; }
@@ -215,7 +223,7 @@ main {
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  box-shadow: var(--sh-sm);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9);
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -346,30 +354,41 @@ main {
 }
 
 .btn-run.test-btn {
-  background: var(--ink);
+  background: linear-gradient(180deg, #2C2825 0%, var(--ink) 100%);
   color: #fff;
   border: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  box-shadow: var(--sh-ink-3d);
   font-size: 14.5px;
+  transition: all 0.12s ease;
 }
 .btn-run.test-btn:hover {
-  background: #2C2825;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.24);
+  background: linear-gradient(180deg, #3A3633 0%, #2C2825 100%);
+  box-shadow: 0 3px 0 #0A0908, 0 6px 16px rgba(0,0,0,0.35);
   transform: translateY(-1px);
+}
+.btn-run.test-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #0A0908, 0 2px 6px rgba(0,0,0,0.20);
 }
 
-/* Orange accent — production booking */
+/* Orange — production booking */
 .btn-run.prod-btn {
-  background: var(--orange);
+  background: linear-gradient(180deg, #F06020 0%, var(--orange) 50%, #D44808 100%);
   color: #fff;
   border: none;
-  box-shadow: 0 3px 10px rgba(232,80,10,0.35);
+  box-shadow: var(--sh-orange-3d);
   font-size: 14.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  transition: all 0.12s ease;
 }
 .btn-run.prod-btn:hover {
-  background: #D44808;
-  box-shadow: 0 5px 16px rgba(232,80,10,0.42);
+  background: linear-gradient(180deg, #F87040 0%, #E8500A 50%, #C03A06 100%);
+  box-shadow: 0 3px 0 #923006, 0 6px 18px rgba(232,80,10,0.45);
   transform: translateY(-1px);
+}
+.btn-run.prod-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #923006, 0 2px 8px rgba(232,80,10,0.25);
 }
 .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
@@ -461,15 +480,31 @@ main {
   background: var(--white);
   border: 1.5px solid var(--red-bd);
   color: var(--red);
+  box-shadow: 0 1px 3px rgba(220,38,38,0.10);
 }
-.btn-cancel-ship:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-cancel-ship:hover {
+  background: linear-gradient(180deg, #EF4444 0%, var(--red) 100%);
+  color: #fff;
+  border-color: var(--red);
+  box-shadow: 0 2px 0 #991B1B, 0 4px 10px rgba(220,38,38,0.28);
+  transform: translateY(-1px);
+}
+.btn-cancel-ship:active { transform: translateY(0); }
 
 .btn-return-lbl {
   background: var(--white);
   border: 1.5px solid var(--blue-bd);
   color: var(--blue);
+  box-shadow: 0 1px 3px rgba(37,99,235,0.10);
 }
-.btn-return-lbl:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-return-lbl:hover {
+  background: linear-gradient(180deg, #3B82F6 0%, var(--blue) 100%);
+  color: #fff;
+  border-color: var(--blue);
+  box-shadow: 0 2px 0 #1E40AF, 0 4px 10px rgba(37,99,235,0.28);
+  transform: translateY(-1px);
+}
+.btn-return-lbl:active { transform: translateY(0); }
 
 /* Result box */
 .action-result {
@@ -548,13 +583,26 @@ main {
   border: 1px solid var(--border);
   border-radius: var(--r);
   box-shadow: var(--sh-sm);
-  padding: 18px 20px;
+  padding: 20px 22px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   transition: box-shadow 0.2s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
 }
-.stat-card:hover { box-shadow: var(--sh); transform: translateY(-1px); }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--border);
+  transition: background 0.2s;
+}
+.stat-card:nth-child(1)::before { background: var(--ink); }
+.stat-card:nth-child(2)::before { background: var(--green); }
+.stat-card:nth-child(3)::before { background: var(--red); }
+.stat-card:hover { box-shadow: var(--sh); transform: translateY(-2px); }
 
 .stat-card-icon {
   width: 42px; height: 42px;
@@ -596,6 +644,10 @@ main {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+}
+
+.log-card-header {
+  background: linear-gradient(180deg, #FAFAF9 0%, #F7F6F4 100%);
 }
 
 .log-card-header {
@@ -767,15 +819,33 @@ main {
   flex: 1; padding: 13px;
   border: none; border-radius: var(--r-xs);
   font-family: var(--font); font-weight: 700; font-size: 14px;
-  cursor: pointer; transition: all 0.16s;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  cursor: pointer; transition: all 0.12s ease;
+  letter-spacing: -0.01em;
 }
-.btn-dlg-ok.orange { background: var(--orange); color: #fff; box-shadow: 0 2px 8px rgba(232,80,10,0.30); }
-.btn-dlg-ok.orange:hover { background: #D44808; box-shadow: 0 4px 14px rgba(232,80,10,0.38); transform: translateY(-1px); }
-.btn-dlg-ok.blue   { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.28); }
-.btn-dlg-ok.blue:hover { background: #1D4ED8; transform: translateY(-1px); }
-.btn-dlg-ok.red    { background: var(--red); color: #fff; box-shadow: 0 2px 8px rgba(220,38,38,0.28); }
-.btn-dlg-ok.red:hover { background: #B91C1C; transform: translateY(-1px); }
+.btn-dlg-ok.orange {
+  background: linear-gradient(180deg, #F06020 0%, var(--orange) 60%, #D44808 100%);
+  color: #fff;
+  box-shadow: 0 2px 0 #923006, 0 4px 12px rgba(232,80,10,0.32);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.btn-dlg-ok.orange:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #923006, 0 6px 16px rgba(232,80,10,0.40); }
+.btn-dlg-ok.orange:active { transform: translateY(1px); box-shadow: 0 1px 0 #923006; }
+.btn-dlg-ok.blue {
+  background: linear-gradient(180deg, #3B82F6 0%, var(--blue) 60%, #1D4ED8 100%);
+  color: #fff;
+  box-shadow: 0 2px 0 #1E40AF, 0 4px 12px rgba(37,99,235,0.30);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+.btn-dlg-ok.blue:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1E40AF, 0 6px 16px rgba(37,99,235,0.38); }
+.btn-dlg-ok.blue:active { transform: translateY(1px); box-shadow: 0 1px 0 #1E40AF; }
+.btn-dlg-ok.red {
+  background: linear-gradient(180deg, #EF4444 0%, var(--red) 60%, #B91C1C 100%);
+  color: #fff;
+  box-shadow: 0 2px 0 #991B1B, 0 4px 12px rgba(220,38,38,0.30);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+.btn-dlg-ok.red:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #991B1B, 0 6px 16px rgba(220,38,38,0.38); }
+.btn-dlg-ok.red:active { transform: translateY(1px); box-shadow: 0 1px 0 #991B1B; }
 
 /* ─────────────────────────────────────────────
    UTILITIES
