@@ -125,35 +125,37 @@ header {
 .hdr-seg {
   display: flex;
   background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  padding: 3px;
-  gap: 2px;
+  border: 1.5px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 3px;
+  box-shadow: var(--sh-xs);
 }
 
 .hdr-seg-btn {
-  padding: 6px 16px;
-  border-radius: 100px;
+  padding: 8px 20px;
+  border-radius: 7px;
   border: none;
   font-family: var(--font);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.18s;
   color: var(--muted);
   background: transparent;
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 7px;
+  letter-spacing: -0.01em;
 }
-.hdr-seg-btn:hover { color: var(--ink); }
+.hdr-seg-btn:hover { color: var(--ink); background: rgba(0,0,0,0.03); }
 .hdr-seg-btn.active-test {
   background: var(--white);
   color: var(--ink);
-  box-shadow: var(--sh-xs);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
 }
 .hdr-seg-btn.active-prod {
-  background: var(--ink);
+  background: var(--orange);
   color: #fff;
-  box-shadow: var(--sh-xs);
+  box-shadow: 0 2px 8px rgba(232,80,10,0.30);
 }
 
 .hdr-right { display: flex; align-items: center; gap: 10px; }
@@ -344,25 +346,29 @@ main {
 }
 
 .btn-run.test-btn {
-  background: var(--white);
-  color: var(--ink);
-  border: 1.5px solid var(--border-hi);
-  box-shadow: var(--sh-xs);
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  font-size: 14.5px;
 }
 .btn-run.test-btn:hover {
-  border-color: var(--ink);
-  box-shadow: var(--sh-sm);
+  background: #2C2825;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.24);
+  transform: translateY(-1px);
 }
 
-/* Orange accent — the signature element */
+/* Orange accent — production booking */
 .btn-run.prod-btn {
   background: var(--orange);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(232,80,10,0.28);
+  border: none;
+  box-shadow: 0 3px 10px rgba(232,80,10,0.35);
+  font-size: 14.5px;
 }
 .btn-run.prod-btn:hover {
   background: #D44808;
-  box-shadow: 0 4px 14px rgba(232,80,10,0.36);
+  box-shadow: 0 5px 16px rgba(232,80,10,0.42);
   transform: translateY(-1px);
 }
 .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
@@ -758,17 +764,18 @@ main {
 }
 .btn-dlg-cancel:hover { background: var(--white); border-color: var(--ink); }
 .btn-dlg-ok {
-  flex: 1; padding: 12px;
+  flex: 1; padding: 13px;
   border: none; border-radius: var(--r-xs);
   font-family: var(--font); font-weight: 700; font-size: 14px;
-  cursor: pointer; transition: all 0.14s;
+  cursor: pointer; transition: all 0.16s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
-.btn-dlg-ok.orange { background: var(--orange); color: #fff; }
-.btn-dlg-ok.orange:hover { background: #D44808; }
-.btn-dlg-ok.blue   { background: var(--blue); color: #fff; }
-.btn-dlg-ok.blue:hover { filter: brightness(1.08); }
-.btn-dlg-ok.red    { background: var(--red); color: #fff; }
-.btn-dlg-ok.red:hover { filter: brightness(1.08); }
+.btn-dlg-ok.orange { background: var(--orange); color: #fff; box-shadow: 0 2px 8px rgba(232,80,10,0.30); }
+.btn-dlg-ok.orange:hover { background: #D44808; box-shadow: 0 4px 14px rgba(232,80,10,0.38); transform: translateY(-1px); }
+.btn-dlg-ok.blue   { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.28); }
+.btn-dlg-ok.blue:hover { background: #1D4ED8; transform: translateY(-1px); }
+.btn-dlg-ok.red    { background: var(--red); color: #fff; box-shadow: 0 2px 8px rgba(220,38,38,0.28); }
+.btn-dlg-ok.red:hover { background: #B91C1C; transform: translateY(-1px); }
 
 /* ─────────────────────────────────────────────
    UTILITIES
@@ -1190,7 +1197,7 @@ function confirmRun() {
     title.textContent = 'Book Real Shipments?';
     body.innerHTML = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
     okBtn.textContent = 'Confirm & Book';
-    okBtn.className = 'btn-ok amber';
+    okBtn.className = 'btn-dlg-ok orange';
   } else {
     wrap.style.background = 'var(--blue-dim)';
     wrap.style.borderColor = 'var(--blue-border)';
@@ -1199,7 +1206,7 @@ function confirmRun() {
     title.textContent = 'Run Test Booking?';
     body.innerHTML = 'This will run in <span class="blue">TEST MODE</span>.<br><br>No real DHL call will be made. Fake tracking numbers will be returned. Airtable will NOT be updated.';
     okBtn.textContent = 'Run Test';
-    okBtn.className = 'btn-ok blue';
+    okBtn.className = 'btn-dlg-ok blue';
   }
   overlay.classList.add('show');
 }
