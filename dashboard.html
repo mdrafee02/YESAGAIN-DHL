@@ -395,6 +395,36 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 @media(max-width:1100px){main{grid-template-columns:258px 1fr;gap:13px;padding:14px 16px}}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto;overflow:visible}.sidebar{overflow:visible}.content{overflow:visible}.hdr-seg{display:none}.tcard{min-height:400px}.plant,.globe,.conv{display:none}}
 @media(max-width:640px){header{padding:0 15px}main{padding:13px;gap:12px}.mrow{grid-template-columns:1fr}#toast{left:13px;right:13px;max-width:none}}
+
+/* ── terminal motion ── */
+.tbody{position:relative}
+.tbody::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,transparent,rgba(233,184,124,.045),transparent);
+  height:120px;animation:tsweep 7s linear infinite}
+@keyframes tsweep{0%{top:-120px}100%{top:100%}}
+.tbody::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(255,255,255,.014) 2px 4px)}
+.log-line{animation:logIn .26s cubic-bezier(.22,1,.36,1) both}
+@keyframes logIn{from{opacity:0;transform:translateX(-7px)}}
+.log-line:last-child::after{content:'\2588';color:var(--gold);margin-left:3px;
+  animation:caret 1.05s steps(1) infinite;font-size:11px}
+@keyframes caret{0%,55%{opacity:1}56%,100%{opacity:0}}
+#terminal-empty{position:relative;z-index:2}
+.tez{display:flex;gap:5px;margin-top:2px}
+.tez i{width:5px;height:5px;border-radius:50%;background:var(--faint);animation:tdot 1.3s ease-in-out infinite}
+.tez i:nth-child(2){animation-delay:.18s}
+.tez i:nth-child(3){animation-delay:.36s}
+@keyframes tdot{0%,100%{opacity:.22;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+.radar{position:absolute;width:120px;height:120px;border-radius:50%;pointer-events:none;
+  border:1px solid rgba(233,184,124,.13)}
+.radar::before{content:'';position:absolute;inset:22px;border-radius:50%;border:1px solid rgba(233,184,124,.10)}
+.radar::after{content:'';position:absolute;top:50%;left:50%;width:60px;height:1px;transform-origin:left center;
+  background:linear-gradient(90deg,rgba(233,184,124,.55),transparent);animation:sweepr 3.4s linear infinite}
+@keyframes sweepr{to{transform:rotate(360deg)}}
+.tbar{position:relative;overflow:hidden}
+.tbar::after{content:'';position:absolute;bottom:0;left:0;width:34%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(233,184,124,.5),transparent);animation:barflow 4.5s linear infinite}
+@keyframes barflow{0%{left:-34%}100%{left:100%}}
 </style>
 </head>
 <body>
@@ -629,9 +659,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
       </div>
       <div class="tbody" id="terminal">
         <div id="terminal-empty">
-          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <div class="radar"></div>
           <div class="tet">Waiting for activity</div>
           <div class="tes">Run a booking to see activity here.</div>
+          <div class="tez"><i></i><i></i><i></i></div>
         </div>
       </div>
     </div>
