@@ -3,41 +3,46 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>YesAgain FZC — DHL Shipping Operations</title>
+<title>YesAgain FZC — DHL Booking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
 <style>
-/* ═══════════════════════════════════════════════════════════════
-   TOKENS — "Premium logistics control center"
-   Depth hierarchy: Level 0 page (flat) → Level 1 cards (subtle)
-   → Level 2 active workflow (hero + activity) → Level 3 primary CTA only
-═══════════════════════════════════════════════════════════════ */
+/* ═════════════════════════════════════════════════════════════
+   RESET + TOKENS
+   Direction: "Premium ledger" — cream manifest paper, deep
+   embossed 3D cards, editorial calm. Serif display (Fraunces)
+   for numerals/headings, Inter for UI, mono for data/AWB/logs.
+═════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --paper:      #F5F1E7;
-  --card:       #FCFAF3;
-  --card-hi:    #FFFFFF;
+  /* Paper / surfaces */
+  --paper:      #EBE7DC;   /* page background — cool stone-ivory */
+  --paper-2:    #F7F4EC;   /* raised card surface */
+  --paper-3:    #FFFFFF;   /* topmost highlight (inputs, chrome) */
   --ink:        #211E19;
   --ink-2:      #4A453C;
-  --muted:      #837D6C;
-  --faint:      #ADA793;
-  --border:     #E3DDC9;
-  --border-hi:  #D3CBAE;
+  --muted:      #85806F;
+  --faint:      #B2AC97;
+  --border:     #DBD5C4;
+  --border-hi:  #C7BFA8;
 
+  /* Brass — primary / test-mode accent (ink-stamp gold) */
   --brass:      #93650E;
   --brass-hi:   #C4922F;
   --brass-dim:  #F1E4C4;
   --brass-bd:   #DEC488;
 
+  /* Copper — production / real-shipment accent */
   --copper:     #A6461B;
   --copper-hi:  #D06B34;
   --copper-dim: #F7E4D6;
   --copper-bd:  #E7B98F;
 
+  /* Semantic */
   --green:      #2E7D4F;
   --green-dim:  #E6F1E9;
   --green-bd:   #BEDBC9;
@@ -47,389 +52,563 @@
   --blue:       #395E7F;
   --blue-dim:   #E6EDF3;
   --blue-bd:    #C1D2E0;
+  --amber:      #A6790F;
+  --amber-dim:  #F5EAD1;
+  --amber-bd:   #E2C983;
 
+  /* Type */
   --display: 'Fraunces', Georgia, serif;
   --font:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --mono:    'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code', monospace;
 
+  --r-xs: 7px;
   --r-sm: 10px;
-  --r:    16px;
-  --r-lg: 20px;
-
-  /* Depth hierarchy — the whole point of this rebuild */
-  --shadow-1: 0 1px 2px rgba(30,25,15,.05), 0 8px 20px rgba(30,25,15,.06);
-  --shadow-2: 0 2px 4px rgba(30,25,15,.06), 0 18px 36px -8px rgba(30,25,15,.12);
-  --shadow-3: 0 4px 0 #5E3F08, 0 14px 30px -6px rgba(147,101,14,.45), inset 0 1px 0 rgba(255,255,255,.25);
+  --r:    14px;
+  --r-lg: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 
 html, body { height: 100%; }
+
 body {
   font-family: var(--font);
-  background: var(--paper);
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(147,101,14,0.05), transparent 55%),
+    var(--paper);
   color: var(--ink-2);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-body.ready { animation: fade-in .18s ease; }
-@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
 
-/* Level 1 card — used for KPI tiles, tool cards, panels */
-.card-1 {
-  background: var(--card);
+body.loading { opacity: 0; }
+body.ready { opacity: 1; transition: opacity 0.15s ease; }
+
+/* Embossed "raised paper" card — the base surface treatment used everywhere */
+.emboss {
+  background: var(--paper-2);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  box-shadow: var(--shadow-1);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.75),
+    inset 0 -10px 18px -14px rgba(33,30,25,0.10),
+    0 1px 2px rgba(33,30,25,0.06),
+    0 14px 28px -16px rgba(33,30,25,0.22);
 }
-/* Level 2 card — the active-workflow surfaces: booking hero, activity feed */
-.card-2 {
-  background: var(--card);
-  border: 1px solid var(--border-hi);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-2);
+
+/* Inset "carved" surface — used for terminal chrome / wells */
+.carved {
+  box-shadow:
+    inset 0 2px 5px rgba(33,30,25,0.20),
+    inset 0 1px 0 rgba(0,0,0,0.06);
 }
 
 /* ─────────────────────────────────────────────
    HEADER
 ───────────────────────────────────────────── */
 header {
-  height: 66px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+  height: 68px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--border-hi);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 0 28px;
-  position: sticky; top: 0; z-index: 50;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 14px rgba(33,30,25,0.06);
 }
-.hdr-brand { display: flex; align-items: center; gap: 12px; }
+
+.hdr-brand { display: flex; align-items: center; gap: 13px; }
+
 .hdr-seal {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 40px; height: 40px;
+  border-radius: 50%;
   background: linear-gradient(155deg, var(--brass-hi) 0%, var(--brass) 62%, #6E4A09 100%);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  box-shadow: 0 2px 0 #5E3F08, 0 4px 10px rgba(147,101,14,.35);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow:
+    0 2px 0 #5E3F08,
+    0 5px 12px rgba(147,101,14,0.45),
+    inset 0 1px 1px rgba(255,255,255,0.45);
+  transform: rotate(-6deg);
 }
 .hdr-seal svg { stroke: #FBF3DF; }
-.hdr-name { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
-.hdr-sub  { font-size: 10px; color: var(--muted); letter-spacing: .07em; text-transform: uppercase; font-weight: 600; margin-top: 1px; }
 
-.hdr-right { display: flex; align-items: center; gap: 8px; }
-.status-pill {
+.hdr-name {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.hdr-sub {
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.hdr-seg {
+  display: flex;
+  background: var(--paper);
+  border: 1px solid var(--border-hi);
+  border-radius: 12px;
+  padding: 5px;
+  gap: 4px;
+  box-shadow: inset 0 2px 5px rgba(33,30,25,0.12), inset 0 1px 0 rgba(0,0,0,0.03);
+}
+.hdr-seg-btn {
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: none;
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s cubic-bezier(0.34,1.2,0.64,1);
+  color: var(--muted);
+  background: transparent;
+  display: flex; align-items: center; gap: 7px;
+  letter-spacing: -0.005em;
+}
+.hdr-seg-btn:hover { color: var(--ink-2); }
+.hdr-seg-btn.active-test {
+  background: var(--paper-3);
+  color: var(--ink);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.08), 0 3px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  transform: translateY(-1px);
+}
+.hdr-seg-btn.active-prod {
+  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 55%, #7C3413 100%);
+  color: #FDF1E6;
+  box-shadow: 0 2px 0 #6B2C10, 0 5px 14px rgba(166,70,27,0.40);
+  transform: translateY(-1px);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+}
+
+.hdr-right { display: flex; align-items: center; gap: 10px; }
+.api-pill {
   display: flex; align-items: center; gap: 7px;
   padding: 7px 13px;
-  border-radius: 100px;
-  font-size: 11.5px; font-weight: 700;
-  border: 1px solid var(--border-hi);
   background: var(--paper);
+  border: 1px solid var(--border-hi);
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 700;
   color: var(--muted);
+  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
 }
-.status-pill.mode-test { color: var(--brass); border-color: var(--brass-bd); background: var(--brass-dim); }
-.status-pill.mode-prod { color: var(--copper); border-color: var(--copper-bd); background: var(--copper-dim); }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
-.status-dot.online { background: var(--green); animation: blink 2.4s infinite; }
-.status-dot.error  { background: var(--red); }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex-shrink: 0;
+  transition: background 0.3s;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+.status-dot.online  { background: var(--green); animation: blink 2.4s infinite; }
+.status-dot.error   { background: var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.45} }
 
 /* ─────────────────────────────────────────────
-   MAIN LAYOUT — single column flow, no sidebar
+   LAYOUT
 ───────────────────────────────────────────── */
 main {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 28px 24px 56px;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 288px 1fr;
+  gap: 20px;
+  padding: 20px 24px;
+  height: calc(100vh - 68px);
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────
+   SIDEBAR — trimmed to 3 short panels so nothing
+   needs to scroll to reach a control
+───────────────────────────────────────────── */
+.sidebar {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 12px;
+  min-height: 0;
 }
 
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; }
-.page-title { font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
-.page-sub   { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 4px; }
-.page-date  { font-size: 12px; color: var(--faint); font-weight: 600; font-family: var(--mono); }
+.sb-card { overflow: hidden; }
+.sb-section { padding: 14px 16px; }
+.sb-section + .sb-section { border-top: 1px solid var(--border); }
 
-/* KPI row */
-.kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.kpi-card { padding: 18px 20px; }
-.kpi-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.kpi-val { font-family: var(--display); font-size: 32px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); margin-top: 6px; font-variant-numeric: tabular-nums; }
-.kpi-val.green { color: var(--green); }
-.kpi-val.red   { color: var(--red); }
-.kpi-note { font-size: 11px; color: var(--faint); margin-top: 3px; font-weight: 500; }
+.sb-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
 
-/* Hero row: booking hero + recent activity */
-.hero-row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: stretch; }
+/* Session card styled as a ticket stub: header row, then a
+   perforated tear-line with cut notches, then the stat grid —
+   the one deliberate signature flourish on the page. */
+.ticket {
+  position: relative;
+}
+.ticket-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 13px 16px 11px;
+}
+.ticket-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.ticket-no { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
 
-/* ── Booking hero ─────────────────────────── */
-.hero-card { padding: 26px 28px; display: flex; flex-direction: column; }
-.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-.hero-title { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--ink); }
-.env-badge { padding: 5px 11px; border-radius: 100px; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; margin-top: 3px; }
-.env-badge.test { background: var(--brass-dim); color: var(--brass); }
-.env-badge.prod { background: var(--copper-dim); color: var(--copper); }
-.hero-desc { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; }
-
-.env-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
-.env-btn {
-  flex: 1; text-align: left;
-  padding: 11px 14px;
-  border-radius: var(--r-sm);
-  border: 1.5px solid var(--border);
+.perf {
+  position: relative;
+  height: 0;
+  border-top: 1.5px dashed var(--border-hi);
+}
+.perf::before, .perf::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
   background: var(--paper);
-  cursor: pointer;
-  transition: all .15s ease;
+  border: 1px solid var(--border-hi);
 }
-.env-btn-title { font-size: 12.5px; font-weight: 700; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
-.env-btn-sub   { font-size: 10.5px; color: var(--faint); margin-top: 2px; font-weight: 500; }
-.env-btn.active.test { border-color: var(--brass); background: var(--brass-dim); }
-.env-btn.active.test .env-btn-title { color: var(--brass); }
-.env-btn.active.prod { border-color: var(--copper); background: var(--copper-dim); }
-.env-btn.active.prod .env-btn-title { color: var(--copper); }
+.perf::before { left: -9px; }
+.perf::after  { right: -9px; }
 
-.hero-notice {
-  font-size: 11.5px; line-height: 1.5; font-weight: 500;
-  padding: 10px 12px; border-radius: var(--r-sm);
-  margin-bottom: 16px;
-  display: flex; gap: 8px; align-items: flex-start;
-}
-.hero-notice.test { background: var(--brass-dim); color: #6E4A09; }
-.hero-notice.prod { background: var(--copper-dim); color: #7C3413; }
-.hero-notice strong { color: var(--ink); }
-.hero-notice.hidden { display: none; }
-
-.hero-info {
-  background: var(--paper);
-  border-radius: var(--r-sm);
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   padding: 14px 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
 }
-.hero-info-idle   { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
-.hero-info-idle span { display: block; font-size: 11px; color: var(--faint); font-weight: 500; margin-top: 3px; }
-.hero-info-progress { display: none; }
-.hero-info-progress.visible { display: block; }
-.hero-info-progress .p-label { font-size: 12px; font-weight: 700; color: var(--ink); font-family: var(--mono); margin-bottom: 8px; }
-.hero-progress-track { height: 6px; background: var(--card); border-radius: 100px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(30,25,15,.14); }
-.hero-progress-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--brass-hi), var(--brass)); width: 0%; transition: width .4s ease; }
-.hero-progress-fill.running { animation: prog-slide 1.4s infinite ease-in-out; }
-@keyframes prog-slide { 0%{width:0;margin-left:0} 50%{width:55%;margin-left:22%} 100%{width:0;margin-left:100%} }
-.hero-info-done { display: none; }
-.hero-info-done.visible { display: flex; }
-.hero-info-done { align-items: center; gap: 10px; }
-.hero-info-done .done-icon { width: 30px; height: 30px; border-radius: 50%; background: var(--green-dim); color: var(--green); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.hero-info-done.error .done-icon { background: var(--red-dim); color: var(--red); }
-.hero-info-done .done-text { font-size: 12.5px; font-weight: 700; color: var(--ink); }
-.hero-info-done .done-sub  { font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 1px; }
+.stat-tile {
+  background: var(--paper);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  box-shadow: inset 0 1px 4px rgba(33,30,25,0.10);
+}
+.stat-num { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-num.green { color: var(--green); }
+.stat-num.red   { color: var(--red); }
+.stat-num.mono  { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+.stat-lbl { font-size: 9.5px; font-weight: 600; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; text-transform: uppercase; }
 
-/* Level 3 — the one真正 3D element on the page */
+/* Mode toggle */
+.mode-seg {
+  display: flex;
+  background: var(--paper);
+  border-radius: var(--r-xs);
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 11px;
+  box-shadow: inset 0 1px 4px rgba(33,30,25,0.12);
+}
+.mode-btn {
+  flex: 1;
+  padding: 8px 8px;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--muted);
+  background: transparent;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.mode-btn:hover { color: var(--ink); }
+.mode-btn.active.test { background: var(--paper-3); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.10), 0 2px 5px rgba(0,0,0,0.06); }
+.mode-btn.active.prod { background: linear-gradient(180deg, var(--copper-hi), var(--copper)); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+
+.notice {
+  padding: 9px 11px;
+  border-radius: var(--r-xs);
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+  display: flex; gap: 8px; align-items: flex-start;
+  border: 1px solid transparent;
+}
+.notice.hidden { display: none; }
+.notice.test-notice { background: var(--brass-dim); border-color: var(--brass-bd); color: #6E4A09; }
+.notice.prod-notice { background: var(--copper-dim); border-color: var(--copper-bd); color: #7C3413; }
+.notice strong { font-weight: 700; color: var(--ink); }
+
+/* Primary run button — embossed 3D press */
 .btn-run {
   width: 100%;
-  padding: 15px 18px;
+  padding: 12px 16px;
   border-radius: var(--r-sm);
   border: none;
-  font-family: var(--font); font-size: 14px; font-weight: 700;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 9px;
-  transition: transform .12s ease, box-shadow .12s ease;
-  letter-spacing: -.005em;
-  margin-top: auto;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  letter-spacing: -0.005em;
 }
 .btn-run.test-btn {
   background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 55%, #6E4A09 100%);
-  color: #FBF3DF; text-shadow: 0 1px 1px rgba(0,0,0,.2);
-  box-shadow: var(--shadow-3);
+  color: #FBF3DF;
+  box-shadow: 0 3px 0 #5E3F08, 0 8px 18px -4px rgba(147,101,14,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.20);
 }
+.btn-run.test-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #5E3F08, 0 10px 22px -4px rgba(147,101,14,0.52); }
+.btn-run.test-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5E3F08, 0 3px 8px rgba(147,101,14,0.30); }
+
 .btn-run.prod-btn {
   background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 55%, #7C3413 100%);
-  color: #FDF1E6; text-shadow: 0 1px 1px rgba(0,0,0,.22);
-  box-shadow: 0 4px 0 #5E260C, 0 14px 30px -6px rgba(166,70,27,.48), inset 0 1px 0 rgba(255,255,255,.22);
+  color: #FDF1E6;
+  box-shadow: 0 3px 0 #5E260C, 0 8px 18px -4px rgba(166,70,27,0.48), inset 0 1px 0 rgba(255,255,255,0.22);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.22);
 }
-.btn-run:hover  { transform: translateY(-1px); }
-.btn-run:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.3), 0 4px 10px rgba(0,0,0,.2) !important; }
-.btn-run:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
-.spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .65s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg) } }
+.btn-run.prod-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #5E260C, 0 10px 22px -4px rgba(166,70,27,0.55); }
+.btn-run.prod-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5E260C, 0 3px 8px rgba(166,70,27,0.32); }
+.btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
-.hero-foot { display: flex; justify-content: space-between; margin-top: 12px; font-size: 11px; color: var(--faint); font-weight: 600; font-family: var(--mono); }
-.hero-foot b { color: var(--ink-2); font-weight: 700; }
+.prog-wrap { display: none; margin-top: 10px; }
+.prog-wrap.visible { display: block; }
+.prog-track { height: 4px; background: var(--paper); border-radius: 100px; overflow: hidden; margin-bottom: 6px; box-shadow: inset 0 1px 3px rgba(33,30,25,0.18); }
+.prog-fill { height: 100%; border-radius: 100px; background: var(--brass); width: 0%; transition: width 0.4s ease; }
+.prog-fill.running { animation: prog-slide 1.4s infinite ease-in-out; }
+@keyframes prog-slide { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+.prog-lbl { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: center; }
 
-/* ── Recent activity (compact, right column of hero row) ── */
-.activity-card { padding: 20px 20px 16px; display: flex; flex-direction: column; }
-.activity-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.activity-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.activity-badge { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; padding: 3px 8px; border-radius: 100px; text-transform: uppercase; }
-.activity-badge.idle    { background: var(--paper); color: var(--faint); }
-.activity-badge.running { background: var(--brass-dim); color: var(--brass); }
-.activity-badge.done    { background: var(--green-dim); color: var(--green); }
-.activity-badge.error   { background: var(--red-dim); color: var(--red); }
-
-.recent-list { flex: 1; display: flex; flex-direction: column; gap: 2px; margin-top: 10px; min-height: 120px; }
-.recent-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--faint); text-align: center; padding: 12px; }
-.recent-empty svg { opacity: .5; }
-.recent-empty-title { font-size: 12px; font-weight: 600; color: var(--muted); }
-.recent-empty-sub { font-size: 11px; color: var(--faint); }
-
-.recent-item { display: flex; gap: 9px; padding: 7px 2px; }
-.recent-icon { width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; font-size: 10px; font-weight: 800; }
-.recent-icon.ok    { background: var(--green-dim); color: var(--green); }
-.recent-icon.prog  { background: var(--blue-dim); color: var(--blue); }
-.recent-icon.err   { background: var(--red-dim); color: var(--red); }
-.recent-icon.info  { background: var(--paper); color: var(--faint); }
-.recent-text { font-size: 12px; color: var(--ink-2); font-weight: 500; line-height: 1.4; }
-.recent-time { font-size: 10px; color: var(--faint); font-family: var(--mono); margin-top: 1px; }
-
-.view-full-link {
-  display: block; text-align: center;
-  font-size: 11px; font-weight: 700; color: var(--brass);
-  padding: 10px 0 2px; cursor: pointer; text-decoration: none;
-  border-top: 1px solid var(--border); margin-top: 8px;
-}
-.view-full-link:hover { color: var(--brass-hi); }
-
-/* ─────────────────────────────────────────────
-   SHIPMENT TOOLS — three cards, no tabs
-───────────────────────────────────────────── */
-.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 2px; }
-.tools-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.tool-card { padding: 18px 18px 20px; display: flex; flex-direction: column; }
-.tool-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-.tool-icon.red  { background: var(--red-dim); color: var(--red); }
-.tool-icon.blue { background: var(--blue-dim); color: var(--blue); }
-.tool-icon.gold { background: var(--brass-dim); color: var(--brass); }
-.tool-title { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 5px; }
-.tool-desc  { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
-
-.awb-input {
-  width: 100%; padding: 10px 12px;
-  background: var(--paper); border: 1px solid var(--border);
-  border-radius: var(--r-sm); font-family: var(--mono); font-size: 12px;
-  color: var(--ink); outline: none; margin-bottom: 10px;
-  transition: border-color .15s, box-shadow .15s;
-}
-.awb-input::placeholder { color: var(--faint); }
-.awb-input:focus { border-color: var(--brass-bd); box-shadow: 0 0 0 3px rgba(147,101,14,.12); }
-
-.btn-tool {
-  width: 100%; padding: 10px 14px; border-radius: var(--r-sm);
-  font-family: var(--font); font-size: 12.5px; font-weight: 700;
-  cursor: pointer; border: none; margin-top: auto;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-  transition: filter .15s;
-}
-.btn-tool:hover { filter: brightness(1.06); }
-.btn-tool:disabled { opacity: .5; cursor: not-allowed; }
-.btn-tool.red  { background: var(--red);  color: #FBEAE3; }
-.btn-tool.blue { background: var(--blue); color: #EAF1F7; }
-
-.tool-result { display: none; margin-top: 10px; padding: 9px 10px; border-radius: var(--r-sm); font-size: 11px; line-height: 1.6; border: 1px solid transparent; }
-.tool-result.visible { display: block; }
-.tool-result.ok  { background: var(--green-dim); border-color: var(--green-bd); color: var(--green); }
-.tool-result.err { background: var(--red-dim); border-color: var(--red-bd); color: var(--red); }
-.tr-msg { font-weight: 700; }
-.tr-hint { opacity: .85; margin-top: 2px; }
-
+#downloads-card { display: none; }
+#downloads-card.visible { display: block; }
 .dl-link {
-  display: flex; align-items: center; gap: 9px;
-  padding: 9px 10px; border-radius: var(--r-sm);
-  background: var(--paper); color: var(--ink-2);
-  font-size: 12px; font-weight: 600; text-decoration: none;
-  margin-bottom: 8px; transition: background .14s;
-  border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 11px;
+  background: var(--paper);
+  border-radius: var(--r-xs);
+  color: var(--ink);
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer; transition: all 0.14s;
+  text-decoration: none; margin-bottom: 7px;
+  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
 }
 .dl-link:last-child { margin-bottom: 0; }
-.dl-link:hover { background: var(--brass-dim); border-color: var(--brass-bd); }
-.dl-meta { font-size: 9.5px; color: var(--faint); margin-top: 1px; font-family: var(--mono); }
-.dl-empty { font-size: 11.5px; color: var(--faint); font-style: italic; }
+.dl-link:hover { box-shadow: inset 0 1px 3px rgba(33,30,25,0.10), 0 2px 6px rgba(0,0,0,0.08); }
+.dl-meta { font-size: 10px; color: var(--faint); margin-top: 1px; font-family: var(--mono); }
 
-/* ─────────────────────────────────────────────
-   SYSTEM ACTIVITY — the friendly timeline replacing
-   the always-on black terminal
-───────────────────────────────────────────── */
-.system-card { padding: 0; overflow: hidden; }
-.system-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.system-title-wrap { display: flex; align-items: center; gap: 10px; }
-.system-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
-.system-actions { display: flex; align-items: center; gap: 14px; }
-.link-btn {
-  font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer;
-  background: none; border: none; display: flex; align-items: center; gap: 5px;
-  padding: 0;
+/* Log Files list */
+.log-history { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; padding: 13px 16px; }
+.log-history::-webkit-scrollbar { width: 5px; }
+.log-history::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 10px; }
+.log-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: var(--paper);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: all 0.14s;
+  box-shadow: inset 0 1px 3px rgba(33,30,25,0.08);
 }
-.link-btn:hover { color: var(--ink); }
-
-.timeline-body { max-height: 320px; overflow-y: auto; padding: 6px 20px 14px; }
-.timeline-body::-webkit-scrollbar { width: 6px; }
-.timeline-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 10px; }
-
-.tl-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: var(--faint); text-align: center; }
-.tl-empty-title { font-size: 13px; font-weight: 700; color: var(--muted); }
-.tl-empty-sub   { font-size: 11.5px; color: var(--faint); }
-
-.tl-item { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); }
-.tl-item:last-child { border-bottom: none; }
-.tl-time { font-family: var(--mono); font-size: 11px; color: var(--faint); width: 64px; flex-shrink: 0; padding-top: 1px; }
-.tl-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 800; }
-.tl-icon.ok   { background: var(--green-dim); color: var(--green); }
-.tl-icon.prog { background: var(--blue-dim); color: var(--blue); }
-.tl-icon.err  { background: var(--red-dim); color: var(--red); }
-.tl-icon.info { background: var(--brass-dim); color: var(--brass); }
-.tl-text { font-size: 12.5px; color: var(--ink-2); font-weight: 500; flex: 1; }
-
-/* ─────────────────────────────────────────────
-   RAW LOGS DRAWER — the old terminal, now hidden
-   until explicitly opened
-───────────────────────────────────────────── */
-.drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(28,25,19,.5); backdrop-filter: blur(2px); z-index: 150; }
-.drawer-overlay.show { display: block; }
-.drawer {
-  position: fixed; top: 0; right: 0; bottom: 0;
-  width: min(560px, 92vw);
-  background: #17140F;
-  z-index: 151;
-  display: flex; flex-direction: column;
-  transform: translateX(100%);
-  transition: transform .26s cubic-bezier(.32,.8,.4,1);
-  box-shadow: -20px 0 50px rgba(0,0,0,.4);
-}
-.drawer.show { transform: translateX(0); }
-.drawer-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px; border-bottom: 1px solid #33302A;
-  background: linear-gradient(180deg, #221F1A, #1C1913); flex-shrink: 0;
-}
-.drawer-title-wrap { display: flex; align-items: center; gap: 10px; }
-.terminal-dots { display: flex; gap: 6px; }
-.terminal-dots span { width: 9px; height: 9px; border-radius: 50%; }
-.td-red { background: #C86A5A; } .td-amber { background: var(--brass-hi); } .td-green { background: #6FA383; }
-.drawer-name { font-family: var(--mono); font-size: 11px; color: #A69E8C; }
-.drawer-close { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: #A69E8C; width: 26px; height: 26px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.drawer-close:hover { color: #EFEAE0; background: rgba(255,255,255,.1); }
-.drawer-body {
-  flex: 1; overflow-y: auto; padding: 16px 18px;
-  font-family: var(--mono); font-size: 12px; line-height: 1.8; color: #C9C2B4;
-  scrollbar-width: thin;
-}
-.drawer-body::-webkit-scrollbar { width: 6px; }
-.drawer-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 10px; }
-.log-line { display: block; white-space: pre-wrap; word-break: break-all; }
-.log-line.success { color: #7DC79E; } .log-line.error { color: #E58A78; }
-.log-line.warning { color: var(--brass-hi); } .log-line.info { color: #7FA8CB; }
-.log-line.muted { color: #5C574B; } .log-line.header { color: #EFEAE0; font-weight: 600; }
-.log-line.default { color: #C9C2B4; }
-.drawer-raw-empty { color: #45403680; font-family: var(--font); font-size: 12px; text-align: center; padding: 30px 0; }
-
-/* ─────────────────────────────────────────────
-   Log Files strip (below system activity)
-───────────────────────────────────────────── */
-.filelist-card { padding: 16px 20px; }
-.filelist-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.log-history { display: flex; flex-direction: column; gap: 6px; max-height: 170px; overflow-y: auto; }
-.log-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--paper); border-radius: var(--r-sm); border: 1px solid var(--border); }
-.log-item-name { font-family: var(--mono); font-size: 11px; color: var(--ink-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-item:hover { box-shadow: inset 0 1px 3px rgba(33,30,25,0.08), 0 2px 6px rgba(0,0,0,0.07); }
+.log-item-name { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-item-meta { font-size: 9.5px; color: var(--faint); white-space: nowrap; font-family: var(--mono); }
-.log-badge { padding: 2px 7px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: .04em; flex-shrink: 0; }
+.log-badge { padding: 2px 7px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; flex-shrink: 0; }
 .log-badge.ok  { background: var(--green-dim); color: var(--green); }
 .log-badge.err { background: var(--red-dim);   color: var(--red); }
+
+/* ─────────────────────────────────────────────
+   CONTENT AREA
+───────────────────────────────────────────── */
+.content { display: flex; flex-direction: column; gap: 16px; overflow: hidden; min-height: 0; }
+
+.page-head { flex-shrink: 0; display: flex; align-items: baseline; gap: 14px; }
+.page-title { font-family: var(--display); font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+.page-sub { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.page-rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-hi), transparent); align-self: center; }
+
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; flex-shrink: 0; }
+.stat-card {
+  padding: 18px 20px;
+  display: flex; align-items: center; gap: 15px;
+  position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.stat-card:hover { transform: translateY(-2px); }
+.stat-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 3px rgba(33,30,25,0.14);
+}
+.sci-neutral { background: var(--paper); color: var(--ink-2); }
+.sci-green   { background: var(--green-dim); color: var(--green); }
+.sci-red     { background: var(--red-dim); color: var(--red); }
+.stat-card-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.stat-card-val { font-family: var(--display); font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.stat-card-val.green { color: var(--green); }
+.stat-card-val.red   { color: var(--red); }
+
+/* Two-column work row: shipment actions + live console side by side */
+.work-row { display: grid; grid-template-columns: 340px 1fr; gap: 16px; flex: 1; min-height: 0; }
+
+/* Shipment Actions — tabbed, replaces the two always-on sidebar
+   cards from the previous layout */
+.actions-card { display: flex; flex-direction: column; min-height: 0; }
+.actions-tabs { display: flex; padding: 10px 10px 0; gap: 6px; flex-shrink: 0; }
+.action-tab {
+  flex: 1;
+  padding: 10px 10px;
+  border: none;
+  background: var(--paper);
+  color: var(--muted);
+  font-family: var(--font); font-size: 12px; font-weight: 700;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all 0.14s;
+  box-shadow: inset 0 1px 3px rgba(33,30,25,0.08);
+}
+.action-tab.active.tab-red  { background: var(--paper-2); color: var(--red);  box-shadow: none; border-bottom: 2px solid var(--red); }
+.action-tab.active.tab-blue { background: var(--paper-2); color: var(--blue); box-shadow: none; border-bottom: 2px solid var(--blue); }
+.actions-panel { padding: 16px; flex: 1; overflow-y: auto; }
+.actions-panel[hidden] { display: none; }
+.actions-lede { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
+
+.awb-input {
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--paper);
+  border-radius: var(--r-xs);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+  border: 1px solid transparent;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  margin-bottom: 10px;
+  box-shadow: inset 0 2px 5px rgba(33,30,25,0.14);
+}
+.awb-input::placeholder { color: var(--faint); }
+.awb-input:focus { border-color: var(--brass-bd); box-shadow: inset 0 2px 5px rgba(33,30,25,0.14), 0 0 0 3px rgba(147,101,14,0.14); }
+
+.btn-action {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--r-xs);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.15s;
+  border: none;
+}
+.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-cancel-ship {
+  background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%);
+  color: #FBEAE3;
+  box-shadow: 0 2px 0 #6B2416, 0 5px 12px rgba(166,58,38,0.32);
+}
+.btn-cancel-ship:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #6B2416, 0 7px 16px rgba(166,58,38,0.40); }
+.btn-cancel-ship:active { transform: translateY(1px); }
+
+.btn-return-lbl {
+  background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%);
+  color: #EAF1F7;
+  box-shadow: 0 2px 0 #1C3040, 0 5px 12px rgba(57,94,127,0.32);
+}
+.btn-return-lbl:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1C3040, 0 7px 16px rgba(57,94,127,0.40); }
+.btn-return-lbl:active { transform: translateY(1px); }
+
+.action-result {
+  display: none;
+  margin-top: 11px;
+  padding: 11px 12px;
+  border-radius: var(--r-xs);
+  font-size: 12px;
+  line-height: 1.6;
+  font-family: var(--mono);
+  border: 1px solid transparent;
+}
+.action-result.visible { display: block; }
+.action-result.ok  { background: var(--green-dim); border-color: var(--green-bd); color: var(--green); }
+.action-result.err { background: var(--red-dim);   border-color: var(--red-bd);   color: var(--red); }
+.ar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.75; margin-bottom: 3px; font-weight: 700; }
+.ar-msg   { font-weight: 600; }
+.ar-hint  { font-size: 10.5px; opacity: 0.8; margin-top: 4px; }
+
+/* Console / activity log — kept dark deliberately: one lively,
+   stamped-ledger panel amid the calm paper palette */
+.log-card {
+  display: flex; flex-direction: column;
+  min-height: 0;
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(33,30,25,0.08), 0 16px 32px -18px rgba(33,30,25,0.30);
+  border: 1px solid #2A2620;
+}
+.log-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #33302A;
+  background: linear-gradient(180deg, #221F1A, #1C1913);
+  flex-shrink: 0;
+}
+.log-card-title { display: flex; align-items: center; gap: 12px; }
+.terminal-dots { display: flex; gap: 6px; }
+.terminal-dots span { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 1px 1px rgba(0,0,0,0.25); }
+.td-red { background: #C86A5A; }
+.td-amber { background: var(--brass-hi); }
+.td-green { background: #6FA383; }
+.log-card-name { font-family: var(--mono); font-size: 11.5px; color: #A69E8C; font-weight: 500; }
+.log-badge-status { padding: 3px 9px; border-radius: 100px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid transparent; }
+.lbs-ready   { background: rgba(255,255,255,0.06); color: #93897A; border-color: rgba(255,255,255,0.10); }
+.lbs-running { background: rgba(196,146,47,0.16); color: var(--brass-hi); border-color: rgba(196,146,47,0.30); }
+.lbs-done    { background: rgba(111,163,131,0.16); color: #8FCBAA; border-color: rgba(111,163,131,0.30); }
+.lbs-error   { background: rgba(200,106,90,0.16); color: #E4988A; border-color: rgba(200,106,90,0.30); }
+.log-card-actions { display: flex; gap: 6px; }
+.btn-sm {
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-xs);
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  color: #A69E8C; cursor: pointer; transition: all 0.14s;
+  display: flex; align-items: center; gap: 5px;
+}
+.btn-sm:hover { background: rgba(255,255,255,0.09); color: #EFEAE0; }
+
+.terminal-body {
+  flex: 1; background: #17140F; overflow-y: auto;
+  padding: 16px 20px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.8;
+  color: #C9C2B4; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent;
+}
+.terminal-body::-webkit-scrollbar { width: 6px; }
+.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 10px; }
+.log-line { display: block; white-space: pre-wrap; word-break: break-all; }
+.log-line.success { color: #7DC79E; }
+.log-line.error   { color: #E58A78; }
+.log-line.warning { color: var(--brass-hi); }
+.log-line.info    { color: #7FA8CB; }
+.log-line.muted   { color: #5C574B; }
+.log-line.header  { color: #EFEAE0; font-weight: 600; }
+.log-line.default { color: #C9C2B4; }
+.term-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: #45403655; }
+.term-empty-title { font-size: 13px; font-family: var(--font); font-weight: 600; color: #6E6858; }
+.term-empty-sub   { font-size: 11px; color: #504B40; font-family: var(--mono); }
 
 /* ─────────────────────────────────────────────
    TOAST
@@ -440,10 +619,11 @@ main {
   font-size: 13px; font-weight: 600;
   display: flex; align-items: center; gap: 9px;
   z-index: 200; transform: translateY(60px); opacity: 0;
-  transition: all .28s cubic-bezier(.34,1.5,.64,1);
+  transition: all 0.28s cubic-bezier(0.34,1.5,0.64,1);
   pointer-events: none;
-  background: var(--card); border: 1px solid var(--border-hi);
-  box-shadow: 0 20px 40px -12px rgba(33,30,25,.35);
+  background: var(--paper-2);
+  border: 1px solid var(--border-hi);
+  box-shadow: 0 20px 40px -12px rgba(33,30,25,0.35);
   color: var(--ink); max-width: 340px;
 }
 #toast.show { transform: translateY(0); opacity: 1; }
@@ -452,292 +632,341 @@ main {
 #toast.info    { border-left: 4px solid var(--blue); }
 
 /* ─────────────────────────────────────────────
-   CONFIRM DIALOGS — plain language, no CLI flags
+   OVERLAYS / DIALOGS
 ───────────────────────────────────────────── */
-.overlay { display: none; position: fixed; inset: 0; background: rgba(28,25,19,.45); backdrop-filter: blur(2px); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(28,25,19,0.45); backdrop-filter: blur(2px); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
 .overlay.show { display: flex; }
-.dialog { background: var(--card); border-radius: var(--r-lg); padding: 28px 30px; max-width: 440px; width: 100%; box-shadow: 0 30px 60px -14px rgba(0,0,0,.45); animation: pop-in .22s cubic-bezier(.34,1.4,.64,1); }
-@keyframes pop-in { from { opacity:0; transform:scale(.96) translateY(8px); } }
-.dialog-icon { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
-.di-amber { background: var(--brass-dim); } .di-blue { background: var(--blue-dim); } .di-red { background: var(--red-dim); }
+.dialog {
+  background: var(--paper-2);
+  border-radius: var(--r-lg);
+  padding: 28px 30px;
+  max-width: 440px; width: 100%;
+  box-shadow: 0 30px 60px -14px rgba(0,0,0,0.45);
+  animation: pop-in 0.24s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes pop-in { from { opacity:0; transform:scale(0.95) translateY(8px); } }
+.dialog-icon { width: 48px; height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: inset 0 1px 3px rgba(33,30,25,0.14); }
+.di-amber { background: var(--amber-dim); }
+.di-blue  { background: var(--blue-dim); }
+.di-red   { background: var(--red-dim); }
 .dialog-title { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
-.dialog-body { font-size: 13.5px; color: var(--muted); line-height: 1.65; margin-bottom: 14px; font-weight: 500; }
+.dialog-body  { font-size: 13.5px; color: var(--muted); line-height: 1.65; margin-bottom: 22px; font-weight: 500; }
 .dialog-body strong { color: var(--ink); font-weight: 700; }
-.dialog-list { list-style: none; margin: 0 0 20px; padding: 0; }
-.dialog-list li { font-size: 13px; color: var(--ink-2); padding: 5px 0 5px 20px; position: relative; font-weight: 500; }
-.dialog-list li::before { content: '·'; position: absolute; left: 4px; color: var(--brass); font-weight: 900; font-size: 18px; top: 1px; }
+.dialog-body .blue { color: var(--blue); font-weight: 700; }
 .dialog-actions { display: flex; gap: 8px; }
-.btn-dlg-cancel { flex: 1; padding: 12px; background: var(--paper); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--ink-2); font-family: var(--font); font-weight: 600; font-size: 14px; cursor: pointer; }
+.btn-dlg-cancel {
+  flex: 1; padding: 12px;
+  background: var(--paper); border: none;
+  border-radius: var(--r-xs); color: var(--ink-2);
+  font-family: var(--font); font-weight: 600; font-size: 14px;
+  cursor: pointer; transition: all 0.14s;
+  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
+}
 .btn-dlg-cancel:hover { color: var(--ink); }
-.btn-dlg-ok { flex: 1.4; padding: 13px; border: none; border-radius: var(--r-sm); font-family: var(--font); font-weight: 700; font-size: 13.5px; cursor: pointer; transition: transform .12s ease; }
-.btn-dlg-ok.orange { background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 60%, #7C3413 100%); color: #FDF1E6; box-shadow: 0 3px 0 #5E260C, 0 8px 18px rgba(166,70,27,.35); }
-.btn-dlg-ok.blue   { background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%); color: #EAF1F7; box-shadow: 0 3px 0 #1C3040, 0 8px 18px rgba(57,94,127,.32); }
-.btn-dlg-ok.red    { background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%); color: #FBEAE3; box-shadow: 0 3px 0 #6B2416, 0 8px 18px rgba(166,58,38,.32); }
-.btn-dlg-ok:hover  { transform: translateY(-1px); }
-.btn-dlg-ok:active { transform: translateY(2px) !important; }
+.btn-dlg-ok { flex: 1; padding: 13px; border: none; border-radius: var(--r-xs); font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.12s ease; }
+.btn-dlg-ok.orange {
+  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 60%, #7C3413 100%);
+  color: #FDF1E6; box-shadow: 0 2px 0 #5E260C, 0 5px 14px rgba(166,70,27,0.35); text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+.btn-dlg-ok.orange:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #5E260C, 0 7px 18px rgba(166,70,27,0.42); }
+.btn-dlg-ok.blue {
+  background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%);
+  color: #EAF1F7; box-shadow: 0 2px 0 #1C3040, 0 5px 14px rgba(57,94,127,0.32); text-shadow: 0 1px 1px rgba(0,0,0,0.16);
+}
+.btn-dlg-ok.blue:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1C3040, 0 7px 18px rgba(57,94,127,0.40); }
+.btn-dlg-ok.red {
+  background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%);
+  color: #FBEAE3; box-shadow: 0 2px 0 #6B2416, 0 5px 14px rgba(166,58,38,0.32); text-shadow: 0 1px 1px rgba(0,0,0,0.16);
+}
+.btn-dlg-ok.red:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #6B2416, 0 7px 18px rgba(166,58,38,0.40); }
+.btn-dlg-ok:active { transform: translateY(1px) !important; }
 
-@media (max-width: 980px) {
-  .hero-row { grid-template-columns: 1fr; }
-  .tools-row { grid-template-columns: 1fr; }
-  .kpi-row { grid-template-columns: 1fr; }
+/* ─────────────────────────────────────────────
+   UTILITIES
+───────────────────────────────────────────── */
+.spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.65s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+::selection { background: rgba(147,101,14,0.16); }
+
+@media (max-width: 1180px) {
+  .work-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 1000px) {
+  main { grid-template-columns: 250px 1fr; gap: 16px; padding: 16px 18px; }
+}
+@media (max-width: 860px) {
+  main { grid-template-columns: 1fr; height: auto; overflow: visible; }
+  .hdr-seg { display: none; }
+  .work-row { grid-template-columns: 1fr; }
+  .terminal-body { min-height: 320px; }
 }
 @media (max-width: 640px) {
   header { padding: 0 16px; }
-  main { padding: 20px 14px 40px; }
-  .drawer { width: 100vw; }
+  main { padding: 14px; gap: 14px; }
+  .stats-row { grid-template-columns: 1fr; }
 }
 </style>
 <script>
 document.documentElement.style.visibility = 'hidden';
-document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.visibility = ''; });
+document.addEventListener('DOMContentLoaded', function() { document.documentElement.style.visibility = ''; });
 </script>
 </head>
 <body>
 
-<!-- HEADER — single status readout, no duplicate toggle -->
+<!-- HEADER -->
 <header>
   <div class="hdr-brand">
     <div class="hdr-seal">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z"/>
+      </svg>
     </div>
     <div>
       <div class="hdr-name">YesAgain FZC</div>
-      <div class="hdr-sub">Shipping Operations</div>
+      <div class="hdr-sub">DHL Booking Dashboard</div>
     </div>
   </div>
+
+  <div class="hdr-seg">
+    <button class="hdr-seg-btn active-test" id="hc-test" onclick="setMode('test')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Test Mode
+    </button>
+    <button class="hdr-seg-btn" id="hc-prod" onclick="setMode('prod')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Production
+    </button>
+  </div>
+
   <div class="hdr-right">
-    <div class="status-pill mode-test" id="env-pill">
-      <span class="status-dot online" style="background:currentColor;animation:none"></span>
-      <span id="env-pill-text">Test Mode</span>
-    </div>
-    <div class="status-pill">
+    <div class="api-pill">
       <span class="status-dot" id="status-dot"></span>
       <span id="status-text">Checking…</span>
     </div>
   </div>
 </header>
 
+<!-- MAIN -->
 <main>
 
-  <div class="page-head">
-    <div>
-      <div class="page-title">DHL Operations</div>
-      <div class="page-sub">Shipment booking &amp; fulfillment control</div>
-    </div>
-    <div class="page-date" id="page-date">—</div>
-  </div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
 
-  <!-- KPI ROW -->
-  <div class="kpi-row">
-    <div class="kpi-card card-1">
-      <div class="kpi-lbl">Processed</div>
-      <div class="kpi-val" id="rv-total">—</div>
-      <div class="kpi-note">This run</div>
-    </div>
-    <div class="kpi-card card-1">
-      <div class="kpi-lbl">Succeeded</div>
-      <div class="kpi-val green" id="rv-ok">—</div>
-      <div class="kpi-note" id="rv-ok-note">&nbsp;</div>
-    </div>
-    <div class="kpi-card card-1">
-      <div class="kpi-lbl">Failed</div>
-      <div class="kpi-val red" id="rv-fail">—</div>
-      <div class="kpi-note" id="rv-fail-note">Needs attention</div>
-    </div>
-  </div>
-
-  <!-- HERO ROW: booking hero + recent activity -->
-  <div class="hero-row">
-
-    <!-- BOOKING HERO — level 2 card, level 3 CTA -->
-    <div class="hero-card card-2">
-      <div class="hero-top">
-        <div class="hero-title">Book Shipments</div>
-        <div class="env-badge test" id="hero-env-badge">Test Environment</div>
+    <!-- Session — ticket-stub styling -->
+    <div class="sb-card emboss ticket">
+      <div class="ticket-head">
+        <span class="ticket-eyebrow">Session</span>
+        <span class="ticket-no" id="stat-time">— : —</span>
       </div>
-      <div class="hero-desc">Process eligible Airtable orders through DHL.</div>
-
-      <div class="env-toggle">
-        <button class="env-btn active test" id="env-btn-test" onclick="setMode('test')">
-          <div class="env-btn-title">🧪 Test</div>
-          <div class="env-btn-sub">Safe — no real DHL calls</div>
-        </button>
-        <button class="env-btn prod" id="env-btn-prod" onclick="setMode('prod')">
-          <div class="env-btn-title">⚠ Production</div>
-          <div class="env-btn-sub">Live — creates real shipments</div>
-        </button>
-      </div>
-
-      <div class="hero-notice test" id="notice-test">
-        <span>🧪</span><span><strong>Test mode enabled.</strong> No DHL request will be sent and Airtable stays unchanged.</span>
-      </div>
-      <div class="hero-notice prod hidden" id="notice-prod">
-        <span>⚠</span><span><strong>Production mode.</strong> Real DHL shipments will be created and cannot be automatically undone.</span>
-      </div>
-
-      <div class="hero-info">
-        <div class="hero-info-idle" id="hero-info-idle">
-          Ready to run
-          <span>Click below to fetch and process eligible orders from Airtable.</span>
+      <div class="perf"></div>
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <div class="stat-num" id="stat-runs">0</div>
+          <div class="stat-lbl">Runs Today</div>
         </div>
-        <div class="hero-info-progress" id="hero-info-progress">
-          <div class="p-label" id="hero-progress-label">Connecting to DHL…</div>
-          <div class="hero-progress-track"><div class="hero-progress-fill running" id="hero-progress-fill"></div></div>
+        <div class="stat-tile">
+          <div class="stat-num green" id="stat-booked">0</div>
+          <div class="stat-lbl">Booked</div>
         </div>
-        <div class="hero-info-done" id="hero-info-done">
-          <div class="done-icon" id="hero-done-icon">✓</div>
-          <div>
-            <div class="done-text" id="hero-done-text">Booking completed</div>
-            <div class="done-sub" id="hero-done-sub">—</div>
+        <div class="stat-tile">
+          <div class="stat-num red" id="stat-failed">0</div>
+          <div class="stat-lbl">Failed</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-num mono" id="stat-last">Ready</div>
+          <div class="stat-lbl">Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking control -->
+    <div class="sb-card emboss">
+      <div class="sb-section">
+        <div class="sb-label">Booking Mode</div>
+        <div class="mode-seg">
+          <button class="mode-btn test active" id="mode-test" onclick="setMode('test')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Test
+          </button>
+          <button class="mode-btn prod" id="mode-prod" onclick="setMode('prod')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Production
+          </button>
+        </div>
+
+        <div id="notice-test" class="notice test-notice">
+          <svg width="13" height="13" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><strong>Test Mode:</strong> No real DHL call. Fake tracking returned. Airtable untouched.</span>
+        </div>
+        <div id="notice-prod" class="notice prod-notice hidden">
+          <svg width="13" height="13" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span><strong>Production:</strong> Real shipments booked. Cannot be undone.</span>
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <button class="btn-run test-btn" id="btn-book" onclick="confirmRun()">
+          <span id="btn-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          </span>
+          <span id="btn-label">Run Test Booking</span>
+        </button>
+        <div class="prog-wrap" id="progress-wrap">
+          <div class="prog-track"><div class="prog-fill running" id="progress-bar"></div></div>
+          <div class="prog-lbl" id="progress-label">Initialising…</div>
+        </div>
+      </div>
+
+      <div class="sb-section" id="downloads-card">
+        <div class="sb-label" style="color:var(--green)">Downloads Ready</div>
+        <a class="dl-link" href="#" onclick="downloadFile('csv'); return false;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <div><div>DHL Order CSV</div><div class="dl-meta">Latest run</div></div>
+          <svg style="margin-left:auto;color:var(--faint)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </a>
+        <a class="dl-link" href="#" onclick="downloadFile('labels'); return false;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <div><div>Shipping Labels (ZIP)</div><div class="dl-meta">All PDF labels</div></div>
+          <svg style="margin-left:auto;color:var(--faint)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Log Files -->
+    <div class="sb-card emboss" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+      <div class="sb-section" style="padding-bottom:0; flex-shrink:0;">
+        <div class="sb-label" style="margin-bottom:0">Log Files</div>
+      </div>
+      <div class="log-history" id="history-list">
+        <div style="font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:center;padding:10px">Loading…</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- CONTENT -->
+  <section class="content">
+
+    <div class="page-head">
+      <div>
+        <div class="page-title">DHL Shipping Operations</div>
+        <div class="page-sub">Manage bookings, returns and shipment activity</div>
+      </div>
+      <div class="page-rule"></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card emboss">
+        <div class="stat-card-icon sci-neutral">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0123 7.24v9.53a2 2 0 01-1.11 1.79l-8 4a2 2 0 01-1.78 0l-8-4a2 2 0 01-1.11-1.8V7.24a2 2 0 011.11-1.79l8-4a2 2 0 011.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg>
+        </div>
+        <div><div class="stat-card-lbl">Processed</div><div class="stat-card-val" id="rv-total">—</div></div>
+      </div>
+      <div class="stat-card emboss">
+        <div class="stat-card-icon sci-green">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><div class="stat-card-lbl">Succeeded</div><div class="stat-card-val green" id="rv-ok">—</div></div>
+      </div>
+      <div class="stat-card emboss">
+        <div class="stat-card-icon sci-red">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <div><div class="stat-card-lbl">Failed</div><div class="stat-card-val red" id="rv-fail">—</div></div>
+      </div>
+    </div>
+
+    <div class="work-row">
+
+      <!-- Shipment Actions — tabbed Cancel / Return -->
+      <div class="actions-card emboss">
+        <div class="actions-tabs">
+          <button class="action-tab active tab-red" id="tab-cancel" onclick="switchActionTab('cancel')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Cancel Shipment
+          </button>
+          <button class="action-tab tab-blue" id="tab-return" onclick="switchActionTab('return')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+            Return Label
+          </button>
+        </div>
+
+        <div class="actions-panel" id="panel-cancel">
+          <div class="actions-lede">Sends a cancellation to DHL for an AWB that hasn't been picked up yet. On success, the Airtable order resets for re-booking.</div>
+          <input type="text" class="awb-input" id="cancel-awb-input" placeholder="AWB / Tracking Number" onkeydown="if(event.key==='Enter') confirmCancel()"/>
+          <button class="btn-action btn-cancel-ship" id="btn-cancel-ship" onclick="confirmCancel()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            Cancel Shipment
+          </button>
+          <div class="action-result" id="cancel-result">
+            <div class="ar-label" id="cr-label">Result</div>
+            <div class="ar-msg" id="cr-msg">—</div>
+            <div class="ar-hint" id="cr-hint"></div>
+          </div>
+        </div>
+
+        <div class="actions-panel" id="panel-return" hidden>
+          <div class="actions-lede">Books a return label against an already-shipped AWB and uploads it to Airtable once DHL confirms.</div>
+          <input type="text" class="awb-input" id="return-awb-input" placeholder="Original AWB / Tracking Number" onkeydown="if(event.key==='Enter') bookReturn()"/>
+          <button class="btn-action btn-return-lbl" id="btn-return" onclick="bookReturn()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+            Book Return Label
+          </button>
+          <div class="action-result" id="return-result">
+            <div class="ar-label" id="return-label-status">Result</div>
+            <div class="ar-msg" id="return-msg">—</div>
+            <div class="ar-hint" id="return-hint"></div>
           </div>
         </div>
       </div>
 
-      <button class="btn-run test-btn" id="btn-book" onclick="confirmRun()">
-        <span id="btn-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        </span>
-        <span id="btn-label">Run Test Booking</span>
-      </button>
-
-      <div class="hero-foot">
-        <span>Last run &nbsp;<b id="stat-time">—</b></span>
-        <span>Status &nbsp;<b id="stat-last">Ready</b></span>
-      </div>
-    </div>
-
-    <!-- RECENT ACTIVITY — compact friendly feed -->
-    <div class="activity-card card-2">
-      <div class="activity-head">
-        <div class="activity-title">Recent Activity</div>
-        <div class="activity-badge idle" id="activity-badge">Idle</div>
-      </div>
-      <div class="recent-list" id="recent-list">
-        <div class="recent-empty" id="recent-empty">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>
-          <div class="recent-empty-title">No activity yet</div>
-          <div class="recent-empty-sub">Run a booking to monitor DHL processing here.</div>
+      <!-- Console -->
+      <div class="log-card">
+        <div class="log-card-header">
+          <div class="log-card-title">
+            <div class="terminal-dots"><span class="td-red"></span><span class="td-amber"></span><span class="td-green"></span></div>
+            <span class="log-card-name" id="terminal-title">airtable_transform.py</span>
+            <span class="log-badge-status lbs-ready" id="terminal-badge">READY</span>
+          </div>
+          <div class="log-card-actions">
+            <button class="btn-sm" onclick="clearTerminal(true)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Clear
+            </button>
+            <button class="btn-sm" onclick="scrollBottom()">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              Bottom
+            </button>
+          </div>
         </div>
-      </div>
-      <a class="view-full-link" onclick="document.getElementById('system-activity').scrollIntoView({behavior:'smooth'})">View full activity →</a>
-    </div>
-  </div>
-
-  <!-- SHIPMENT TOOLS -->
-  <div>
-    <div class="section-label" style="margin-bottom:12px;">Shipment Tools</div>
-    <div class="tools-row">
-
-      <div class="tool-card card-1">
-        <div class="tool-icon red">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-        </div>
-        <div class="tool-title">Cancel Shipment</div>
-        <div class="tool-desc">Stop an uncollected DHL shipment before it's picked up.</div>
-        <input type="text" class="awb-input" id="cancel-awb-input" placeholder="AWB / Tracking number" onkeydown="if(event.key==='Enter') confirmCancel()"/>
-        <button class="btn-tool red" id="btn-cancel-ship" onclick="confirmCancel()">Cancel Shipment</button>
-        <div class="tool-result" id="cancel-result">
-          <div class="tr-msg" id="cr-msg">—</div>
-          <div class="tr-hint" id="cr-hint"></div>
-        </div>
-      </div>
-
-      <div class="tool-card card-1">
-        <div class="tool-icon blue">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-        </div>
-        <div class="tool-title">Return Label</div>
-        <div class="tool-desc">Create a return label for an order that already shipped.</div>
-        <input type="text" class="awb-input" id="return-awb-input" placeholder="Original AWB / Tracking number" onkeydown="if(event.key==='Enter') bookReturn()"/>
-        <button class="btn-tool blue" id="btn-return" onclick="bookReturn()">Book Return</button>
-        <div class="tool-result" id="return-result">
-          <div class="tr-msg" id="return-msg">—</div>
-          <div class="tr-hint" id="return-hint"></div>
-        </div>
-      </div>
-
-      <div class="tool-card card-1">
-        <div class="tool-icon gold">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </div>
-        <div class="tool-title">Downloads</div>
-        <div class="tool-desc" id="dl-desc">Latest booking run.</div>
-        <div id="downloads-list">
-          <div class="dl-empty">Run a booking to generate files.</div>
+        <div class="terminal-body carved" id="terminal">
+          <div class="term-empty" id="terminal-empty">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <div class="term-empty-title">Waiting for activity</div>
+            <div class="term-empty-sub">Run a booking to see activity here.</div>
+          </div>
         </div>
       </div>
 
     </div>
-  </div>
-
-  <!-- SYSTEM ACTIVITY — friendly timeline replaces the terminal -->
-  <div class="system-card card-1" id="system-activity">
-    <div class="system-head">
-      <div class="system-title-wrap">
-        <div class="system-title">System Activity</div>
-        <div class="activity-badge idle" id="system-badge">Idle</div>
-      </div>
-      <div class="system-actions">
-        <button class="link-btn" onclick="openRawDrawer()">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l10-10M17 7H8m9 0v9"/></svg>
-          View raw logs
-        </button>
-        <button class="link-btn" onclick="clearTimeline()">Clear activity</button>
-      </div>
-    </div>
-    <div class="timeline-body" id="timeline-body">
-      <div class="tl-empty" id="tl-empty">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>
-        <div class="tl-empty-title">No activity yet</div>
-        <div class="tl-empty-sub">Run a booking to monitor DHL processing here.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- LOG FILES -->
-  <div class="filelist-card card-1">
-    <div class="filelist-head">
-      <div class="section-label" style="margin-bottom:0;">Log Files</div>
-    </div>
-    <div class="log-history" id="history-list">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;padding:10px">Loading…</div>
-    </div>
-  </div>
-
+  </section>
 </main>
-
-<!-- RAW LOGS DRAWER -->
-<div class="drawer-overlay" id="drawer-overlay" onclick="closeRawDrawer()"></div>
-<div class="drawer" id="raw-drawer">
-  <div class="drawer-header">
-    <div class="drawer-title-wrap">
-      <div class="terminal-dots"><span class="td-red"></span><span class="td-amber"></span><span class="td-green"></span></div>
-      <span class="drawer-name" id="terminal-title">airtable_transform.py</span>
-    </div>
-    <button class="drawer-close" onclick="closeRawDrawer()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body" id="terminal">
-    <div class="drawer-raw-empty" id="terminal-empty">Raw console output will appear here once a booking run starts.</div>
-  </div>
-</div>
 
 <!-- TOAST -->
 <div id="toast"></div>
 
-<!-- CONFIRM RUN OVERLAY — plain language, no CLI flags -->
+<!-- CONFIRM OVERLAY -->
 <div class="overlay" id="confirm-overlay">
   <div class="dialog">
     <div class="dialog-icon di-amber" id="confirm-icon-wrap">
-      <svg id="confirm-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <svg id="confirm-icon-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
     </div>
-    <div class="dialog-title" id="confirm-title">Run a test booking?</div>
-    <div class="dialog-body" id="confirm-body">This will run in test mode. No real DHL call will be made and Airtable will not be updated.</div>
-    <ul class="dialog-list" id="confirm-list" style="display:none;"></ul>
+    <div class="dialog-title" id="confirm-title">Run Test Booking?</div>
+    <div class="dialog-body" id="confirm-body"></div>
     <div class="dialog-actions">
       <button class="btn-dlg-cancel" onclick="closeConfirm()">Cancel</button>
-      <button class="btn-dlg-ok blue" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
+      <button class="btn-dlg-ok orange" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
     </div>
   </div>
 </div>
@@ -746,16 +975,14 @@ document.addEventListener('DOMContentLoaded', () => { document.documentElement.s
 <div class="overlay" id="cancel-confirm-overlay">
   <div class="dialog">
     <div class="dialog-icon di-red">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
     </div>
-    <div class="dialog-title">Cancel this shipment?</div>
-    <div class="dialog-body">
-      This will ask DHL to cancel AWB <strong id="cancel-confirm-awb">—</strong>. If DHL confirms, the Airtable order resets for re-booking.
+    <div class="dialog-title">Cancel Shipment?</div>
+    <div class="dialog-body" id="cancel-confirm-body">
+      This will send a <strong>DELETE</strong> request to DHL for AWB <strong id="cancel-confirm-awb">—</strong>.<br><br>
+      If DHL confirms, the Airtable order will be reset for re-booking.<br><br>
+      ⚠️ Only works <strong>before DHL picks up / scans</strong> the parcel. If already scanned, call DHL UAE: <strong>+971 600 567 567</strong>
     </div>
-    <ul class="dialog-list">
-      <li>Only works before DHL picks up or scans the parcel</li>
-      <li>If it's already scanned, call DHL UAE: <strong>+971 600 567 567</strong></li>
-    </ul>
     <div class="dialog-actions">
       <button class="btn-dlg-cancel" onclick="closeCancelConfirm()">Go Back</button>
       <button class="btn-dlg-ok red" onclick="executeCancelShipment()">Yes, Cancel It</button>
@@ -765,27 +992,36 @@ document.addEventListener('DOMContentLoaded', () => { document.documentElement.s
 
 <script>
 // ════════════════════════════════════════════
-//  CONFIG / STATE
+//  CONFIG
 // ════════════════════════════════════════════
 const API_BASE = window.location.origin;
-let currentMode = 'test';
-let isRunning = false;
-let eventSource = null;
-const sessionStats = { runs: 0, booked: 0, failed: 0 };
-let timelineHasItems = false;
 
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let currentMode  = 'test';
+let isRunning    = false;
+let eventSource  = null;
+let lastRunTimestamp = null;
+const sessionStats = { runs: 0, booked: 0, failed: 0 };
+
+// ════════════════════════════════════════════
+//  DOM REFS
+// ════════════════════════════════════════════
+const $term    = document.getElementById('terminal');
+const $empty   = document.getElementById('terminal-empty');
+const $ttitle  = document.getElementById('terminal-title');
+const $tbadge  = document.getElementById('terminal-badge');
 const $btnBook = document.getElementById('btn-book');
 const $btnIcon = document.getElementById('btn-icon');
 const $btnLbl  = document.getElementById('btn-label');
+const $progW   = document.getElementById('progress-wrap');
+const $progB   = document.getElementById('progress-bar');
+const $progL   = document.getElementById('progress-label');
 const $toast   = document.getElementById('toast');
-const $term    = document.getElementById('terminal');
-const $termEmpty = document.getElementById('terminal-empty');
-const $ttitle  = document.getElementById('terminal-title');
 
-const SVG_TEST = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
-const SVG_PROD = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
-
-document.getElementById('page-date').textContent = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+const SVG_TEST = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
+const SVG_PROD = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
 
 // ════════════════════════════════════════════
 //  API HEALTH
@@ -793,104 +1029,114 @@ document.getElementById('page-date').textContent = new Date().toLocaleDateString
 async function checkHealth() {
   try {
     const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
-    setStatus(res.ok ? 'online' : 'error', res.ok ? 'API Online' : 'API Error');
-  } catch { setStatus('error', 'API Offline'); }
+    const ok  = res.ok;
+    setStatus(ok ? 'online' : 'error', ok ? 'API Online' : 'API Error');
+  } catch {
+    setStatus('error', 'API Offline');
+  }
 }
 function setStatus(state, text) {
-  document.getElementById('status-dot').className = 'status-dot ' + state;
+  document.getElementById('status-dot').className  = 'status-dot ' + state;
   document.getElementById('status-text').textContent = text;
 }
 
 // ════════════════════════════════════════════
-//  MODE — single toggle, lives in the booking hero;
-//  header shows a read-only environment pill
+//  MODE
 // ════════════════════════════════════════════
 function setMode(mode) {
   currentMode = mode;
-  const isProd = mode === 'prod';
-
-  document.getElementById('env-btn-test').classList.toggle('active', !isProd);
-  document.getElementById('env-btn-prod').classList.toggle('active', isProd);
-  document.getElementById('notice-test').classList.toggle('hidden', isProd);
-  document.getElementById('notice-prod').classList.toggle('hidden', !isProd);
-  document.getElementById('hero-env-badge').className = 'env-badge ' + (isProd ? 'prod' : 'test');
-  document.getElementById('hero-env-badge').textContent = isProd ? 'Production Environment' : 'Test Environment';
-
-  const pill = document.getElementById('env-pill');
-  pill.className = 'status-pill ' + (isProd ? 'mode-prod' : 'mode-test');
-  document.getElementById('env-pill-text').textContent = isProd ? 'Production' : 'Test Mode';
-
-  if (isProd) {
-    $btnBook.className = 'btn-run prod-btn';
-    $btnIcon.innerHTML = SVG_PROD;
-    $btnLbl.textContent = 'Book Real Shipments';
+  document.getElementById('mode-test').className = 'mode-btn test' + (mode === 'test' ? ' active' : '');
+  document.getElementById('mode-prod').className = 'mode-btn prod' + (mode === 'prod' ? ' active' : '');
+  document.getElementById('hc-test').className = 'hdr-seg-btn' + (mode === 'test' ? ' active-test' : '');
+  document.getElementById('hc-prod').className = 'hdr-seg-btn' + (mode === 'prod' ? ' active-prod' : '');
+  document.getElementById('notice-test').classList.toggle('hidden', mode !== 'test');
+  document.getElementById('notice-prod').classList.toggle('hidden', mode !== 'prod');
+  if (mode === 'prod') {
+    $btnBook.className   = 'btn-run prod-btn';
+    $btnIcon.innerHTML   = SVG_PROD;
+    $btnLbl.textContent  = 'Book Real Shipments';
   } else {
-    $btnBook.className = 'btn-run test-btn';
-    $btnIcon.innerHTML = SVG_TEST;
-    $btnLbl.textContent = 'Run Test Booking';
+    $btnBook.className   = 'btn-run test-btn';
+    $btnIcon.innerHTML   = SVG_TEST;
+    $btnLbl.textContent  = 'Run Test Booking';
   }
 }
 
 // ════════════════════════════════════════════
-//  CONFIRM DIALOG (RUN) — plain language, no CLI flags
+//  SHIPMENT ACTIONS TABS
+// ════════════════════════════════════════════
+function switchActionTab(tab) {
+  document.getElementById('tab-cancel').classList.toggle('active', tab === 'cancel');
+  document.getElementById('tab-return').classList.toggle('active', tab === 'return');
+  document.getElementById('panel-cancel').hidden = tab !== 'cancel';
+  document.getElementById('panel-return').hidden = tab !== 'return';
+}
+
+// ════════════════════════════════════════════
+//  CONFIRM DIALOG (RUN)
 // ════════════════════════════════════════════
 function confirmRun() {
   if (isRunning) return;
-  const wrap  = document.getElementById('confirm-icon-wrap');
-  const svg   = document.getElementById('confirm-icon-svg');
-  const title = document.getElementById('confirm-title');
-  const body  = document.getElementById('confirm-body');
-  const list  = document.getElementById('confirm-list');
-  const okBtn = document.getElementById('confirm-ok-btn');
+  const overlay = document.getElementById('confirm-overlay');
+  const wrap    = document.getElementById('confirm-icon-wrap');
+  const svg     = document.getElementById('confirm-icon-svg');
+  const title   = document.getElementById('confirm-title');
+  const body    = document.getElementById('confirm-body');
+  const okBtn   = document.getElementById('confirm-ok-btn');
 
   if (currentMode === 'prod') {
     wrap.className = 'dialog-icon di-amber';
-    svg.setAttribute('stroke', 'var(--copper)');
+    svg.setAttribute('stroke','var(--amber)');
     svg.innerHTML = `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`;
-    title.textContent = 'Book real DHL shipments?';
-    body.innerHTML = `You're about to create real DHL shipments for your eligible Airtable orders. This will:`;
-    list.style.display = 'block';
-    list.innerHTML = `<li>Create DHL shipment labels</li><li>Update Airtable orders</li><li>Generate tracking numbers</li><li>This cannot be automatically undone</li>`;
-    okBtn.textContent = 'Book Shipments';
+    title.textContent = 'Book Real Shipments?';
+    body.innerHTML = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
+    okBtn.textContent = 'Confirm & Book';
     okBtn.className = 'btn-dlg-ok orange';
   } else {
     wrap.className = 'dialog-icon di-blue';
-    svg.setAttribute('stroke', 'var(--blue)');
+    svg.setAttribute('stroke','var(--blue)');
     svg.innerHTML = `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>`;
-    title.textContent = 'Run a test booking?';
-    body.textContent = 'This runs in test mode. No real DHL call will be made, fake tracking numbers are returned, and Airtable will not be updated.';
-    list.style.display = 'none';
+    title.textContent = 'Run Test Booking?';
+    body.innerHTML = 'This will run in <span class="blue">TEST MODE</span>.<br><br>No real DHL call will be made. Fake tracking numbers will be returned. Airtable will NOT be updated.';
     okBtn.textContent = 'Run Test';
     okBtn.className = 'btn-dlg-ok blue';
   }
-  document.getElementById('confirm-overlay').classList.add('show');
+  overlay.classList.add('show');
 }
 function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
 
 // ════════════════════════════════════════════
-//  EXECUTE RUN (SSE)
+//  EXECUTE RUN (SSE Streaming)
 // ════════════════════════════════════════════
 function executeRun() {
   closeConfirm();
   if (isRunning) return;
 
   setRunning(true);
-  clearRawTerminal(false);
-  document.getElementById('downloads-list').innerHTML = '<div class="dl-empty">Run in progress…</div>';
+  clearTerminal(false);
+  document.getElementById('downloads-card').classList.remove('visible');
 
-  const testMode = currentMode === 'test';
+  const testMode = (currentMode === 'test');
   const url = `${API_BASE}/stream-dhl?test=${testMode ? '1' : '0'}`;
-  $ttitle.textContent = testMode ? 'airtable_transform.py --send-to-dhl --test' : 'airtable_transform.py --send-to-dhl';
+
+  $ttitle.textContent = testMode
+    ? 'airtable_transform.py --send-to-dhl --test'
+    : 'airtable_transform.py --send-to-dhl';
 
   if (eventSource) eventSource.close();
   eventSource = new EventSource(url);
-  eventSource.onmessage = (e) => {
-    try { handleSSEMessage(JSON.parse(e.data)); }
-    catch { appendRaw(e.data, 'default'); }
+
+  eventSource.onmessage = function(e) {
+    try {
+      const msg = JSON.parse(e.data);
+      handleSSEMessage(msg);
+    } catch(err) {
+      appendLog(e.data, 'default');
+    }
   };
-  eventSource.onerror = () => {
-    appendRaw('Connection to API lost.', 'error');
-    addTimelineItem('err', 'Connection to API lost');
+
+  eventSource.onerror = function() {
+    appendLog('Connection to API lost.', 'error');
     finishRun(false);
   };
 }
@@ -898,18 +1144,15 @@ function executeRun() {
 function handleSSEMessage(msg) {
   switch (msg.type) {
     case 'start':
-      appendRaw(`\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
-      addTimelineItem('prog', `Booking started (${msg.mode} mode)`);
+      appendLog(`\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
       break;
-    case 'log': {
-      appendRaw(msg.line);
+    case 'log':
+      appendLog(msg.line);
       const m = msg.line.match(/(\d+)\/(\d+)/);
       if (m) {
         const pct = Math.round((parseInt(m[1]) / parseInt(m[2])) * 100);
-        setHeroProgress(pct, `Processing order ${m[1]} / ${m[2]}`);
-        addTimelineItem('prog', `Processing order ${m[1]} / ${m[2]}`);
+        setProgress(pct, `${m[1]} / ${m[2]} shipments`);
       }
-      if (msg.line.includes('Connecting to DHL')) addTimelineItem('prog', 'Connecting to DHL');
       if (msg.line.includes('Success')) {
         const n = msg.line.match(/Success\s*:\s*(\d+)/);
         if (n) updateResultCard('ok', n[1]);
@@ -922,35 +1165,28 @@ function handleSSEMessage(msg) {
         const n = msg.line.match(/(\d+)\s+order/);
         if (n) updateResultCard('total', n[1]);
       }
-      if (msg.line.includes('Fake tracking') || msg.line.includes('AWB:')) {
-        sessionStats.booked++;
-      }
-      if (msg.line.includes('DHL FAILED') || msg.line.includes('DHL Error')) {
-        sessionStats.failed++;
-        addTimelineItem('err', 'A shipment failed — see raw logs for details');
+      if (msg.line.includes('DHL-Order-File-')) {
+        const t = msg.line.match(/DHL-Order-File-(\d{8}_\d{6})/);
+        if (t) lastRunTimestamp = t[1];
       }
       break;
-    }
     case 'done':
-      sessionStats.runs++;
-      document.getElementById('stat-time').textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
       if (msg.success) {
-        appendRaw('\n  Run completed successfully.', 'success');
-        addTimelineItem('ok', 'Booking completed');
-        addTimelineItem('ok', 'Shipping labels generated');
+        appendLog('\n  Run completed successfully.', 'success');
         showToast('Booking run completed!', 'success');
         showDownloads();
       } else {
-        appendRaw('\n  Run completed with errors.', 'error');
-        addTimelineItem('err', 'Run completed with errors');
+        appendLog('\n  Run completed with errors.', 'error');
         showToast('Run finished with failures.', 'error');
       }
+      sessionStats.runs++;
+      document.getElementById('stat-runs').textContent = sessionStats.runs;
+      document.getElementById('stat-time').textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
       finishRun(msg.success);
       loadHistory();
       break;
     case 'error':
-      appendRaw(`\n  ${msg.message}`, 'error');
-      addTimelineItem('err', msg.message);
+      appendLog(`\n  ${msg.message}`, 'error');
       showToast(msg.message, 'error');
       finishRun(false);
       break;
@@ -958,88 +1194,14 @@ function handleSSEMessage(msg) {
 }
 
 // ════════════════════════════════════════════
-//  RECENT ACTIVITY + SYSTEM ACTIVITY TIMELINE
-// ════════════════════════════════════════════
-function iconGlyph(type) { return { ok: '✓', prog: '→', err: '✕', info: 'ℹ' }[type] || 'ℹ'; }
-
-function addTimelineItem(type, text) {
-  timelineHasItems = true;
-  const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-
-  document.getElementById('tl-empty')?.remove();
-  const tlBody = document.getElementById('timeline-body');
-  const tlItem = document.createElement('div');
-  tlItem.className = 'tl-item';
-  tlItem.innerHTML = `<div class="tl-time">${time}</div><div class="tl-icon ${type}">${iconGlyph(type)}</div><div class="tl-text">${text}</div>`;
-  tlBody.insertBefore(tlItem, tlBody.firstChild);
-
-  document.getElementById('recent-empty')?.remove();
-  const recentList = document.getElementById('recent-list');
-  const rItem = document.createElement('div');
-  rItem.className = 'recent-item';
-  rItem.innerHTML = `<div class="recent-icon ${type}">${iconGlyph(type)}</div><div><div class="recent-text">${text}</div><div class="recent-time">${time}</div></div>`;
-  recentList.insertBefore(rItem, recentList.firstChild);
-  while (recentList.children.length > 5) recentList.removeChild(recentList.lastChild);
-}
-function clearTimeline() {
-  document.getElementById('timeline-body').innerHTML = `<div class="tl-empty" id="tl-empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg><div class="tl-empty-title">No activity yet</div><div class="tl-empty-sub">Run a booking to monitor DHL processing here.</div></div>`;
-  document.getElementById('recent-list').innerHTML = `<div class="recent-empty" id="recent-empty"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg><div class="recent-empty-title">No activity yet</div><div class="recent-empty-sub">Run a booking to monitor DHL processing here.</div></div>`;
-  timelineHasItems = false;
-}
-function setActivityBadge(state) {
-  const labels = { idle: 'Idle', running: 'Running', done: 'Completed', error: 'Error' };
-  ['activity-badge', 'system-badge'].forEach(id => {
-    const el = document.getElementById(id);
-    el.className = 'activity-badge ' + state;
-    el.textContent = labels[state];
-  });
-}
-
-// ════════════════════════════════════════════
-//  HERO INFO PANEL STATES
-// ════════════════════════════════════════════
-function setHeroProgress(pct, label) {
-  document.getElementById('hero-info-idle').style.display = 'none';
-  document.getElementById('hero-info-done').classList.remove('visible');
-  const p = document.getElementById('hero-info-progress');
-  p.classList.add('visible');
-  document.getElementById('hero-progress-label').textContent = label;
-  const fill = document.getElementById('hero-progress-fill');
-  fill.classList.remove('running');
-  fill.style.width = pct + '%';
-}
-function setHeroDone(success, text, sub) {
-  document.getElementById('hero-info-idle').style.display = 'none';
-  document.getElementById('hero-info-progress').classList.remove('visible');
-  const d = document.getElementById('hero-info-done');
-  d.classList.add('visible');
-  d.classList.toggle('error', !success);
-  document.getElementById('hero-done-icon').textContent = success ? '✓' : '✕';
-  document.getElementById('hero-done-text').textContent = text;
-  document.getElementById('hero-done-sub').textContent = sub;
-}
-function resetHeroIdle() {
-  document.getElementById('hero-info-idle').style.display = 'block';
-  document.getElementById('hero-info-progress').classList.remove('visible');
-  document.getElementById('hero-info-done').classList.remove('visible');
-}
-
-// ════════════════════════════════════════════
 //  DOWNLOADS
 // ════════════════════════════════════════════
-function showDownloads() {
-  document.getElementById('downloads-list').innerHTML = `
-    <a class="dl-link" href="#" onclick="downloadFile('csv'); return false;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <div><div>DHL Order CSV</div><div class="dl-meta">Latest run</div></div>
-    </a>
-    <a class="dl-link" href="#" onclick="downloadFile('labels'); return false;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-      <div><div>Shipping Labels (ZIP)</div><div class="dl-meta">All PDF labels</div></div>
-    </a>`;
-}
+function showDownloads() { document.getElementById('downloads-card').classList.add('visible'); }
 function downloadFile(type) {
-  const url = type === 'csv' ? `${API_BASE}/download/csv` : `${API_BASE}/download/labels`;
+  let url;
+  if (type === 'csv')    url = `${API_BASE}/download/csv`;
+  if (type === 'labels') url = `${API_BASE}/download/labels`;
+  if (!url) return;
   showToast(`Preparing ${type === 'csv' ? 'CSV' : 'Labels ZIP'} for download…`, 'info');
   const a = document.createElement('a');
   a.href = url; a.style.display = 'none';
@@ -1047,7 +1209,7 @@ function downloadFile(type) {
 }
 
 // ════════════════════════════════════════════
-//  RAW TERMINAL (now inside the drawer)
+//  TERMINAL HELPERS
 // ════════════════════════════════════════════
 function classifyLine(line) {
   if (!line) return 'muted';
@@ -1058,53 +1220,64 @@ function classifyLine(line) {
   if (line.startsWith('=') || line.startsWith('-') || line.includes('BATCH') || line.includes('Starting')) return 'header';
   return 'default';
 }
-function appendRaw(line, forcedClass) {
-  $termEmpty.style.display = 'none';
+function appendLog(line, forcedClass) {
+  $empty.style.display = 'none';
+  const cls = forcedClass || classifyLine(line);
   const span = document.createElement('span');
-  span.className = 'log-line ' + (forcedClass || classifyLine(line));
+  span.className = 'log-line ' + cls;
   span.textContent = line + '\n';
   $term.appendChild(span);
   $term.scrollTop = $term.scrollHeight;
+  if (line.includes('Fake tracking') || line.includes('AWB:')) {
+    sessionStats.booked++;
+    document.getElementById('stat-booked').textContent = sessionStats.booked;
+  }
+  if (line.includes('DHL FAILED') || line.includes('DHL Error')) {
+    sessionStats.failed++;
+    document.getElementById('stat-failed').textContent = sessionStats.failed;
+  }
 }
-function clearRawTerminal(showEmpty = true) {
+function clearTerminal(showEmpty = true) {
   $term.querySelectorAll('.log-line').forEach(el => el.remove());
-  if (showEmpty) $termEmpty.style.display = 'block';
+  if (showEmpty) $empty.style.display = 'flex';
 }
-function openRawDrawer() {
-  document.getElementById('drawer-overlay').classList.add('show');
-  document.getElementById('raw-drawer').classList.add('show');
-}
-function closeRawDrawer() {
-  document.getElementById('drawer-overlay').classList.remove('show');
-  document.getElementById('raw-drawer').classList.remove('show');
-}
+function scrollBottom() { $term.scrollTop = $term.scrollHeight; }
 
 // ════════════════════════════════════════════
 //  RUN STATE
 // ════════════════════════════════════════════
+function setProgress(pct, label) {
+  $progB.classList.remove('running');
+  $progB.style.width = pct + '%';
+  $progL.textContent = label;
+}
 function setRunning(running) {
   isRunning = running;
   $btnBook.disabled = running;
   if (running) {
-    setHeroProgress(0, 'Starting…');
+    $progW.classList.add('visible');
+    $progB.classList.add('running');
+    $progL.textContent = 'Starting…';
     $btnIcon.innerHTML = `<span class="spinner"></span>`;
     $btnLbl.textContent = 'Running…';
-    setActivityBadge('running');
+    setStatus('online', 'API Online');
     document.getElementById('stat-last').textContent = 'Running';
+    $tbadge.textContent = 'RUNNING';
+    $tbadge.className   = 'log-badge-status lbs-running';
   }
 }
 function finishRun(success) {
   isRunning = false;
   eventSource?.close();
+  $progB.classList.remove('running');
+  setProgress(100, success ? 'Completed successfully' : 'Completed with errors');
   $btnBook.disabled = false;
   $btnIcon.innerHTML = currentMode === 'prod' ? SVG_PROD : SVG_TEST;
   $btnLbl.textContent = currentMode === 'prod' ? 'Book Real Shipments' : 'Run Test Booking';
   document.getElementById('stat-last').textContent = success ? 'Done' : 'Error';
-  setActivityBadge(success ? 'done' : 'error');
-  const total = document.getElementById('rv-total').textContent;
-  const ok = document.getElementById('rv-ok').textContent;
-  const fail = document.getElementById('rv-fail').textContent;
-  setHeroDone(success, success ? 'Booking completed' : 'Booking finished with errors', `${ok !== '—' ? ok : '0'} succeeded · ${fail !== '—' ? fail : '0'} failed`);
+  $tbadge.textContent = success ? 'DONE' : 'ERROR';
+  $tbadge.className   = success ? 'log-badge-status lbs-done' : 'log-badge-status lbs-error';
+  setStatus('online', 'API Online');
 }
 function updateResultCard(type, value) { document.getElementById(`rv-${type}`).textContent = value; }
 
@@ -1119,6 +1292,7 @@ function showToast(message, type = 'info') {
     error:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
     info:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
   };
+  $toast.className = '';
   $toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
   $toast.className = type;
   requestAnimationFrame(() => $toast.classList.add('show'));
@@ -1130,14 +1304,14 @@ function showToast(message, type = 'info') {
 // ════════════════════════════════════════════
 async function loadHistory() {
   try {
-    const res = await fetch(`${API_BASE}/logs/list`);
+    const res  = await fetch(`${API_BASE}/logs/list`);
     const data = await res.json();
     const list = document.getElementById('history-list');
     if (!data.logs || data.logs.length === 0) {
       list.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;padding:12px;">No log files yet.</div>`;
       return;
     }
-    const logIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    const logIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
     const errIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
     list.innerHTML = data.logs.map(f => {
       const isFailed = f.filename.startsWith('failed_orders');
@@ -1158,40 +1332,19 @@ async function loadHistory() {
 // ════════════════════════════════════════════
 //  RETURN LABEL
 // ════════════════════════════════════════════
-async function bookReturn() {
-  const awb = document.getElementById('return-awb-input').value.trim();
-  if (!awb) {
-    document.getElementById('return-msg').textContent = 'Please enter an AWB number.';
-    document.getElementById('return-hint').textContent = '';
-    document.getElementById('return-result').className = 'tool-result visible err';
-    return;
-  }
-  const btn = document.getElementById('btn-return');
-  btn.disabled = true; btn.textContent = 'Booking…';
-  document.getElementById('return-result').className = 'tool-result';
-  try {
-    const resp = await fetch('/book-return', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ awb }) });
-    const data = await resp.json();
-    const msgEl = document.getElementById('return-msg');
-    const hintEl = document.getElementById('return-hint');
-    const resultEl = document.getElementById('return-result');
-    if (data.success) {
-      msgEl.textContent = `Return label booked — AWB ${data.return_awb}`;
-      hintEl.textContent = `Order: ${data.order_number} — uploaded to Airtable`;
-      resultEl.className = 'tool-result visible ok';
-      addTimelineItem('ok', `Return label booked for order ${data.order_number}`);
-    } else {
-      msgEl.textContent = data.error || 'Unknown error';
-      hintEl.textContent = 'Check the original AWB and try again.';
-      resultEl.className = 'tool-result visible err';
-    }
-  } catch (err) {
-    document.getElementById('return-msg').textContent = String(err);
-    document.getElementById('return-hint').textContent = '';
-    document.getElementById('return-result').className = 'tool-result visible err';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Book Return';
-  }
+async function bookReturn(){
+  const awb=document.getElementById('return-awb-input').value.trim();
+  if(!awb){document.getElementById('return-label-status').textContent='Error';document.getElementById('return-msg').textContent='Please enter an AWB number.';document.getElementById('return-result').className='action-result visible err';return}
+  const btn=document.getElementById('btn-return');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Booking…';document.getElementById('return-result').className='action-result';
+  try{
+    const resp=await fetch('/book-return',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({awb})});
+    const data=await resp.json();
+    const statusEl=document.getElementById('return-label-status');const msgEl=document.getElementById('return-msg');const hintEl=document.getElementById('return-hint');
+    const resultEl=document.getElementById('return-result');
+    if(data.success){statusEl.textContent='Return Label Booked';msgEl.textContent=`Return AWB: ${data.return_awb}`;hintEl.textContent=`Order: ${data.order_number} — Label uploaded to Airtable`;resultEl.className='action-result visible ok';}
+    else{statusEl.textContent='Failed';msgEl.textContent=data.error||'Unknown error';hintEl.textContent='Check the original AWB and try again.';resultEl.className='action-result visible err';}
+  }catch(err){document.getElementById('return-label-status').textContent='Error';document.getElementById('return-msg').textContent=err.message;document.getElementById('return-result').className='action-result visible err';}
+  finally{btn.disabled=false;btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Book Return Label'}
 }
 
 // ════════════════════════════════════════════
@@ -1199,7 +1352,11 @@ async function bookReturn() {
 // ════════════════════════════════════════════
 function confirmCancel() {
   const awb = document.getElementById('cancel-awb-input').value.trim();
-  if (!awb) { showToast('Enter an AWB / tracking number first.', 'error'); document.getElementById('cancel-awb-input').focus(); return; }
+  if (!awb) {
+    showToast('Enter an AWB / tracking number first.', 'error');
+    document.getElementById('cancel-awb-input').focus();
+    return;
+  }
   document.getElementById('cancel-confirm-awb').textContent = awb;
   document.getElementById('cancel-confirm-overlay').classList.add('show');
 }
@@ -1209,34 +1366,51 @@ async function executeCancelShipment() {
   closeCancelConfirm();
   const awb = document.getElementById('cancel-awb-input').value.trim();
   const btn = document.getElementById('btn-cancel-ship');
-  btn.disabled = true; btn.textContent = 'Cancelling…';
-  document.getElementById('cancel-result').className = 'tool-result';
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Cancelling…`;
+  document.getElementById('cancel-result').className = 'action-result';
+
   try {
-    const res = await fetch(`${API_BASE}/cancel-dhl`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tracking_number: awb }) });
+    const res  = await fetch(`${API_BASE}/cancel-dhl`, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ tracking_number: awb }),
+    });
     const data = await res.json();
-    const msgEl = document.getElementById('cr-msg');
-    const hintEl = document.getElementById('cr-hint');
+
     const resultEl = document.getElementById('cancel-result');
+    const labelEl  = document.getElementById('cr-label');
+    const msgEl    = document.getElementById('cr-msg');
+    const hintEl   = document.getElementById('cr-hint');
+
     if (data.dhl_cancelled) {
-      resultEl.className = 'tool-result visible ok';
-      msgEl.textContent = data.message || 'Shipment cancelled successfully.';
-      hintEl.textContent = data.airtable_reset === true ? 'Airtable cleared — order can be re-booked.' : data.airtable_reset === false ? 'Airtable reset failed — clear manually.' : '';
+      resultEl.className  = 'action-result visible ok';
+      labelEl.textContent = 'Cancelled';
+      msgEl.textContent   = data.message || 'Shipment cancelled successfully.';
+      hintEl.textContent  = data.airtable_reset === true
+        ? 'Airtable cleared — order can now be re-booked.'
+        : data.airtable_reset === false
+          ? 'Airtable reset failed — clear manually.'
+          : '';
       showToast(`AWB ${awb} cancelled`, 'success');
-      addTimelineItem('ok', `Shipment ${awb} cancelled`);
       document.getElementById('cancel-awb-input').value = '';
     } else {
-      resultEl.className = 'tool-result visible err';
-      msgEl.textContent = data.error || 'DHL rejected the cancellation.';
-      hintEl.textContent = data.guidance || 'If parcel is in transit: call DHL UAE +971 600 567 567 with the AWB number.';
+      resultEl.className  = 'action-result visible err';
+      labelEl.textContent = 'Cancellation Failed';
+      msgEl.textContent   = data.error || 'DHL rejected the cancellation.';
+      hintEl.textContent  = data.guidance || 'If parcel is in transit: call DHL UAE +971 600 567 567 with the AWB number.';
       showToast('Cancellation failed — see details below.', 'error');
     }
   } catch (err) {
-    document.getElementById('cancel-result').className = 'tool-result visible err';
-    document.getElementById('cr-msg').textContent = String(err);
-    document.getElementById('cr-hint').textContent = 'Check the API server is running.';
+    document.getElementById('cancel-result').className = 'action-result visible err';
+    document.getElementById('cr-label').textContent = 'Network Error';
+    document.getElementById('cr-msg').textContent   = String(err);
+    document.getElementById('cr-hint').textContent  = 'Check the API server is running.';
     showToast('Network error — could not reach API.', 'error');
   } finally {
-    btn.disabled = false; btn.textContent = 'Cancel Shipment';
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Cancel Shipment`;
   }
 }
 
