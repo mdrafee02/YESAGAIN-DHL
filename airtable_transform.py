@@ -1599,13 +1599,15 @@ def build_dhl_payload(row):
         },
         "content": {
             "packages": [
+                # One package entry per physical box — generates 1/N, 2/N ... labels
                 {
-                    "weight"    : float(row.get("Total Weight (Required)", F["weight"])),
+                    "weight"    : F["weight"],  # per-unit weight (not total)
                     "dimensions": {"length": F["length"], "width": F["width"], "height": F["height"]},
                     "customerReferences": [
-                        {"typeCode": "CU",  "value": order_id[:35]},
+                        {"typeCode": "CU", "value": order_id[:35]},
                     ]
                 }
+                for _ in range(itm_qty)  # repeat once per unit → N labels
             ],
             "isCustomsDeclarable"   : False if is_domestic else True,
             "declaredValue"         : total_val,
@@ -1631,6 +1633,15 @@ def build_dhl_payload(row):
                     "invoice": {
                         "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
                         "date"  : datetime.now().strftime("%Y-%m-%d"),
+                        "customerDataTextEntries": [
+                            {
+                                "textEntry": (
+                                    f"Payer of Duties/Taxes: {importer_party['Company']}"
+                                    + (f" | VAT: {importer_vat}" if importer_vat else "")
+                                    + (f" | Account: {duty_account}" if duty_account else "")
+                                )
+                            }
+                        ],
                     },
                     "exportReason": F["export_reason"],
                 },
@@ -2783,7 +2794,7 @@ if __name__ == "__main__":
                                     airtable_rec_id, order_number, tracking_number, dest_country
                                 )
                                 print(f"  Label    ✅  Uploaded")
-                                if not is_domestic:
+                                if dest_country != "AE":
                                     print(f"  Invoice  ✅  Uploaded")
                                 print(f"  Checkbox {'✅' if step3_ok else '❌'}  {'Ticked' if step3_ok else 'Failed'}  │  {tracking_url}")
                             else:
