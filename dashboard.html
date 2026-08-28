@@ -6,728 +6,430 @@
 <title>YesAgain FZC — DHL Booking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ═════════════════════════════════════════════════════════════
-   RESET + TOKENS
-   Direction: "Premium ledger" — cream manifest paper, deep
-   embossed 3D cards, editorial calm. Serif display (Fraunces)
-   for numerals/headings, Inter for UI, mono for data/AWB/logs.
-═════════════════════════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-:root {
-  /* Paper / surfaces */
-  --paper:      #EBE7DC;   /* page background — cool stone-ivory */
-  --paper-2:    #F7F4EC;   /* raised card surface */
-  --paper-3:    #FFFFFF;   /* topmost highlight (inputs, chrome) */
-  --ink:        #211E19;
-  --ink-2:      #4A453C;
-  --muted:      #85806F;
-  --faint:      #B2AC97;
-  --border:     #DBD5C4;
-  --border-hi:  #C7BFA8;
-
-  /* Brass — primary / test-mode accent (ink-stamp gold) */
-  --brass:      #93650E;
-  --brass-hi:   #C4922F;
-  --brass-dim:  #F1E4C4;
-  --brass-bd:   #DEC488;
-
-  /* Copper — production / real-shipment accent */
-  --copper:     #A6461B;
-  --copper-hi:  #D06B34;
-  --copper-dim: #F7E4D6;
-  --copper-bd:  #E7B98F;
-
-  /* Semantic */
-  --green:      #2E7D4F;
-  --green-dim:  #E6F1E9;
-  --green-bd:   #BEDBC9;
-  --red:        #A63A26;
-  --red-dim:    #F7E7E1;
-  --red-bd:     #E5BFAC;
-  --blue:       #395E7F;
-  --blue-dim:   #E6EDF3;
-  --blue-bd:    #C1D2E0;
-  --amber:      #A6790F;
-  --amber-dim:  #F5EAD1;
-  --amber-bd:   #E2C983;
-
-  /* Type */
-  --display: 'Fraunces', Georgia, serif;
-  --font:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono:    'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code', monospace;
-
-  --r-xs: 7px;
-  --r-sm: 10px;
-  --r:    14px;
-  --r-lg: 18px;
+:root{
+  --ink:#141821; --ink-2:#39414F; --muted:#6B7486; --faint:#9AA2B1;
+  --paper:#F4F6FA; --white:#FFFFFF;
+  --line:#E4E8F0; --line-hi:#D2D8E4;
+  --or:#F26522; --or-dp:#C44A12; --or-lt:#FFF2EB; --or-bd:#FBD3BE;
+  --gr:#12A150; --gr-lt:#E8F8EF; --gr-bd:#B4E6C9;
+  --rd:#DC2F3E; --rd-lt:#FDEDEE; --rd-bd:#F7C3C8;
+  --bl:#2563EB; --bl-lt:#EDF3FF; --bl-bd:#C3D8FB;
+  --am:#C97A0C; --am-lt:#FFF8E8; --am-bd:#F5DFA6;
+  --f:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --m:'JetBrains Mono',ui-monospace,monospace;
+  --r:10px; --r-lg:14px;
+  --e1:0 1px 2px rgba(20,24,33,.05);
+  --e2:0 2px 4px rgba(20,24,33,.05),0 6px 16px -4px rgba(20,24,33,.08);
+  --e3:0 4px 8px rgba(20,24,33,.06),0 16px 32px -8px rgba(20,24,33,.12);
+  --e4:0 24px 60px -12px rgba(20,24,33,.22),0 8px 20px rgba(20,24,33,.10);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+html,body{height:100%}
+body{
+  font-family:var(--f);background:var(--paper);color:var(--ink-2);
+  min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;position:relative;
 }
 
-html, body { height: 100%; }
-
-body {
-  font-family: var(--font);
+/* ═══ ANIMATED 3D BACKGROUND ═══ */
+.bg-stage{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
   background:
-    radial-gradient(1200px 600px at 12% -10%, rgba(147,101,14,0.05), transparent 55%),
-    var(--paper);
-  color: var(--ink-2);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+    radial-gradient(1100px 700px at 12% -8%,#FFE9DC 0%,transparent 62%),
+    radial-gradient(900px 600px at 92% 4%,#E4EDFF 0%,transparent 60%),
+    radial-gradient(1000px 800px at 50% 112%,#EAF6EF 0%,transparent 62%),
+    linear-gradient(175deg,#FAFBFE 0%,#F1F4F9 55%,#EDF1F7 100%);
 }
+.aurora{position:absolute;border-radius:50%;filter:blur(70px);opacity:.42;will-change:transform}
+.a1{width:520px;height:520px;background:radial-gradient(circle,#FFB98C,transparent 68%);top:-14%;left:-6%;animation:dr1 26s ease-in-out infinite}
+.a2{width:440px;height:440px;background:radial-gradient(circle,#9DBEFF,transparent 68%);top:44%;right:-8%;animation:dr2 32s ease-in-out infinite}
+.a3{width:380px;height:380px;background:radial-gradient(circle,#8FE3B4,transparent 68%);bottom:-12%;left:34%;animation:dr3 29s ease-in-out infinite}
+@keyframes dr1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(90px,60px) scale(1.14)}}
+@keyframes dr2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-80px,-50px) scale(1.1)}}
+@keyframes dr3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,-70px) scale(1.16)}}
 
-body.loading { opacity: 0; }
-body.ready { opacity: 1; transition: opacity 0.15s ease; }
+/* floating 3D isometric parcels */
+.crates{position:absolute;inset:0;perspective:1400px}
+.crate{position:absolute;transform-style:preserve-3d;opacity:.16;will-change:transform}
+.crate i{position:absolute;display:block;border:1.5px solid var(--or);border-radius:3px}
+.crate .tp{background:rgba(242,101,34,.14)}
+.crate .lf{background:rgba(242,101,34,.07)}
+.crate .rt{background:rgba(242,101,34,.10)}
+.c1{top:14%;left:7%;animation:fl1 20s ease-in-out infinite}
+.c2{top:62%;left:16%;animation:fl2 25s ease-in-out infinite}
+.c3{top:24%;right:12%;animation:fl3 22s ease-in-out infinite}
+.c4{bottom:16%;right:22%;animation:fl1 28s ease-in-out infinite reverse}
+.c5{top:47%;left:47%;animation:fl2 34s ease-in-out infinite}
+@keyframes fl1{0%,100%{transform:translateY(0) rotateX(56deg) rotateZ(45deg)}50%{transform:translateY(-34px) rotateX(56deg) rotateZ(58deg)}}
+@keyframes fl2{0%,100%{transform:translateY(0) rotateX(56deg) rotateZ(45deg)}50%{transform:translateY(28px) rotateX(56deg) rotateZ(32deg)}}
+@keyframes fl3{0%,100%{transform:translateY(0) rotateX(56deg) rotateZ(45deg)}50%{transform:translateY(-42px) rotateX(56deg) rotateZ(60deg)}}
 
-/* Embossed "raised paper" card — the base surface treatment used everywhere */
-.emboss {
-  background: var(--paper-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.75),
-    inset 0 -10px 18px -14px rgba(33,30,25,0.10),
-    0 1px 2px rgba(33,30,25,0.06),
-    0 14px 28px -16px rgba(33,30,25,0.22);
-}
+/* drifting route lines */
+.routes{position:absolute;inset:0;opacity:.30}
+.routes path{fill:none;stroke-width:1.4;stroke-linecap:round;stroke-dasharray:7 12;animation:dash 30s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-320}}
+.pulse-dot{fill:var(--or);opacity:.55}
 
-/* Inset "carved" surface — used for terminal chrome / wells */
-.carved {
-  box-shadow:
-    inset 0 2px 5px rgba(33,30,25,0.20),
-    inset 0 1px 0 rgba(0,0,0,0.06);
-}
+/* fine grid */
+.mesh{position:absolute;inset:0;opacity:.42;
+  background-image:linear-gradient(rgba(20,24,33,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(20,24,33,.035) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 92% 78% at 50% 42%,#000 32%,transparent 78%);
+  -webkit-mask-image:radial-gradient(ellipse 92% 78% at 50% 42%,#000 32%,transparent 78%)}
 
-/* ─────────────────────────────────────────────
-   HEADER
-───────────────────────────────────────────── */
-header {
-  height: 68px;
-  background: var(--paper-2);
-  border-bottom: 1px solid var(--border-hi);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 28px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 14px rgba(33,30,25,0.06);
-}
+/* ═══ HEADER ═══ */
+header{
+  height:62px;flex-shrink:0;position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;padding:0 26px;
+  background:rgba(255,255,255,.82);backdrop-filter:blur(18px) saturate(1.7);
+  -webkit-backdrop-filter:blur(18px) saturate(1.7);
+  border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 14px rgba(20,24,33,.045)}
+.hb{display:flex;align-items:center;gap:12px}
+.hl{width:38px;height:38px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(150deg,#FF8A4C 0%,var(--or) 52%,var(--or-dp) 100%);
+  box-shadow:0 3px 8px rgba(242,101,34,.34),0 1px 0 rgba(255,255,255,.42) inset;
+  transform-style:preserve-3d;transition:transform .5s cubic-bezier(.34,1.4,.64,1)}
+.hl:hover{transform:rotateY(22deg) rotateX(-10deg) translateZ(6px)}
+.hl svg{stroke:#fff;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.22))}
+.hn{font-size:15px;font-weight:700;color:var(--ink);letter-spacing:-.01em;line-height:1.15}
+.hs{font-size:10px;color:var(--faint);letter-spacing:.09em;text-transform:uppercase;margin-top:2px;font-weight:600}
 
-.hdr-brand { display: flex; align-items: center; gap: 13px; }
+.hdr-seg{display:flex;gap:3px;padding:4px;border-radius:12px;
+  background:linear-gradient(180deg,#EDF0F6,#F6F8FB);border:1px solid var(--line);
+  box-shadow:inset 0 2px 5px rgba(20,24,33,.07),0 1px 0 #fff}
+.hdr-seg-btn{padding:8px 20px;border:none;border-radius:9px;background:transparent;cursor:pointer;
+  font-family:var(--f);font-size:12.5px;font-weight:700;color:var(--muted);letter-spacing:-.01em;
+  display:flex;align-items:center;gap:7px;transition:all .2s cubic-bezier(.34,1.3,.64,1)}
+.hdr-seg-btn:hover{color:var(--ink)}
+.hdr-seg-btn.active-test{background:var(--white);color:var(--ink);
+  box-shadow:0 2px 0 rgba(20,24,33,.09),0 3px 10px rgba(20,24,33,.10),0 1px 0 #fff inset;transform:translateY(-1.5px)}
+.hdr-seg-btn.active-prod{color:#fff;
+  background:linear-gradient(180deg,#FF8A4C,var(--or) 55%,var(--or-dp));
+  box-shadow:0 2px 0 #A03A0C,0 4px 14px rgba(242,101,34,.42),0 1px 0 rgba(255,255,255,.32) inset;
+  transform:translateY(-1.5px);text-shadow:0 1px 2px rgba(0,0,0,.2)}
 
-.hdr-seal {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(155deg, var(--brass-hi) 0%, var(--brass) 62%, #6E4A09 100%);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  box-shadow:
-    0 2px 0 #5E3F08,
-    0 5px 12px rgba(147,101,14,0.45),
-    inset 0 1px 1px rgba(255,255,255,0.45);
-  transform: rotate(-6deg);
-}
-.hdr-seal svg { stroke: #FBF3DF; }
+.api{display:flex;align-items:center;gap:8px;padding:7px 13px;border-radius:100px;
+  background:var(--white);border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--muted);
+  box-shadow:var(--e1)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex-shrink:0;transition:.3s}
+.status-dot.online{background:var(--gr);box-shadow:0 0 0 3px rgba(18,161,80,.16);animation:bp 2.6s infinite}
+.status-dot.running{background:var(--am);box-shadow:0 0 0 3px rgba(201,122,12,.18);animation:bp .8s infinite}
+.status-dot.error{background:var(--rd);box-shadow:0 0 0 3px rgba(220,47,62,.16)}
+@keyframes bp{0%,100%{opacity:1}50%{opacity:.45}}
 
-.hdr-name {
-  font-family: var(--display);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-.hdr-sub {
-  font-size: 10.5px;
-  color: var(--muted);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-top: 2px;
-  font-weight: 600;
-}
+/* ═══ LAYOUT ═══ */
+main{flex:1;position:relative;z-index:1;display:grid;grid-template-columns:296px 1fr;
+  gap:18px;padding:18px 22px;height:calc(100vh - 62px);overflow:hidden}
 
-.hdr-seg {
-  display: flex;
-  background: var(--paper);
-  border: 1px solid var(--border-hi);
-  border-radius: 12px;
-  padding: 5px;
-  gap: 4px;
-  box-shadow: inset 0 2px 5px rgba(33,30,25,0.12), inset 0 1px 0 rgba(0,0,0,0.03);
-}
-.hdr-seg-btn {
-  padding: 9px 20px;
-  border-radius: 8px;
-  border: none;
-  font-family: var(--font);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.16s cubic-bezier(0.34,1.2,0.64,1);
-  color: var(--muted);
-  background: transparent;
-  display: flex; align-items: center; gap: 7px;
-  letter-spacing: -0.005em;
-}
-.hdr-seg-btn:hover { color: var(--ink-2); }
-.hdr-seg-btn.active-test {
-  background: var(--paper-3);
-  color: var(--ink);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.08), 0 3px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-  transform: translateY(-1px);
-}
-.hdr-seg-btn.active-prod {
-  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 55%, #7C3413 100%);
-  color: #FDF1E6;
-  box-shadow: 0 2px 0 #6B2C10, 0 5px 14px rgba(166,70,27,0.40);
-  transform: translateY(-1px);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
-}
+/* ═══ CARD ═══ */
+.card{background:rgba(255,255,255,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--e2);
+  transition:transform .32s cubic-bezier(.34,1.3,.64,1),box-shadow .32s}
+.card:hover{transform:translateY(-2px);box-shadow:var(--e3)}
 
-.hdr-right { display: flex; align-items: center; gap: 10px; }
-.api-pill {
-  display: flex; align-items: center; gap: 7px;
-  padding: 7px 13px;
-  background: var(--paper);
-  border: 1px solid var(--border-hi);
-  border-radius: 100px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--muted);
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
-}
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--faint);
-  flex-shrink: 0;
-  transition: background 0.3s;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
-}
-.status-dot.online  { background: var(--green); animation: blink 2.4s infinite; }
-.status-dot.error   { background: var(--red); }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.45} }
+.sidebar{display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding-right:3px;
+  scrollbar-width:thin;scrollbar-color:var(--line-hi) transparent}
+.sidebar::-webkit-scrollbar{width:5px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--line-hi);border-radius:9px}
+.sec{padding:15px 17px;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:none}
+.lbl{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);
+  margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
 
-/* ─────────────────────────────────────────────
-   LAYOUT
-───────────────────────────────────────────── */
-main {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 288px 1fr;
-  gap: 20px;
-  padding: 20px 24px;
-  height: calc(100vh - 68px);
-  overflow: hidden;
-}
+/* stats */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.st{padding:12px 13px;border-radius:var(--r);border:1px solid var(--line);
+  background:linear-gradient(160deg,#FCFDFF,#F5F7FB);position:relative;overflow:hidden;
+  transition:transform .3s cubic-bezier(.34,1.3,.64,1),box-shadow .3s}
+.st::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--line-hi),transparent)}
+.st:hover{transform:translateY(-3px) scale(1.02);box-shadow:var(--e2)}
+.sv{font-size:25px;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.sv.green{color:var(--gr)} .sv.red{color:var(--rd)} .sv.mono{font-family:var(--m);font-size:15px;font-weight:600}
+.sk{font-size:9.5px;font-weight:700;color:var(--muted);margin-top:6px;letter-spacing:.03em}
 
-/* ─────────────────────────────────────────────
-   SIDEBAR — trimmed to 3 short panels so nothing
-   needs to scroll to reach a control
-───────────────────────────────────────────── */
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-}
+/* mode */
+.mode-seg{display:flex;gap:3px;padding:4px;border-radius:var(--r);margin-bottom:12px;
+  background:linear-gradient(180deg,#EDF0F6,#F6F8FB);border:1px solid var(--line);
+  box-shadow:inset 0 2px 5px rgba(20,24,33,.07)}
+.mode-btn{flex:1;padding:9px 6px;border:none;border-radius:7px;background:transparent;cursor:pointer;
+  font-family:var(--f);font-size:12px;font-weight:700;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s cubic-bezier(.34,1.3,.64,1)}
+.mode-btn:hover{color:var(--ink)}
+.mode-btn.active.test{background:var(--white);color:var(--ink);box-shadow:0 2px 0 rgba(20,24,33,.09),0 3px 8px rgba(20,24,33,.09);transform:translateY(-1.5px)}
+.mode-btn.active.prod{color:#fff;background:linear-gradient(180deg,#FF8A4C,var(--or) 55%,var(--or-dp));
+  box-shadow:0 2px 0 #A03A0C,0 4px 12px rgba(242,101,34,.4);transform:translateY(-1.5px)}
 
-.sb-card { overflow: hidden; }
-.sb-section { padding: 14px 16px; }
-.sb-section + .sb-section { border-top: 1px solid var(--border); }
+.notice{padding:11px 13px;border-radius:var(--r);font-size:12px;line-height:1.55;font-weight:500;
+  display:flex;gap:9px;align-items:flex-start;border:1px solid}
+.notice.hidden{display:none}
+.notice-test{background:var(--bl-lt);border-color:var(--bl-bd);color:#1E4FBF}
+.notice-prod{background:var(--am-lt);border-color:var(--am-bd);color:#96590A}
+.notice strong{font-weight:800;color:var(--ink)}
 
-.sb-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 10px;
-}
+/* run button — 3D */
+.btn-run{width:100%;padding:14px 18px;border:none;border-radius:var(--r);cursor:pointer;
+  font-family:var(--f);font-size:14px;font-weight:700;letter-spacing:-.01em;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  transition:transform .16s cubic-bezier(.34,1.4,.64,1),box-shadow .16s,background .16s;position:relative}
+.btn-run.test-btn{color:#fff;background:linear-gradient(180deg,#3B4454,var(--ink) 100%);
+  box-shadow:0 3px 0 #05080F,0 6px 18px rgba(20,24,33,.28),0 1px 0 rgba(255,255,255,.14) inset}
+.btn-run.test-btn:hover{transform:translateY(-2px);box-shadow:0 5px 0 #05080F,0 10px 26px rgba(20,24,33,.34),0 1px 0 rgba(255,255,255,.18) inset}
+.btn-run.test-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #05080F,0 2px 8px rgba(20,24,33,.24)}
+.btn-run.prod-btn{color:#fff;background:linear-gradient(180deg,#FF8F53,var(--or) 52%,var(--or-dp));
+  text-shadow:0 1px 2px rgba(0,0,0,.2);
+  box-shadow:0 3px 0 #A03A0C,0 7px 22px rgba(242,101,34,.42),0 1px 0 rgba(255,255,255,.3) inset}
+.btn-run.prod-btn:hover{transform:translateY(-2px);box-shadow:0 5px 0 #A03A0C,0 12px 32px rgba(242,101,34,.5),0 1px 0 rgba(255,255,255,.34) inset}
+.btn-run.prod-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #A03A0C,0 3px 10px rgba(242,101,34,.32)}
+.btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 
-/* Session card styled as a ticket stub: header row, then a
-   perforated tear-line with cut notches, then the stat grid —
-   the one deliberate signature flourish on the page. */
-.ticket {
-  position: relative;
-}
-.ticket-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  padding: 13px 16px 11px;
-}
-.ticket-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
-.ticket-no { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.progress-wrap{display:none;margin-top:11px}
+.progress-wrap.visible{display:block}
+.pt{height:5px;border-radius:99px;background:#E7EBF2;overflow:hidden;margin-bottom:6px;box-shadow:inset 0 1px 2px rgba(20,24,33,.09)}
+.pf{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--or),#FF9E63);width:0%;transition:width .4s ease;box-shadow:0 0 8px rgba(242,101,34,.42)}
+.pf.running{animation:pg 1.5s infinite ease-in-out}
+@keyframes pg{0%{width:0;margin-left:0}50%{width:62%;margin-left:19%}100%{width:0;margin-left:100%}}
+.pl{font-family:var(--m);font-size:10px;color:var(--faint);text-align:center}
 
-.perf {
-  position: relative;
-  height: 0;
-  border-top: 1.5px dashed var(--border-hi);
-}
-.perf::before, .perf::after {
-  content: '';
-  position: absolute;
-  top: -8px;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 1px solid var(--border-hi);
-}
-.perf::before { left: -9px; }
-.perf::after  { right: -9px; }
+#downloads-card{display:none}
+#downloads-card.visible{display:block;animation:sIn .38s cubic-bezier(.34,1.3,.64,1)}
+@keyframes sIn{from{opacity:0;transform:translateY(10px)}}
+.dl{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:7px;text-decoration:none;
+  border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(160deg,#FCFDFF,#F5F7FB);
+  color:var(--ink);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.34,1.3,.64,1)}
+.dl:last-child{margin-bottom:0}
+.dl:hover{transform:translateX(3px);border-color:var(--line-hi);box-shadow:var(--e2);background:var(--white)}
+.dlm{font-size:9.5px;color:var(--faint);font-family:var(--m);margin-top:1px}
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 14px 16px;
-}
-.stat-tile {
-  background: var(--paper);
-  border-radius: var(--r-sm);
-  padding: 9px 11px;
-  box-shadow: inset 0 1px 4px rgba(33,30,25,0.10);
-}
-.stat-num { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
-.stat-num.green { color: var(--green); }
-.stat-num.red   { color: var(--red); }
-.stat-num.mono  { font-family: var(--mono); font-size: 14px; font-weight: 600; }
-.stat-lbl { font-size: 9.5px; font-weight: 600; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; text-transform: uppercase; }
+/* tabs */
+.tabs{display:flex;gap:4px;padding:4px;border-radius:var(--r);margin-bottom:13px;
+  background:linear-gradient(180deg,#EDF0F6,#F6F8FB);border:1px solid var(--line);
+  box-shadow:inset 0 2px 5px rgba(20,24,33,.07)}
+.tab{flex:1;padding:8px 6px;border:none;border-radius:7px;background:transparent;cursor:pointer;
+  font-family:var(--f);font-size:11.5px;font-weight:700;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s cubic-bezier(.34,1.3,.64,1)}
+.tab:hover{color:var(--ink)}
+.tab.active{background:var(--white);box-shadow:0 2px 0 rgba(20,24,33,.08),0 3px 8px rgba(20,24,33,.09);transform:translateY(-1.5px)}
+#tab-cancel.active{color:var(--rd)}
+#tab-return.active{color:var(--bl)}
+[hidden]{display:none!important}
 
-/* Mode toggle */
-.mode-seg {
-  display: flex;
-  background: var(--paper);
-  border-radius: var(--r-xs);
-  padding: 3px;
-  gap: 2px;
-  margin-bottom: 11px;
-  box-shadow: inset 0 1px 4px rgba(33,30,25,0.12);
-}
-.mode-btn {
-  flex: 1;
-  padding: 8px 8px;
-  border: none;
-  border-radius: 6px;
-  font-family: var(--font);
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: var(--muted);
-  background: transparent;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.mode-btn:hover { color: var(--ink); }
-.mode-btn.active.test { background: var(--paper-3); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.10), 0 2px 5px rgba(0,0,0,0.06); }
-.mode-btn.active.prod { background: linear-gradient(180deg, var(--copper-hi), var(--copper)); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+.awb{width:100%;padding:11px 13px;margin-bottom:9px;border-radius:var(--r);
+  border:1px solid var(--line);background:#F8FAFD;font-family:var(--m);font-size:12px;color:var(--ink);
+  outline:none;transition:all .2s;box-shadow:inset 0 2px 4px rgba(20,24,33,.05)}
+.awb::placeholder{color:var(--faint)}
+.awb:focus{border-color:var(--or);background:var(--white);box-shadow:inset 0 1px 2px rgba(20,24,33,.03),0 0 0 3.5px rgba(242,101,34,.13)}
 
-.notice {
-  padding: 9px 11px;
-  border-radius: var(--r-xs);
-  font-size: 11px;
-  line-height: 1.45;
-  font-weight: 500;
-  display: flex; gap: 8px; align-items: flex-start;
-  border: 1px solid transparent;
-}
-.notice.hidden { display: none; }
-.notice.test-notice { background: var(--brass-dim); border-color: var(--brass-bd); color: #6E4A09; }
-.notice.prod-notice { background: var(--copper-dim); border-color: var(--copper-bd); color: #7C3413; }
-.notice strong { font-weight: 700; color: var(--ink); }
+.btn-act{width:100%;padding:11px 14px;border-radius:var(--r);cursor:pointer;border:none;
+  font-family:var(--f);font-size:12.5px;font-weight:700;color:#fff;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .16s cubic-bezier(.34,1.4,.64,1),box-shadow .16s}
+.btn-act:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.btn-cancel-ship{background:linear-gradient(180deg,#EE5464,var(--rd) 55%,#A81E2B);
+  box-shadow:0 3px 0 #7D1520,0 6px 16px rgba(220,47,62,.32),0 1px 0 rgba(255,255,255,.24) inset;
+  text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.btn-cancel-ship:hover{transform:translateY(-2px);box-shadow:0 5px 0 #7D1520,0 10px 24px rgba(220,47,62,.4)}
+.btn-cancel-ship:active{transform:translateY(2px);box-shadow:0 1px 0 #7D1520}
+.btn-return-lbl{background:linear-gradient(180deg,#4B85F5,var(--bl) 55%,#1A46B8);
+  box-shadow:0 3px 0 #12328A,0 6px 16px rgba(37,99,235,.32),0 1px 0 rgba(255,255,255,.24) inset;
+  text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.btn-return-lbl:hover{transform:translateY(-2px);box-shadow:0 5px 0 #12328A,0 10px 24px rgba(37,99,235,.4)}
+.btn-return-lbl:active{transform:translateY(2px);box-shadow:0 1px 0 #12328A}
 
-/* Primary run button — embossed 3D press */
-.btn-run {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: var(--r-sm);
-  border: none;
-  font-family: var(--font);
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  letter-spacing: -0.005em;
-}
-.btn-run.test-btn {
-  background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 55%, #6E4A09 100%);
-  color: #FBF3DF;
-  box-shadow: 0 3px 0 #5E3F08, 0 8px 18px -4px rgba(147,101,14,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.20);
-}
-.btn-run.test-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #5E3F08, 0 10px 22px -4px rgba(147,101,14,0.52); }
-.btn-run.test-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5E3F08, 0 3px 8px rgba(147,101,14,0.30); }
+.action-result{display:none;margin-top:10px;padding:11px 12px;border-radius:var(--r);
+  font-family:var(--m);font-size:11.5px;line-height:1.6;border:1px solid}
+.action-result.visible{display:block;animation:sIn .3s ease}
+.action-result.ok{background:var(--gr-lt);border-color:var(--gr-bd);color:#0C7A3C}
+.action-result.err{background:var(--rd-lt);border-color:var(--rd-bd);color:#A81E2B}
+.action-result .cr-label,.action-result .ar-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.09em;opacity:.72;margin-bottom:3px;font-weight:800}
+.action-result .cr-msg,.action-result .ar-msg{font-weight:600}
+.action-result .cr-hint,.action-result .ar-hint{font-size:10.5px;opacity:.82;margin-top:4px}
 
-.btn-run.prod-btn {
-  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 55%, #7C3413 100%);
-  color: #FDF1E6;
-  box-shadow: 0 3px 0 #5E260C, 0 8px 18px -4px rgba(166,70,27,0.48), inset 0 1px 0 rgba(255,255,255,0.22);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.22);
-}
-.btn-run.prod-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #5E260C, 0 10px 22px -4px rgba(166,70,27,0.55); }
-.btn-run.prod-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5E260C, 0 3px 8px rgba(166,70,27,0.32); }
-.btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+.hist{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto}
+.hi{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--r);
+  border:1px solid var(--line);background:linear-gradient(160deg,#FCFDFF,#F5F7FB);cursor:pointer;transition:all .2s}
+.hi:hover{background:var(--white);border-color:var(--line-hi);transform:translateX(3px);box-shadow:var(--e1)}
+.hin{font-family:var(--m);font-size:10.5px;color:var(--ink-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.him{font-size:9.5px;color:var(--faint);font-family:var(--m);white-space:nowrap}
+.hbg{padding:2px 7px;border-radius:99px;font-size:9px;font-weight:800;letter-spacing:.04em;flex-shrink:0;border:1px solid}
+.hbg.ok{background:var(--gr-lt);color:var(--gr);border-color:var(--gr-bd)}
+.hbg.err{background:var(--rd-lt);color:var(--rd);border-color:var(--rd-bd)}
 
-.prog-wrap { display: none; margin-top: 10px; }
-.prog-wrap.visible { display: block; }
-.prog-track { height: 4px; background: var(--paper); border-radius: 100px; overflow: hidden; margin-bottom: 6px; box-shadow: inset 0 1px 3px rgba(33,30,25,0.18); }
-.prog-fill { height: 100%; border-radius: 100px; background: var(--brass); width: 0%; transition: width 0.4s ease; }
-.prog-fill.running { animation: prog-slide 1.4s infinite ease-in-out; }
-@keyframes prog-slide { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
-.prog-lbl { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: center; }
+/* ═══ CONTENT ═══ */
+.content{display:flex;flex-direction:column;gap:15px;overflow:hidden;min-height:0}
+.phead{flex-shrink:0}
+.ptitle{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.025em;line-height:1.15}
+.psub{font-size:13px;color:var(--muted);margin-top:3px;font-weight:500}
 
-#downloads-card { display: none; }
-#downloads-card.visible { display: block; }
-.dl-link {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 11px;
-  background: var(--paper);
-  border-radius: var(--r-xs);
-  color: var(--ink);
-  font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all 0.14s;
-  text-decoration: none; margin-bottom: 7px;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
-}
-.dl-link:last-child { margin-bottom: 0; }
-.dl-link:hover { box-shadow: inset 0 1px 3px rgba(33,30,25,0.10), 0 2px 6px rgba(0,0,0,0.08); }
-.dl-meta { font-size: 10px; color: var(--faint); margin-top: 1px; font-family: var(--mono); }
+.mrow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex-shrink:0;perspective:1100px}
+.mcard{background:rgba(255,255,255,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--e2);
+  padding:19px 21px;display:flex;align-items:center;gap:15px;position:relative;overflow:hidden;
+  transform-style:preserve-3d;transition:transform .38s cubic-bezier(.34,1.3,.64,1),box-shadow .38s}
+.mcard::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.mcard:nth-child(1)::before{background:linear-gradient(180deg,var(--ink),var(--muted))}
+.mcard:nth-child(2)::before{background:linear-gradient(180deg,var(--gr),#5FD196)}
+.mcard:nth-child(3)::before{background:linear-gradient(180deg,var(--rd),#F58A94)}
+.mcard:hover{transform:translateY(-5px) rotateX(3.5deg) scale(1.014);box-shadow:var(--e3)}
+.mic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  box-shadow:0 2px 5px rgba(20,24,33,.09),0 1px 0 rgba(255,255,255,.7) inset}
+.mic.n{background:linear-gradient(160deg,#F1F4F9,#E4E9F1);color:var(--ink-2)}
+.mic.g{background:linear-gradient(160deg,#DFF6E9,#C6EDD8);color:var(--gr)}
+.mic.r{background:linear-gradient(160deg,#FDE6E8,#F9CDD2);color:var(--rd)}
+.mk{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--faint)}
+.mv{font-size:33px;font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--ink);margin-top:5px;font-variant-numeric:tabular-nums}
+.mv.green{color:var(--gr)} .mv.red{color:var(--rd)}
 
-/* Log Files list */
-.log-history { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; padding: 13px 16px; }
-.log-history::-webkit-scrollbar { width: 5px; }
-.log-history::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 10px; }
-.log-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px;
-  background: var(--paper);
-  border-radius: var(--r-xs);
-  cursor: pointer;
-  transition: all 0.14s;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.08);
-}
-.log-item:hover { box-shadow: inset 0 1px 3px rgba(33,30,25,0.08), 0 2px 6px rgba(0,0,0,0.07); }
-.log-item-name { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.log-item-meta { font-size: 9.5px; color: var(--faint); white-space: nowrap; font-family: var(--mono); }
-.log-badge { padding: 2px 7px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; flex-shrink: 0; }
-.log-badge.ok  { background: var(--green-dim); color: var(--green); }
-.log-badge.err { background: var(--red-dim);   color: var(--red); }
+.tcard{flex:1;background:rgba(255,255,255,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--e2);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tbar{display:flex;align-items:center;justify-content:space-between;padding:13px 17px;flex-shrink:0;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#FCFDFF,#F6F8FC)}
+.tleft{display:flex;align-items:center;gap:12px}
+.tdots{display:flex;gap:6px}
+.tdots span{width:10px;height:10px;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.13),0 1px 0 rgba(255,255,255,.45) inset}
+.dr{background:linear-gradient(160deg,#FF7B72,#F4514A)}
+.da{background:linear-gradient(160deg,#FFD056,#F7B32B)}
+.dg{background:linear-gradient(160deg,#52DB6E,#26BF43)}
+.tfile{font-family:var(--m);font-size:11.5px;color:var(--muted);font-weight:500}
+.log-badge-status{padding:3px 9px;border-radius:99px;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border:1px solid}
+.lbs-ready{background:#F2F5F9;color:var(--faint);border-color:var(--line)}
+.lbs-running{background:var(--am-lt);color:var(--am);border-color:var(--am-bd)}
+.lbs-done{background:var(--gr-lt);color:var(--gr);border-color:var(--gr-bd)}
+.lbs-error{background:var(--rd-lt);color:var(--rd);border-color:var(--rd-bd)}
+.tacts{display:flex;gap:6px}
+.bsm{padding:5px 11px;border-radius:7px;border:1px solid var(--line);background:var(--white);
+  font-family:var(--f);font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;gap:5px;transition:all .18s;box-shadow:var(--e1)}
+.bsm:hover{color:var(--ink);border-color:var(--line-hi);transform:translateY(-1px);box-shadow:var(--e2)}
 
-/* ─────────────────────────────────────────────
-   CONTENT AREA
-───────────────────────────────────────────── */
-.content { display: flex; flex-direction: column; gap: 16px; overflow: hidden; min-height: 0; }
+.tbody{flex:1;overflow-y:auto;padding:16px 20px;min-height:0;
+  background:linear-gradient(180deg,#12161F 0%,#0D1017 100%);
+  font-family:var(--m);font-size:12.5px;line-height:1.85;color:#C9D2E0;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
+.tbody::-webkit-scrollbar{width:6px}
+.tbody::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:9px}
+.log-line{display:block;white-space:pre-wrap;word-break:break-all}
+.log-line.success{color:#4ADE80} .log-line.error{color:#F87171} .log-line.warning{color:#FBBF24}
+.log-line.info{color:#60A5FA} .log-line.muted{color:#5A6479} .log-line.header{color:#E8EDF5;font-weight:600}
+.log-line.default{color:#C9D2E0}
+#terminal-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:11px;color:#39414F}
+.tet{font-size:13px;font-family:var(--f);font-weight:600;color:#6B7486}
+.tes{font-size:11px;color:#4A5265;font-family:var(--m)}
 
-.page-head { flex-shrink: 0; display: flex; align-items: baseline; gap: 14px; }
-.page-title { font-family: var(--display); font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-.page-sub { font-size: 12.5px; color: var(--muted); font-weight: 500; }
-.page-rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-hi), transparent); align-self: center; }
+/* toast */
+#toast{position:fixed;bottom:20px;right:20px;padding:13px 17px;border-radius:var(--r);
+  font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;z-index:200;
+  transform:translateY(60px) scale(.96);opacity:0;transition:all .32s cubic-bezier(.34,1.5,.64,1);
+  pointer-events:none;background:var(--white);border:1px solid var(--line);box-shadow:var(--e4);color:var(--ink);max-width:350px}
+#toast.show{transform:translateY(0) scale(1);opacity:1}
+#toast.success{border-left:4px solid var(--gr)}
+#toast.error{border-left:4px solid var(--rd)}
+#toast.info{border-left:4px solid var(--bl)}
 
-.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; flex-shrink: 0; }
-.stat-card {
-  padding: 18px 20px;
-  display: flex; align-items: center; gap: 15px;
-  position: relative;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.stat-card:hover { transform: translateY(-2px); }
-.stat-card-icon {
-  width: 40px; height: 40px;
-  border-radius: 11px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.14);
-}
-.sci-neutral { background: var(--paper); color: var(--ink-2); }
-.sci-green   { background: var(--green-dim); color: var(--green); }
-.sci-red     { background: var(--red-dim); color: var(--red); }
-.stat-card-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-.stat-card-val { font-family: var(--display); font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
-.stat-card-val.green { color: var(--green); }
-.stat-card-val.red   { color: var(--red); }
+/* overlays */
+.overlay,#confirm-overlay,#cancel-confirm-overlay{display:none;position:fixed;inset:0;z-index:100;
+  align-items:center;justify-content:center;padding:20px;
+  background:rgba(20,24,33,.36);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.overlay.show,#confirm-overlay.show,#cancel-confirm-overlay.show{display:flex}
+.dialog{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:29px 31px;
+  max-width:445px;width:100%;box-shadow:var(--e4);animation:dIn .3s cubic-bezier(.34,1.4,.64,1)}
+@keyframes dIn{from{opacity:0;transform:scale(.94) translateY(14px)}}
+.dialog-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:17px;border:1px solid}
+.di-amber{background:linear-gradient(160deg,#FFF6E6,#FDEBC8);border-color:var(--am-bd)}
+.di-blue{background:linear-gradient(160deg,#EEF4FF,#D8E6FD);border-color:var(--bl-bd)}
+.di-red{background:linear-gradient(160deg,#FDEEEF,#F9D3D7);border-color:var(--rd-bd)}
+.dtitle{font-size:20px;font-weight:800;color:var(--ink);margin-bottom:9px;letter-spacing:-.02em}
+.dbody{font-size:13.5px;color:var(--muted);line-height:1.68;margin-bottom:23px;font-weight:500}
+.dbody strong{color:var(--ink);font-weight:700}
+.dbody .blue{color:var(--bl);font-weight:700}
+.dacts{display:flex;gap:9px}
+.btn-dlg-cancel{flex:1;padding:12.5px;border-radius:var(--r);border:1px solid var(--line-hi);
+  background:linear-gradient(180deg,#FBFCFE,#F2F5F9);color:var(--ink-2);font-family:var(--f);font-weight:700;font-size:13.5px;
+  cursor:pointer;transition:all .18s;box-shadow:var(--e1)}
+.btn-dlg-cancel:hover{background:var(--white);border-color:var(--ink);color:var(--ink);transform:translateY(-1px);box-shadow:var(--e2)}
+.btn-dlg-ok{flex:1;padding:12.5px;border:none;border-radius:var(--r);color:#fff;
+  font-family:var(--f);font-weight:700;font-size:13.5px;cursor:pointer;
+  transition:transform .16s cubic-bezier(.34,1.4,.64,1),box-shadow .16s;text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.btn-dlg-ok.orange{background:linear-gradient(180deg,#FF8F53,var(--or) 55%,var(--or-dp));box-shadow:0 3px 0 #A03A0C,0 6px 16px rgba(242,101,34,.34)}
+.btn-dlg-ok.orange:hover{transform:translateY(-2px);box-shadow:0 5px 0 #A03A0C,0 10px 24px rgba(242,101,34,.42)}
+.btn-dlg-ok.orange:active{transform:translateY(2px);box-shadow:0 1px 0 #A03A0C}
+.btn-dlg-ok.blue{background:linear-gradient(180deg,#4B85F5,var(--bl) 55%,#1A46B8);box-shadow:0 3px 0 #12328A,0 6px 16px rgba(37,99,235,.32)}
+.btn-dlg-ok.blue:hover{transform:translateY(-2px);box-shadow:0 5px 0 #12328A,0 10px 24px rgba(37,99,235,.4)}
+.btn-dlg-ok.blue:active{transform:translateY(2px);box-shadow:0 1px 0 #12328A}
+.btn-dlg-ok.red{background:linear-gradient(180deg,#EE5464,var(--rd) 55%,#A81E2B);box-shadow:0 3px 0 #7D1520,0 6px 16px rgba(220,47,62,.32)}
+.btn-dlg-ok.red:hover{transform:translateY(-2px);box-shadow:0 5px 0 #7D1520,0 10px 24px rgba(220,47,62,.4)}
+.btn-dlg-ok.red:active{transform:translateY(2px);box-shadow:0 1px 0 #7D1520}
 
-/* Two-column work row: shipment actions + live console side by side */
-.work-row { display: grid; grid-template-columns: 340px 1fr; gap: 16px; flex: 1; min-height: 0; }
+.spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .65s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+button:focus-visible,input:focus-visible{outline:2px solid var(--or);outline-offset:2px}
+::selection{background:rgba(242,101,34,.16)}
 
-/* Shipment Actions — tabbed, replaces the two always-on sidebar
-   cards from the previous layout */
-.actions-card { display: flex; flex-direction: column; min-height: 0; }
-.actions-tabs { display: flex; padding: 10px 10px 0; gap: 6px; flex-shrink: 0; }
-.action-tab {
-  flex: 1;
-  padding: 10px 10px;
-  border: none;
-  background: var(--paper);
-  color: var(--muted);
-  font-family: var(--font); font-size: 12px; font-weight: 700;
-  border-radius: var(--r-xs) var(--r-xs) 0 0;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  transition: all 0.14s;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.08);
-}
-.action-tab.active.tab-red  { background: var(--paper-2); color: var(--red);  box-shadow: none; border-bottom: 2px solid var(--red); }
-.action-tab.active.tab-blue { background: var(--paper-2); color: var(--blue); box-shadow: none; border-bottom: 2px solid var(--blue); }
-.actions-panel { padding: 16px; flex: 1; overflow-y: auto; }
-.actions-panel[hidden] { display: none; }
-.actions-lede { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
-
-.awb-input {
-  width: 100%;
-  padding: 11px 12px;
-  background: var(--paper);
-  border-radius: var(--r-xs);
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink);
-  outline: none;
-  border: 1px solid transparent;
-  transition: box-shadow 0.15s, border-color 0.15s;
-  margin-bottom: 10px;
-  box-shadow: inset 0 2px 5px rgba(33,30,25,0.14);
-}
-.awb-input::placeholder { color: var(--faint); }
-.awb-input:focus { border-color: var(--brass-bd); box-shadow: inset 0 2px 5px rgba(33,30,25,0.14), 0 0 0 3px rgba(147,101,14,0.14); }
-
-.btn-action {
-  width: 100%;
-  padding: 11px 14px;
-  border-radius: var(--r-xs);
-  font-family: var(--font);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all 0.15s;
-  border: none;
-}
-.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-cancel-ship {
-  background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%);
-  color: #FBEAE3;
-  box-shadow: 0 2px 0 #6B2416, 0 5px 12px rgba(166,58,38,0.32);
-}
-.btn-cancel-ship:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #6B2416, 0 7px 16px rgba(166,58,38,0.40); }
-.btn-cancel-ship:active { transform: translateY(1px); }
-
-.btn-return-lbl {
-  background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%);
-  color: #EAF1F7;
-  box-shadow: 0 2px 0 #1C3040, 0 5px 12px rgba(57,94,127,0.32);
-}
-.btn-return-lbl:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1C3040, 0 7px 16px rgba(57,94,127,0.40); }
-.btn-return-lbl:active { transform: translateY(1px); }
-
-.action-result {
-  display: none;
-  margin-top: 11px;
-  padding: 11px 12px;
-  border-radius: var(--r-xs);
-  font-size: 12px;
-  line-height: 1.6;
-  font-family: var(--mono);
-  border: 1px solid transparent;
-}
-.action-result.visible { display: block; }
-.action-result.ok  { background: var(--green-dim); border-color: var(--green-bd); color: var(--green); }
-.action-result.err { background: var(--red-dim);   border-color: var(--red-bd);   color: var(--red); }
-.ar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.75; margin-bottom: 3px; font-weight: 700; }
-.ar-msg   { font-weight: 600; }
-.ar-hint  { font-size: 10.5px; opacity: 0.8; margin-top: 4px; }
-
-/* Console / activity log — kept dark deliberately: one lively,
-   stamped-ledger panel amid the calm paper palette */
-.log-card {
-  display: flex; flex-direction: column;
-  min-height: 0;
-  border-radius: var(--r);
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(33,30,25,0.08), 0 16px 32px -18px rgba(33,30,25,0.30);
-  border: 1px solid #2A2620;
-}
-.log-card-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #33302A;
-  background: linear-gradient(180deg, #221F1A, #1C1913);
-  flex-shrink: 0;
-}
-.log-card-title { display: flex; align-items: center; gap: 12px; }
-.terminal-dots { display: flex; gap: 6px; }
-.terminal-dots span { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 1px 1px rgba(0,0,0,0.25); }
-.td-red { background: #C86A5A; }
-.td-amber { background: var(--brass-hi); }
-.td-green { background: #6FA383; }
-.log-card-name { font-family: var(--mono); font-size: 11.5px; color: #A69E8C; font-weight: 500; }
-.log-badge-status { padding: 3px 9px; border-radius: 100px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid transparent; }
-.lbs-ready   { background: rgba(255,255,255,0.06); color: #93897A; border-color: rgba(255,255,255,0.10); }
-.lbs-running { background: rgba(196,146,47,0.16); color: var(--brass-hi); border-color: rgba(196,146,47,0.30); }
-.lbs-done    { background: rgba(111,163,131,0.16); color: #8FCBAA; border-color: rgba(111,163,131,0.30); }
-.lbs-error   { background: rgba(200,106,90,0.16); color: #E4988A; border-color: rgba(200,106,90,0.30); }
-.log-card-actions { display: flex; gap: 6px; }
-.btn-sm {
-  padding: 5px 10px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: var(--r-xs);
-  font-family: var(--font); font-size: 11px; font-weight: 600;
-  color: #A69E8C; cursor: pointer; transition: all 0.14s;
-  display: flex; align-items: center; gap: 5px;
-}
-.btn-sm:hover { background: rgba(255,255,255,0.09); color: #EFEAE0; }
-
-.terminal-body {
-  flex: 1; background: #17140F; overflow-y: auto;
-  padding: 16px 20px;
-  font-family: var(--mono); font-size: 12.5px; line-height: 1.8;
-  color: #C9C2B4; min-height: 0;
-  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent;
-}
-.terminal-body::-webkit-scrollbar { width: 6px; }
-.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 10px; }
-.log-line { display: block; white-space: pre-wrap; word-break: break-all; }
-.log-line.success { color: #7DC79E; }
-.log-line.error   { color: #E58A78; }
-.log-line.warning { color: var(--brass-hi); }
-.log-line.info    { color: #7FA8CB; }
-.log-line.muted   { color: #5C574B; }
-.log-line.header  { color: #EFEAE0; font-weight: 600; }
-.log-line.default { color: #C9C2B4; }
-.term-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: #45403655; }
-.term-empty-title { font-size: 13px; font-family: var(--font); font-weight: 600; color: #6E6858; }
-.term-empty-sub   { font-size: 11px; color: #504B40; font-family: var(--mono); }
-
-/* ─────────────────────────────────────────────
-   TOAST
-───────────────────────────────────────────── */
-#toast {
-  position: fixed; bottom: 20px; right: 20px;
-  padding: 12px 16px; border-radius: var(--r-sm);
-  font-size: 13px; font-weight: 600;
-  display: flex; align-items: center; gap: 9px;
-  z-index: 200; transform: translateY(60px); opacity: 0;
-  transition: all 0.28s cubic-bezier(0.34,1.5,0.64,1);
-  pointer-events: none;
-  background: var(--paper-2);
-  border: 1px solid var(--border-hi);
-  box-shadow: 0 20px 40px -12px rgba(33,30,25,0.35);
-  color: var(--ink); max-width: 340px;
-}
-#toast.show { transform: translateY(0); opacity: 1; }
-#toast.success { border-left: 4px solid var(--green); }
-#toast.error   { border-left: 4px solid var(--red); }
-#toast.info    { border-left: 4px solid var(--blue); }
-
-/* ─────────────────────────────────────────────
-   OVERLAYS / DIALOGS
-───────────────────────────────────────────── */
-.overlay { display: none; position: fixed; inset: 0; background: rgba(28,25,19,0.45); backdrop-filter: blur(2px); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
-.overlay.show { display: flex; }
-.dialog {
-  background: var(--paper-2);
-  border-radius: var(--r-lg);
-  padding: 28px 30px;
-  max-width: 440px; width: 100%;
-  box-shadow: 0 30px 60px -14px rgba(0,0,0,0.45);
-  animation: pop-in 0.24s cubic-bezier(0.34,1.4,0.64,1);
-}
-@keyframes pop-in { from { opacity:0; transform:scale(0.95) translateY(8px); } }
-.dialog-icon { width: 48px; height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: inset 0 1px 3px rgba(33,30,25,0.14); }
-.di-amber { background: var(--amber-dim); }
-.di-blue  { background: var(--blue-dim); }
-.di-red   { background: var(--red-dim); }
-.dialog-title { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
-.dialog-body  { font-size: 13.5px; color: var(--muted); line-height: 1.65; margin-bottom: 22px; font-weight: 500; }
-.dialog-body strong { color: var(--ink); font-weight: 700; }
-.dialog-body .blue { color: var(--blue); font-weight: 700; }
-.dialog-actions { display: flex; gap: 8px; }
-.btn-dlg-cancel {
-  flex: 1; padding: 12px;
-  background: var(--paper); border: none;
-  border-radius: var(--r-xs); color: var(--ink-2);
-  font-family: var(--font); font-weight: 600; font-size: 14px;
-  cursor: pointer; transition: all 0.14s;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
-}
-.btn-dlg-cancel:hover { color: var(--ink); }
-.btn-dlg-ok { flex: 1; padding: 13px; border: none; border-radius: var(--r-xs); font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.12s ease; }
-.btn-dlg-ok.orange {
-  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 60%, #7C3413 100%);
-  color: #FDF1E6; box-shadow: 0 2px 0 #5E260C, 0 5px 14px rgba(166,70,27,0.35); text-shadow: 0 1px 1px rgba(0,0,0,0.2);
-}
-.btn-dlg-ok.orange:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #5E260C, 0 7px 18px rgba(166,70,27,0.42); }
-.btn-dlg-ok.blue {
-  background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%);
-  color: #EAF1F7; box-shadow: 0 2px 0 #1C3040, 0 5px 14px rgba(57,94,127,0.32); text-shadow: 0 1px 1px rgba(0,0,0,0.16);
-}
-.btn-dlg-ok.blue:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1C3040, 0 7px 18px rgba(57,94,127,0.40); }
-.btn-dlg-ok.red {
-  background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%);
-  color: #FBEAE3; box-shadow: 0 2px 0 #6B2416, 0 5px 14px rgba(166,58,38,0.32); text-shadow: 0 1px 1px rgba(0,0,0,0.16);
-}
-.btn-dlg-ok.red:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #6B2416, 0 7px 18px rgba(166,58,38,0.40); }
-.btn-dlg-ok:active { transform: translateY(1px) !important; }
-
-/* ─────────────────────────────────────────────
-   UTILITIES
-───────────────────────────────────────────── */
-.spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.65s linear infinite; flex-shrink: 0; }
-@keyframes spin { to { transform: rotate(360deg); } }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-::selection { background: rgba(147,101,14,0.16); }
-
-@media (max-width: 1180px) {
-  .work-row { grid-template-columns: 1fr; }
-}
-@media (max-width: 1000px) {
-  main { grid-template-columns: 250px 1fr; gap: 16px; padding: 16px 18px; }
-}
-@media (max-width: 860px) {
-  main { grid-template-columns: 1fr; height: auto; overflow: visible; }
-  .hdr-seg { display: none; }
-  .work-row { grid-template-columns: 1fr; }
-  .terminal-body { min-height: 320px; }
-}
-@media (max-width: 640px) {
-  header { padding: 0 16px; }
-  main { padding: 14px; gap: 14px; }
-  .stats-row { grid-template-columns: 1fr; }
-}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+@media(max-width:1100px){main{grid-template-columns:262px 1fr;gap:14px;padding:14px 16px}}
+@media(max-width:900px){main{grid-template-columns:1fr;height:auto;overflow:visible}.sidebar{overflow:visible}.content{overflow:visible}.hdr-seg{display:none}.tcard{min-height:400px}}
+@media(max-width:640px){header{padding:0 15px}main{padding:13px;gap:13px}.mrow{grid-template-columns:1fr}#toast{left:13px;right:13px;max-width:none}}
 </style>
-<script>
-document.documentElement.style.visibility = 'hidden';
-document.addEventListener('DOMContentLoaded', function() { document.documentElement.style.visibility = ''; });
-</script>
 </head>
 <body>
 
-<!-- HEADER -->
-<header>
-  <div class="hdr-brand">
-    <div class="hdr-seal">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z"/>
-      </svg>
+<div class="bg-stage" aria-hidden="true">
+  <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+  <div class="mesh"></div>
+  <svg class="routes" viewBox="0 0 1400 900" preserveAspectRatio="xMidYMid slice">
+    <path d="M90,700 C330,560 480,660 700,470 S1050,240 1330,300" stroke="#F26522"/>
+    <path d="M60,300 C300,190 520,340 760,250 S1120,420 1350,330" stroke="#2563EB"/>
+    <path d="M140,820 C420,760 660,830 940,700 S1220,600 1370,650" stroke="#12A150"/>
+    <circle class="pulse-dot" cx="700" cy="470" r="4"/>
+    <circle class="pulse-dot" cx="760" cy="250" r="3.5"/>
+    <circle class="pulse-dot" cx="940" cy="700" r="3.5"/>
+  </svg>
+  <div class="crates">
+    <div class="crate c1" style="width:74px;height:74px">
+      <i class="tp" style="width:74px;height:74px;transform:translateZ(37px)"></i>
+      <i class="lf" style="width:74px;height:74px;transform:rotateY(-90deg) translateZ(37px)"></i>
+      <i class="rt" style="width:74px;height:74px;transform:rotateX(90deg) translateZ(37px)"></i>
     </div>
-    <div>
-      <div class="hdr-name">YesAgain FZC</div>
-      <div class="hdr-sub">DHL Booking Dashboard</div>
+    <div class="crate c2" style="width:52px;height:52px">
+      <i class="tp" style="width:52px;height:52px;transform:translateZ(26px)"></i>
+      <i class="lf" style="width:52px;height:52px;transform:rotateY(-90deg) translateZ(26px)"></i>
+      <i class="rt" style="width:52px;height:52px;transform:rotateX(90deg) translateZ(26px)"></i>
+    </div>
+    <div class="crate c3" style="width:92px;height:92px">
+      <i class="tp" style="width:92px;height:92px;transform:translateZ(46px)"></i>
+      <i class="lf" style="width:92px;height:92px;transform:rotateY(-90deg) translateZ(46px)"></i>
+      <i class="rt" style="width:92px;height:92px;transform:rotateX(90deg) translateZ(46px)"></i>
+    </div>
+    <div class="crate c4" style="width:64px;height:64px">
+      <i class="tp" style="width:64px;height:64px;transform:translateZ(32px)"></i>
+      <i class="lf" style="width:64px;height:64px;transform:rotateY(-90deg) translateZ(32px)"></i>
+      <i class="rt" style="width:64px;height:64px;transform:rotateX(90deg) translateZ(32px)"></i>
+    </div>
+    <div class="crate c5" style="width:44px;height:44px">
+      <i class="tp" style="width:44px;height:44px;transform:translateZ(22px)"></i>
+      <i class="lf" style="width:44px;height:44px;transform:rotateY(-90deg) translateZ(22px)"></i>
+      <i class="rt" style="width:44px;height:44px;transform:rotateX(90deg) translateZ(22px)"></i>
     </div>
   </div>
+</div>
 
+<header>
+  <div class="hb">
+    <div class="hl">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z"/></svg>
+    </div>
+    <div>
+      <div class="hn">YesAgain FZC</div>
+      <div class="hs">DHL Booking Dashboard</div>
+    </div>
+  </div>
   <div class="hdr-seg">
     <button class="hdr-seg-btn active-test" id="hc-test" onclick="setMode('test')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -738,52 +440,31 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
       Production
     </button>
   </div>
-
-  <div class="hdr-right">
-    <div class="api-pill">
-      <span class="status-dot" id="status-dot"></span>
-      <span id="status-text">Checking…</span>
-    </div>
+  <div class="api">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Checking</span>
   </div>
 </header>
 
-<!-- MAIN -->
 <main>
-
-  <!-- SIDEBAR -->
   <aside class="sidebar">
 
-    <!-- Session — ticket-stub styling -->
-    <div class="sb-card emboss ticket">
-      <div class="ticket-head">
-        <span class="ticket-eyebrow">Session</span>
-        <span class="ticket-no" id="stat-time">— : —</span>
-      </div>
-      <div class="perf"></div>
-      <div class="stats-grid">
-        <div class="stat-tile">
-          <div class="stat-num" id="stat-runs">0</div>
-          <div class="stat-lbl">Runs Today</div>
+    <div class="card">
+      <div class="sec">
+        <div class="lbl">Session</div>
+        <div class="sg">
+          <div class="st"><div class="sv" id="stat-runs">0</div><div class="sk">Runs Today</div></div>
+          <div class="st"><div class="sv green" id="stat-booked">0</div><div class="sk">Booked</div></div>
+          <div class="st"><div class="sv red" id="stat-failed">0</div><div class="sk">Failed</div></div>
+          <div class="st"><div class="sv mono" id="stat-time">—:—</div><div class="sk">Last Run</div></div>
         </div>
-        <div class="stat-tile">
-          <div class="stat-num green" id="stat-booked">0</div>
-          <div class="stat-lbl">Booked</div>
-        </div>
-        <div class="stat-tile">
-          <div class="stat-num red" id="stat-failed">0</div>
-          <div class="stat-lbl">Failed</div>
-        </div>
-        <div class="stat-tile">
-          <div class="stat-num mono" id="stat-last">Ready</div>
-          <div class="stat-lbl">Status</div>
-        </div>
+        <div style="margin-top:9px;font-family:var(--m);font-size:10px;color:var(--faint);text-align:center" id="stat-last">Idle</div>
       </div>
     </div>
 
-    <!-- Booking control -->
-    <div class="sb-card emboss">
-      <div class="sb-section">
-        <div class="sb-label">Booking Mode</div>
+    <div class="card">
+      <div class="sec">
+        <div class="lbl">Booking Mode</div>
         <div class="mode-seg">
           <button class="mode-btn test active" id="mode-test" onclick="setMode('test')">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -794,123 +475,67 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
             Production
           </button>
         </div>
-
-        <div id="notice-test" class="notice test-notice">
-          <svg width="13" height="13" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span><strong>Test Mode:</strong> No real DHL call. Fake tracking returned. Airtable untouched.</span>
+        <div id="notice-test" class="notice notice-test">
+          <svg width="12" height="12" style="flex-shrink:0;margin-top:2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><strong>Test Mode:</strong> Script runs fully but no real DHL call is made. Fake tracking numbers returned. Airtable is NOT updated.</span>
         </div>
-        <div id="notice-prod" class="notice prod-notice hidden">
-          <svg width="13" height="13" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span><strong>Production:</strong> Real shipments booked. Cannot be undone.</span>
+        <div id="notice-prod" class="notice notice-prod hidden">
+          <svg width="12" height="12" style="flex-shrink:0;margin-top:2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span><strong>Production:</strong> Real DHL shipments will be booked. Real labels generated. Airtable will be updated. Cannot be undone.</span>
         </div>
       </div>
-
-      <div class="sb-section">
+      <div class="sec">
         <button class="btn-run test-btn" id="btn-book" onclick="confirmRun()">
-          <span id="btn-icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-          </span>
+          <span id="btn-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
           <span id="btn-label">Run Test Booking</span>
         </button>
-        <div class="prog-wrap" id="progress-wrap">
-          <div class="prog-track"><div class="prog-fill running" id="progress-bar"></div></div>
-          <div class="prog-lbl" id="progress-label">Initialising…</div>
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="pt"><div class="pf running" id="progress-bar"></div></div>
+          <div class="pl" id="progress-label">Initialising…</div>
         </div>
       </div>
-
-      <div class="sb-section" id="downloads-card">
-        <div class="sb-label" style="color:var(--green)">Downloads Ready</div>
-        <a class="dl-link" href="#" onclick="downloadFile('csv'); return false;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <div><div>DHL Order CSV</div><div class="dl-meta">Latest run</div></div>
-          <svg style="margin-left:auto;color:var(--faint)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <div class="sec" id="downloads-card">
+        <div class="lbl" style="color:var(--gr)">Downloads Ready</div>
+        <a class="dl" href="#" onclick="downloadFile('csv'); return false;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div><div>DHL Order CSV</div><div class="dlm">Latest run</div></div>
         </a>
-        <a class="dl-link" href="#" onclick="downloadFile('labels'); return false;">
+        <a class="dl" href="#" onclick="downloadFile('labels'); return false;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          <div><div>Shipping Labels (ZIP)</div><div class="dl-meta">All PDF labels</div></div>
-          <svg style="margin-left:auto;color:var(--faint)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div><div>Shipping Labels ZIP</div><div class="dlm">All PDF labels</div></div>
         </a>
       </div>
     </div>
 
-    <!-- Log Files -->
-    <div class="sb-card emboss" style="flex:1; display:flex; flex-direction:column; min-height:0;">
-      <div class="sb-section" style="padding-bottom:0; flex-shrink:0;">
-        <div class="sb-label" style="margin-bottom:0">Log Files</div>
-      </div>
-      <div class="log-history" id="history-list">
-        <div style="font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:center;padding:10px">Loading…</div>
-      </div>
-    </div>
-
-  </aside>
-
-  <!-- CONTENT -->
-  <section class="content">
-
-    <div class="page-head">
-      <div>
-        <div class="page-title">DHL Shipping Operations</div>
-        <div class="page-sub">Manage bookings, returns and shipment activity</div>
-      </div>
-      <div class="page-rule"></div>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-card emboss">
-        <div class="stat-card-icon sci-neutral">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0123 7.24v9.53a2 2 0 01-1.11 1.79l-8 4a2 2 0 01-1.78 0l-8-4a2 2 0 01-1.11-1.8V7.24a2 2 0 011.11-1.79l8-4a2 2 0 011.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg>
-        </div>
-        <div><div class="stat-card-lbl">Processed</div><div class="stat-card-val" id="rv-total">—</div></div>
-      </div>
-      <div class="stat-card emboss">
-        <div class="stat-card-icon sci-green">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div><div class="stat-card-lbl">Succeeded</div><div class="stat-card-val green" id="rv-ok">—</div></div>
-      </div>
-      <div class="stat-card emboss">
-        <div class="stat-card-icon sci-red">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </div>
-        <div><div class="stat-card-lbl">Failed</div><div class="stat-card-val red" id="rv-fail">—</div></div>
-      </div>
-    </div>
-
-    <div class="work-row">
-
-      <!-- Shipment Actions — tabbed Cancel / Return -->
-      <div class="actions-card emboss">
-        <div class="actions-tabs">
-          <button class="action-tab active tab-red" id="tab-cancel" onclick="switchActionTab('cancel')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            Cancel Shipment
+    <div class="card">
+      <div class="sec">
+        <div class="lbl">Shipment Actions</div>
+        <div class="tabs">
+          <button class="tab active" id="tab-cancel" onclick="switchActionTab('cancel')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+            Cancel
           </button>
-          <button class="action-tab tab-blue" id="tab-return" onclick="switchActionTab('return')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-            Return Label
+          <button class="tab" id="tab-return" onclick="switchActionTab('return')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+            Return
           </button>
         </div>
-
-        <div class="actions-panel" id="panel-cancel">
-          <div class="actions-lede">Sends a cancellation to DHL for an AWB that hasn't been picked up yet. On success, the Airtable order resets for re-booking.</div>
-          <input type="text" class="awb-input" id="cancel-awb-input" placeholder="AWB / Tracking Number" onkeydown="if(event.key==='Enter') confirmCancel()"/>
-          <button class="btn-action btn-cancel-ship" id="btn-cancel-ship" onclick="confirmCancel()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        <div id="panel-cancel">
+          <input type="text" class="awb" id="cancel-awb-input" placeholder="AWB / Tracking Number" onkeydown="if(event.key==='Enter') confirmCancel()"/>
+          <button class="btn-act btn-cancel-ship" id="btn-cancel-ship" onclick="confirmCancel()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
             Cancel Shipment
           </button>
           <div class="action-result" id="cancel-result">
-            <div class="ar-label" id="cr-label">Result</div>
-            <div class="ar-msg" id="cr-msg">—</div>
-            <div class="ar-hint" id="cr-hint"></div>
+            <div class="cr-label" id="cr-label">Result</div>
+            <div class="cr-msg" id="cr-msg">—</div>
+            <div class="cr-hint" id="cr-hint"></div>
           </div>
         </div>
-
-        <div class="actions-panel" id="panel-return" hidden>
-          <div class="actions-lede">Books a return label against an already-shipped AWB and uploads it to Airtable once DHL confirms.</div>
-          <input type="text" class="awb-input" id="return-awb-input" placeholder="Original AWB / Tracking Number" onkeydown="if(event.key==='Enter') bookReturn()"/>
-          <button class="btn-action btn-return-lbl" id="btn-return" onclick="bookReturn()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+        <div id="panel-return" hidden>
+          <input type="text" class="awb" id="return-awb-input" placeholder="Original AWB / Tracking Number" onkeydown="if(event.key==='Enter') bookReturn()"/>
+          <button class="btn-act btn-return-lbl" id="btn-return" onclick="bookReturn()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
             Book Return Label
           </button>
           <div class="action-result" id="return-result">
@@ -920,75 +545,101 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Console -->
-      <div class="log-card">
-        <div class="log-card-header">
-          <div class="log-card-title">
-            <div class="terminal-dots"><span class="td-red"></span><span class="td-amber"></span><span class="td-green"></span></div>
-            <span class="log-card-name" id="terminal-title">airtable_transform.py</span>
-            <span class="log-badge-status lbs-ready" id="terminal-badge">READY</span>
-          </div>
-          <div class="log-card-actions">
-            <button class="btn-sm" onclick="clearTerminal(true)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-              Clear
-            </button>
-            <button class="btn-sm" onclick="scrollBottom()">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-              Bottom
-            </button>
-          </div>
-        </div>
-        <div class="terminal-body carved" id="terminal">
-          <div class="term-empty" id="terminal-empty">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            <div class="term-empty-title">Waiting for activity</div>
-            <div class="term-empty-sub">Run a booking to see activity here.</div>
-          </div>
+    <div class="card">
+      <div class="sec">
+        <div class="lbl">Log Files</div>
+        <div class="hist" id="history-list">
+          <div style="font-family:var(--m);font-size:10.5px;color:var(--faint);text-align:center;padding:10px">Loading…</div>
         </div>
       </div>
+    </div>
 
+  </aside>
+
+  <section class="content">
+    <div class="phead">
+      <div class="ptitle">DHL Shipping Operations</div>
+      <div class="psub">Manage bookings, returns and shipment activity</div>
+    </div>
+
+    <div class="mrow">
+      <div class="mcard">
+        <div class="mic n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0123 7.24v9.53a2 2 0 01-1.11 1.79l-8 4a2 2 0 01-1.78 0l-8-4a2 2 0 01-1.11-1.8V7.24a2 2 0 011.11-1.79l8-4a2 2 0 011.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg></div>
+        <div><div class="mk">Processed</div><div class="mv" id="rv-total">—</div></div>
+      </div>
+      <div class="mcard">
+        <div class="mic g"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div><div class="mk">Succeeded</div><div class="mv green" id="rv-ok">—</div></div>
+      </div>
+      <div class="mcard">
+        <div class="mic r"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+        <div><div class="mk">Failed</div><div class="mv red" id="rv-fail">—</div></div>
+      </div>
+    </div>
+
+    <div class="tcard">
+      <div class="tbar">
+        <div class="tleft">
+          <div class="tdots"><span class="dr"></span><span class="da"></span><span class="dg"></span></div>
+          <span class="tfile" id="terminal-title">airtable_transform.py</span>
+          <span class="log-badge-status lbs-ready" id="terminal-badge">Ready</span>
+        </div>
+        <div class="tacts">
+          <button class="bsm" onclick="clearTerminal(true)">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+            Clear
+          </button>
+          <button class="bsm" onclick="scrollBottom()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            Bottom
+          </button>
+        </div>
+      </div>
+      <div class="tbody" id="terminal">
+        <div id="terminal-empty">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <div class="tet">Waiting for activity</div>
+          <div class="tes">Run a booking to see activity here.</div>
+        </div>
+      </div>
     </div>
   </section>
 </main>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
-<!-- CONFIRM OVERLAY -->
-<div class="overlay" id="confirm-overlay">
+<div id="confirm-overlay">
   <div class="dialog">
     <div class="dialog-icon di-amber" id="confirm-icon-wrap">
-      <svg id="confirm-icon-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <svg id="confirm-icon-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C97A0C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
     </div>
-    <div class="dialog-title" id="confirm-title">Run Test Booking?</div>
-    <div class="dialog-body" id="confirm-body"></div>
-    <div class="dialog-actions">
+    <div class="dtitle" id="confirm-title">Run Test Booking?</div>
+    <div class="dbody" id="confirm-body"></div>
+    <div class="dacts">
       <button class="btn-dlg-cancel" onclick="closeConfirm()">Cancel</button>
       <button class="btn-dlg-ok orange" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
     </div>
   </div>
 </div>
 
-<!-- CANCEL CONFIRM OVERLAY -->
-<div class="overlay" id="cancel-confirm-overlay">
+<div id="cancel-confirm-overlay">
   <div class="dialog">
     <div class="dialog-icon di-red">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC2F3E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
     </div>
-    <div class="dialog-title">Cancel Shipment?</div>
-    <div class="dialog-body" id="cancel-confirm-body">
-      This will send a <strong>DELETE</strong> request to DHL for AWB <strong id="cancel-confirm-awb">—</strong>.<br><br>
-      If DHL confirms, the Airtable order will be reset for re-booking.<br><br>
-      ⚠️ Only works <strong>before DHL picks up / scans</strong> the parcel. If already scanned, call DHL UAE: <strong>+971 600 567 567</strong>
+    <div class="dtitle">Cancel Shipment?</div>
+    <div class="dbody" id="cancel-confirm-body">
+      This will send a <strong>DELETE</strong> request to DHL for AWB <strong id="cancel-confirm-awb">—</strong>.
     </div>
-    <div class="dialog-actions">
+    <div class="dacts">
       <button class="btn-dlg-cancel" onclick="closeCancelConfirm()">Go Back</button>
       <button class="btn-dlg-ok red" onclick="executeCancelShipment()">Yes, Cancel It</button>
     </div>
   </div>
 </div>
+
 
 <script>
 // ════════════════════════════════════════════
