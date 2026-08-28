@@ -6,710 +6,829 @@
 <title>YesAgain FZC — DHL Booking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <style>
-/* ═════════════════════════════════════════════════════════════
-   RESET + TOKENS
-   Direction: "Premium ledger" — cream manifest paper, deep
-   embossed 3D cards, editorial calm. Serif display (Fraunces)
-   for numerals/headings, Inter for UI, mono for data/AWB/logs.
-═════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   YESAGAIN DHL — DARK GLASSMORPHISM OPERATIONS DASHBOARD
+═══════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Paper / surfaces */
-  --paper:      #EBE7DC;   /* page background — cool stone-ivory */
-  --paper-2:    #F7F4EC;   /* raised card surface */
-  --paper-3:    #FFFFFF;   /* topmost highlight (inputs, chrome) */
-  --ink:        #211E19;
-  --ink-2:      #4A453C;
-  --muted:      #85806F;
-  --faint:      #B2AC97;
-  --border:     #DBD5C4;
-  --border-hi:  #C7BFA8;
+  /* Core dark surfaces */
+  --bg:          #0B0F17;
+  --bg-2:        #0F1420;
+  --glass:       rgba(255,255,255,0.04);
+  --glass-hi:    rgba(255,255,255,0.08);
+  --glass-rim:   rgba(255,255,255,0.10);
+  --glass-deep:  rgba(0,0,0,0.30);
 
-  /* Brass — primary / test-mode accent (ink-stamp gold) */
-  --brass:      #93650E;
-  --brass-hi:   #C4922F;
-  --brass-dim:  #F1E4C4;
-  --brass-bd:   #DEC488;
+  /* DHL Orange */
+  --orange:      #FF5500;
+  --orange-glow: rgba(255,85,0,0.35);
+  --orange-dim:  rgba(255,85,0,0.12);
+  --orange-bd:   rgba(255,85,0,0.40);
 
-  /* Copper — production / real-shipment accent */
-  --copper:     #A6461B;
-  --copper-hi:  #D06B34;
-  --copper-dim: #F7E4D6;
-  --copper-bd:  #E7B98F;
+  /* Electric cyan accent */
+  --cyan:        #00D4FF;
+  --cyan-glow:   rgba(0,212,255,0.25);
+  --cyan-dim:    rgba(0,212,255,0.10);
 
   /* Semantic */
-  --green:      #2E7D4F;
-  --green-dim:  #E6F1E9;
-  --green-bd:   #BEDBC9;
-  --red:        #A63A26;
-  --red-dim:    #F7E7E1;
-  --red-bd:     #E5BFAC;
-  --blue:       #395E7F;
-  --blue-dim:   #E6EDF3;
-  --blue-bd:    #C1D2E0;
-  --amber:      #A6790F;
-  --amber-dim:  #F5EAD1;
-  --amber-bd:   #E2C983;
+  --green:       #00E676;
+  --green-glow:  rgba(0,230,118,0.25);
+  --green-dim:   rgba(0,230,118,0.10);
+  --red:         #FF3B3B;
+  --red-glow:    rgba(255,59,59,0.30);
+  --red-dim:     rgba(255,59,59,0.10);
+  --blue:        #4D8EFF;
+  --blue-glow:   rgba(77,142,255,0.30);
+  --blue-dim:    rgba(77,142,255,0.10);
+  --amber:       #FFB020;
 
-  /* Type */
-  --display: 'Fraunces', Georgia, serif;
-  --font:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono:    'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code', monospace;
+  /* Text */
+  --text-hi:     #F0F4FF;
+  --text:        #A8B4CC;
+  --text-mid:    #6B7A99;
+  --text-lo:     #3A4460;
 
-  --r-xs: 7px;
-  --r-sm: 10px;
-  --r:    14px;
-  --r-lg: 18px;
-}
+  /* Borders */
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  /* Typography */
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Radius */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r:    16px;
+  --r-lg: 20px;
+  --r-xl: 24px;
 }
 
 html, body { height: 100%; }
 
 body {
   font-family: var(--font);
-  background:
-    radial-gradient(1200px 600px at 12% -10%, rgba(147,101,14,0.05), transparent 55%),
-    var(--paper);
-  color: var(--ink-2);
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+
+  /* Radial gradient background with depth */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255,85,0,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,212,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 50% 50%, rgba(77,142,255,0.04) 0%, transparent 70%);
+  background-attachment: fixed;
 }
 
-body.loading { opacity: 0; }
-body.ready { opacity: 1; transition: opacity 0.15s ease; }
-
-/* Embossed "raised paper" card — the base surface treatment used everywhere */
-.emboss {
-  background: var(--paper-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.75),
-    inset 0 -10px 18px -14px rgba(33,30,25,0.10),
-    0 1px 2px rgba(33,30,25,0.06),
-    0 14px 28px -16px rgba(33,30,25,0.22);
+/* ── Dot grid overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* Inset "carved" surface — used for terminal chrome / wells */
-.carved {
-  box-shadow:
-    inset 0 2px 5px rgba(33,30,25,0.20),
-    inset 0 1px 0 rgba(0,0,0,0.06);
-}
-
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
    HEADER
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 header {
-  height: 68px;
-  background: var(--paper-2);
-  border-bottom: 1px solid var(--border-hi);
+  height: 64px;
+  background: rgba(11,15,23,0.80);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  position: sticky; top: 0; z-index: 100;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 14px rgba(33,30,25,0.06);
+  box-shadow: 0 1px 0 var(--border), 0 4px 24px rgba(0,0,0,0.40);
 }
 
-.hdr-brand { display: flex; align-items: center; gap: 13px; }
+.hdr-brand { display: flex; align-items: center; gap: 12px; }
 
-.hdr-seal {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(155deg, var(--brass-hi) 0%, var(--brass) 62%, #6E4A09 100%);
+.hdr-logo {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--orange) 0%, #CC3300 100%);
+  border-radius: var(--r-sm);
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px var(--orange-glow), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
   flex-shrink: 0;
-  box-shadow:
-    0 2px 0 #5E3F08,
-    0 5px 12px rgba(147,101,14,0.45),
-    inset 0 1px 1px rgba(255,255,255,0.45);
-  transform: rotate(-6deg);
 }
-.hdr-seal svg { stroke: #FBF3DF; }
+.hdr-logo svg { stroke: #fff; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
 
-.hdr-name {
-  font-family: var(--display);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-.hdr-sub {
-  font-size: 10.5px;
-  color: var(--muted);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-top: 2px;
-  font-weight: 600;
-}
+.hdr-name { font-size: 15px; font-weight: 700; color: var(--text-hi); letter-spacing: -0.01em; }
+.hdr-sub  { font-size: 10.5px; color: var(--text-mid); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 1px; }
 
+/* ── Segmented toggle — 3D pill ── */
 .hdr-seg {
   display: flex;
-  background: var(--paper);
+  background: rgba(255,255,255,0.04);
   border: 1px solid var(--border-hi);
-  border-radius: 12px;
-  padding: 5px;
-  gap: 4px;
-  box-shadow: inset 0 2px 5px rgba(33,30,25,0.12), inset 0 1px 0 rgba(0,0,0,0.03);
+  border-radius: 100px;
+  padding: 4px;
+  gap: 3px;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.40),
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 1px 0 rgba(255,255,255,0.06);
 }
+
 .hdr-seg-btn {
-  padding: 9px 20px;
-  border-radius: 8px;
+  padding: 8px 22px;
+  border-radius: 100px;
   border: none;
   font-family: var(--font);
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.16s cubic-bezier(0.34,1.2,0.64,1);
-  color: var(--muted);
+  transition: all 0.20s cubic-bezier(0.34,1.2,0.64,1);
+  color: var(--text-mid);
   background: transparent;
   display: flex; align-items: center; gap: 7px;
-  letter-spacing: -0.005em;
+  letter-spacing: 0.01em;
+  position: relative;
 }
-.hdr-seg-btn:hover { color: var(--ink-2); }
+.hdr-seg-btn:hover { color: var(--text); }
+
 .hdr-seg-btn.active-test {
-  background: var(--paper-3);
-  color: var(--ink);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.08), 0 3px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-  transform: translateY(-1px);
+  background: rgba(255,255,255,0.10);
+  color: var(--text-hi);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.40),
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    0 0 0 1px rgba(255,255,255,0.08);
 }
+
 .hdr-seg-btn.active-prod {
-  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 55%, #7C3413 100%);
-  color: #FDF1E6;
-  box-shadow: 0 2px 0 #6B2C10, 0 5px 14px rgba(166,70,27,0.40);
-  transform: translateY(-1px);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+  background: linear-gradient(135deg, #FF7030 0%, var(--orange) 50%, #CC3300 100%);
+  color: #fff;
+  box-shadow:
+    0 0 20px var(--orange-glow),
+    0 2px 8px rgba(0,0,0,0.40),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.30);
 }
 
 .hdr-right { display: flex; align-items: center; gap: 10px; }
+
 .api-pill {
-  display: flex; align-items: center; gap: 7px;
-  padding: 7px 13px;
-  background: var(--paper);
-  border: 1px solid var(--border-hi);
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  background: var(--glass);
+  border: 1px solid var(--border);
   border-radius: 100px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--muted);
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
+  font-size: 12px; font-weight: 600;
+  color: var(--text-mid);
+  backdrop-filter: blur(10px);
 }
-.status-dot {
+
+.api-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: var(--faint);
+  background: var(--text-lo);
   flex-shrink: 0;
-  transition: background 0.3s;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+  transition: all 0.3s;
 }
-.status-dot.online  { background: var(--green); animation: blink 2.4s infinite; }
-.status-dot.error   { background: var(--red); }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.45} }
+.api-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green-glow); animation: pulse 2.5s infinite; }
+.api-dot.running { background: var(--amber); box-shadow: 0 0 8px rgba(255,176,32,0.5); animation: pulse 0.8s infinite; }
+.api-dot.error   { background: var(--red);   box-shadow: 0 0 8px var(--red-glow); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
    LAYOUT
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: 288px 1fr;
+  grid-template-columns: 292px 1fr;
   gap: 20px;
   padding: 20px 24px;
-  height: calc(100vh - 68px);
+  height: calc(100vh - 64px);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
-/* ─────────────────────────────────────────────
-   SIDEBAR — trimmed to 3 short panels so nothing
-   needs to scroll to reach a control
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   GLASS CARD MIXIN
+═══════════════════════════════════════════════════════ */
+.glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.40),
+    0 1px 0 rgba(255,255,255,0.08) inset,
+    0 -1px 0 rgba(0,0,0,0.20) inset;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════ */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hi) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 10px; }
+
+.sb-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.020) 100%);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow: hidden;
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.15);
 }
 
-.sb-card { overflow: hidden; }
-.sb-section { padding: 14px 16px; }
-.sb-section + .sb-section { border-top: 1px solid var(--border); }
+.sb-section { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.sb-section:last-child { border-bottom: none; }
 
 .sb-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 10px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--text-lo);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
 }
+.sb-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-/* Session card styled as a ticket stub: header row, then a
-   perforated tear-line with cut notches, then the stat grid —
-   the one deliberate signature flourish on the page. */
-.ticket {
-  position: relative;
-}
-.ticket-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  padding: 13px 16px 11px;
-}
-.ticket-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
-.ticket-no { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-.perf {
+.stat-tile {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 13px 14px;
   position: relative;
-  height: 0;
-  border-top: 1.5px dashed var(--border-hi);
+  overflow: hidden;
+  transition: border-color 0.2s;
 }
-.perf::before, .perf::after {
+.stat-tile::before {
   content: '';
   position: absolute;
-  top: -8px;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 1px solid var(--border-hi);
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
 }
-.perf::before { left: -9px; }
-.perf::after  { right: -9px; }
+.stat-tile:hover { border-color: var(--border-hi); }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 14px 16px;
-}
-.stat-tile {
-  background: var(--paper);
-  border-radius: var(--r-sm);
-  padding: 9px 11px;
-  box-shadow: inset 0 1px 4px rgba(33,30,25,0.10);
-}
-.stat-num { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
-.stat-num.green { color: var(--green); }
-.stat-num.red   { color: var(--red); }
-.stat-num.mono  { font-family: var(--mono); font-size: 14px; font-weight: 600; }
-.stat-lbl { font-size: 9.5px; font-weight: 600; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; text-transform: uppercase; }
+.stat-num { font-size: 26px; font-weight: 800; color: var(--text-hi); line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat-num.green { color: var(--green); text-shadow: 0 0 20px var(--green-glow); }
+.stat-num.red   { color: var(--red);   text-shadow: 0 0 20px var(--red-glow); }
+.stat-num.mono  { font-family: var(--mono); font-size: 16px; font-weight: 600; }
+.stat-lbl { font-size: 10px; font-weight: 600; color: var(--text-lo); margin-top: 5px; letter-spacing: 0.03em; }
 
 /* Mode toggle */
 .mode-seg {
   display: flex;
-  background: var(--paper);
-  border-radius: var(--r-xs);
-  padding: 3px;
-  gap: 2px;
-  margin-bottom: 11px;
-  box-shadow: inset 0 1px 4px rgba(33,30,25,0.12);
+  background: rgba(0,0,0,0.30);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 3px; gap: 3px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.30);
+  margin-bottom: 12px;
 }
+
 .mode-btn {
-  flex: 1;
-  padding: 8px 8px;
-  border: none;
-  border-radius: 6px;
-  font-family: var(--font);
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: var(--muted);
-  background: transparent;
+  flex: 1; padding: 9px 8px;
+  border: none; border-radius: 9px;
+  font-family: var(--font); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.18s;
+  color: var(--text-mid); background: transparent;
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
-.mode-btn:hover { color: var(--ink); }
-.mode-btn.active.test { background: var(--paper-3); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.10), 0 2px 5px rgba(0,0,0,0.06); }
-.mode-btn.active.prod { background: linear-gradient(180deg, var(--copper-hi), var(--copper)); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+.mode-btn:hover { color: var(--text); }
+.mode-btn.active.test {
+  background: rgba(255,255,255,0.09);
+  color: var(--text-hi);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
+}
+.mode-btn.active.prod {
+  background: linear-gradient(135deg, #FF7030 0%, var(--orange) 100%);
+  color: #fff;
+  box-shadow: 0 0 16px var(--orange-glow), 0 2px 8px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.20);
+}
 
+/* Notice banners */
 .notice {
-  padding: 9px 11px;
+  padding: 11px 13px;
   border-radius: var(--r-xs);
-  font-size: 11px;
-  line-height: 1.45;
-  font-weight: 500;
-  display: flex; gap: 8px; align-items: flex-start;
-  border: 1px solid transparent;
+  font-size: 12px; line-height: 1.55; font-weight: 500;
+  display: flex; gap: 9px; align-items: flex-start;
 }
 .notice.hidden { display: none; }
-.notice.test-notice { background: var(--brass-dim); border-color: var(--brass-bd); color: #6E4A09; }
-.notice.prod-notice { background: var(--copper-dim); border-color: var(--copper-bd); color: #7C3413; }
-.notice strong { font-weight: 700; color: var(--ink); }
+.notice.test-notice {
+  background: var(--cyan-dim);
+  border: 1px solid rgba(0,212,255,0.20);
+  color: var(--cyan);
+}
+.notice.test-notice strong { color: var(--text-hi); }
+.notice.prod-notice {
+  background: var(--orange-dim);
+  border: 1px solid var(--orange-bd);
+  color: #FFB090;
+}
+.notice.prod-notice strong { color: var(--text-hi); }
 
-/* Primary run button — embossed 3D press */
+/* ── Run button — extruded 3D ── */
 .btn-run {
-  width: 100%;
-  padding: 12px 16px;
+  width: 100%; padding: 14px 20px;
   border-radius: var(--r-sm);
   border: none;
-  font-family: var(--font);
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  letter-spacing: -0.005em;
+  font-family: var(--font); font-size: 14.5px; font-weight: 700;
+  cursor: pointer; letter-spacing: -0.01em;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.15s cubic-bezier(0.34,1.2,0.64,1);
+  position: relative; overflow: hidden;
 }
+.btn-run::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 .btn-run.test-btn {
-  background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 55%, #6E4A09 100%);
-  color: #FBF3DF;
-  box-shadow: 0 3px 0 #5E3F08, 0 8px 18px -4px rgba(147,101,14,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.20);
+  background: linear-gradient(145deg, #1E2535 0%, #151C2A 100%);
+  color: var(--text-hi);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.10),
+    0 4px 0 #060911,
+    0 6px 20px rgba(0,0,0,0.50),
+    inset 0 1px 0 rgba(255,255,255,0.12);
 }
-.btn-run.test-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #5E3F08, 0 10px 22px -4px rgba(147,101,14,0.52); }
-.btn-run.test-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5E3F08, 0 3px 8px rgba(147,101,14,0.30); }
+.btn-run.test-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.14),
+    0 6px 0 #060911,
+    0 10px 28px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.btn-run.test-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 2px 0 #060911, 0 2px 8px rgba(0,0,0,0.40);
+}
 
 .btn-run.prod-btn {
-  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 55%, #7C3413 100%);
-  color: #FDF1E6;
-  box-shadow: 0 3px 0 #5E260C, 0 8px 18px -4px rgba(166,70,27,0.48), inset 0 1px 0 rgba(255,255,255,0.22);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.22);
+  background: linear-gradient(145deg, #FF7840 0%, #FF5500 50%, #CC3300 100%);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.30);
+  box-shadow:
+    0 0 24px var(--orange-glow),
+    0 0 0 1px rgba(255,120,0,0.40),
+    0 4px 0 #7A1A00,
+    0 6px 20px rgba(0,0,0,0.50),
+    inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.btn-run.prod-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #5E260C, 0 10px 22px -4px rgba(166,70,27,0.55); }
-.btn-run.prod-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5E260C, 0 3px 8px rgba(166,70,27,0.32); }
-.btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+.btn-run.prod-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 36px rgba(255,85,0,0.50),
+    0 0 0 1px rgba(255,140,0,0.50),
+    0 6px 0 #7A1A00,
+    0 10px 30px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.28);
+}
+.btn-run.prod-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 12px var(--orange-glow), 0 2px 0 #7A1A00;
+}
+.btn-run:disabled { opacity: 0.40; cursor: not-allowed; transform: none !important; }
 
+/* Progress */
 .prog-wrap { display: none; margin-top: 10px; }
 .prog-wrap.visible { display: block; }
-.prog-track { height: 4px; background: var(--paper); border-radius: 100px; overflow: hidden; margin-bottom: 6px; box-shadow: inset 0 1px 3px rgba(33,30,25,0.18); }
-.prog-fill { height: 100%; border-radius: 100px; background: var(--brass); width: 0%; transition: width 0.4s ease; }
+.prog-track { height: 3px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; margin-bottom: 6px; }
+.prog-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--orange), var(--cyan)); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 8px var(--orange-glow); }
 .prog-fill.running { animation: prog-slide 1.4s infinite ease-in-out; }
 @keyframes prog-slide { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
-.prog-lbl { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: center; }
+.prog-lbl { font-family: var(--mono); font-size: 10px; color: var(--text-lo); text-align: center; }
 
+/* Downloads */
 #downloads-card { display: none; }
 #downloads-card.visible { display: block; }
+
 .dl-link {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 11px;
-  background: var(--paper);
+  padding: 11px 12px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
   border-radius: var(--r-xs);
-  color: var(--ink);
-  font-size: 12.5px; font-weight: 600;
+  color: var(--text); font-size: 13px; font-weight: 600;
   cursor: pointer; transition: all 0.14s;
   text-decoration: none; margin-bottom: 7px;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
 }
 .dl-link:last-child { margin-bottom: 0; }
-.dl-link:hover { box-shadow: inset 0 1px 3px rgba(33,30,25,0.10), 0 2px 6px rgba(0,0,0,0.08); }
-.dl-meta { font-size: 10px; color: var(--faint); margin-top: 1px; font-family: var(--mono); }
+.dl-link:hover { background: rgba(255,255,255,0.05); border-color: var(--border-hi); color: var(--text-hi); }
+.dl-meta { font-size: 10px; color: var(--text-lo); margin-top: 1px; font-family: var(--mono); }
 
-/* Log Files list */
-.log-history { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; padding: 13px 16px; }
-.log-history::-webkit-scrollbar { width: 5px; }
-.log-history::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 10px; }
-.log-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px;
-  background: var(--paper);
-  border-radius: var(--r-xs);
-  cursor: pointer;
-  transition: all 0.14s;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.08);
-}
-.log-item:hover { box-shadow: inset 0 1px 3px rgba(33,30,25,0.08), 0 2px 6px rgba(0,0,0,0.07); }
-.log-item-name { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.log-item-meta { font-size: 9.5px; color: var(--faint); white-space: nowrap; font-family: var(--mono); }
-.log-badge { padding: 2px 7px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; flex-shrink: 0; }
-.log-badge.ok  { background: var(--green-dim); color: var(--green); }
-.log-badge.err { background: var(--red-dim);   color: var(--red); }
-
-/* ─────────────────────────────────────────────
-   CONTENT AREA
-───────────────────────────────────────────── */
-.content { display: flex; flex-direction: column; gap: 16px; overflow: hidden; min-height: 0; }
-
-.page-head { flex-shrink: 0; display: flex; align-items: baseline; gap: 14px; }
-.page-title { font-family: var(--display); font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-.page-sub { font-size: 12.5px; color: var(--muted); font-weight: 500; }
-.page-rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-hi), transparent); align-self: center; }
-
-.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; flex-shrink: 0; }
-.stat-card {
-  padding: 18px 20px;
-  display: flex; align-items: center; gap: 15px;
-  position: relative;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.stat-card:hover { transform: translateY(-2px); }
-.stat-card-icon {
-  width: 40px; height: 40px;
-  border-radius: 11px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.14);
-}
-.sci-neutral { background: var(--paper); color: var(--ink-2); }
-.sci-green   { background: var(--green-dim); color: var(--green); }
-.sci-red     { background: var(--red-dim); color: var(--red); }
-.stat-card-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-.stat-card-val { font-family: var(--display); font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 4px; }
-.stat-card-val.green { color: var(--green); }
-.stat-card-val.red   { color: var(--red); }
-
-/* Two-column work row: shipment actions + live console side by side */
-.work-row { display: grid; grid-template-columns: 340px 1fr; gap: 16px; flex: 1; min-height: 0; }
-
-/* Shipment Actions — tabbed, replaces the two always-on sidebar
-   cards from the previous layout */
-.actions-card { display: flex; flex-direction: column; min-height: 0; }
-.actions-tabs { display: flex; padding: 10px 10px 0; gap: 6px; flex-shrink: 0; }
-.action-tab {
-  flex: 1;
-  padding: 10px 10px;
-  border: none;
-  background: var(--paper);
-  color: var(--muted);
-  font-family: var(--font); font-size: 12px; font-weight: 700;
-  border-radius: var(--r-xs) var(--r-xs) 0 0;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  transition: all 0.14s;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.08);
-}
-.action-tab.active.tab-red  { background: var(--paper-2); color: var(--red);  box-shadow: none; border-bottom: 2px solid var(--red); }
-.action-tab.active.tab-blue { background: var(--paper-2); color: var(--blue); box-shadow: none; border-bottom: 2px solid var(--blue); }
-.actions-panel { padding: 16px; flex: 1; overflow-y: auto; }
-.actions-panel[hidden] { display: none; }
-.actions-lede { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
-
+/* Inputs */
 .awb-input {
-  width: 100%;
-  padding: 11px 12px;
-  background: var(--paper);
+  width: 100%; padding: 11px 13px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
   border-radius: var(--r-xs);
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink);
-  outline: none;
-  border: 1px solid transparent;
-  transition: box-shadow 0.15s, border-color 0.15s;
-  margin-bottom: 10px;
-  box-shadow: inset 0 2px 5px rgba(33,30,25,0.14);
+  font-family: var(--mono); font-size: 12px;
+  color: var(--text-hi); outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  margin-bottom: 9px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.25);
 }
-.awb-input::placeholder { color: var(--faint); }
-.awb-input:focus { border-color: var(--brass-bd); box-shadow: inset 0 2px 5px rgba(33,30,25,0.14), 0 0 0 3px rgba(147,101,14,0.14); }
+.awb-input::placeholder { color: var(--text-lo); }
+.awb-input:focus {
+  border-color: var(--orange);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.25), 0 0 0 3px var(--orange-dim), 0 0 16px var(--orange-glow);
+}
 
+/* Action buttons — extruded 3D */
 .btn-action {
-  width: 100%;
-  padding: 11px 14px;
+  width: 100%; padding: 12px 14px;
   border-radius: var(--r-xs);
-  font-family: var(--font);
-  font-size: 12.5px;
-  font-weight: 700;
+  font-family: var(--font); font-size: 13px; font-weight: 700;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all 0.15s;
-  border: none;
+  transition: all 0.14s; border: none;
+  position: relative; overflow: hidden;
 }
-.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-action::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 50%; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%);
+  pointer-events: none;
+}
+.btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .btn-cancel-ship {
-  background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%);
-  color: #FBEAE3;
-  box-shadow: 0 2px 0 #6B2416, 0 5px 12px rgba(166,58,38,0.32);
+  background: linear-gradient(145deg, #FF5555 0%, var(--red) 60%, #AA0000 100%);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.30);
+  box-shadow:
+    0 0 18px var(--red-glow),
+    0 3px 0 #660000,
+    0 5px 16px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.20);
 }
-.btn-cancel-ship:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #6B2416, 0 7px 16px rgba(166,58,38,0.40); }
-.btn-cancel-ship:active { transform: translateY(1px); }
+.btn-cancel-ship:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 28px rgba(255,59,59,0.45), 0 5px 0 #660000, 0 8px 22px rgba(0,0,0,0.50);
+}
+.btn-cancel-ship:active { transform: translateY(1px); box-shadow: 0 0 10px var(--red-glow), 0 1px 0 #660000; }
 
 .btn-return-lbl {
-  background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%);
-  color: #EAF1F7;
-  box-shadow: 0 2px 0 #1C3040, 0 5px 12px rgba(57,94,127,0.32);
+  background: linear-gradient(145deg, #6BA8FF 0%, var(--blue) 60%, #1A4FCC 100%);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.30);
+  box-shadow:
+    0 0 18px var(--blue-glow),
+    0 3px 0 #0A2A88,
+    0 5px 16px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.20);
 }
-.btn-return-lbl:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1C3040, 0 7px 16px rgba(57,94,127,0.40); }
-.btn-return-lbl:active { transform: translateY(1px); }
+.btn-return-lbl:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 28px rgba(77,142,255,0.45), 0 5px 0 #0A2A88, 0 8px 22px rgba(0,0,0,0.50);
+}
+.btn-return-lbl:active { transform: translateY(1px); box-shadow: 0 0 10px var(--blue-glow), 0 1px 0 #0A2A88; }
 
+/* Action results */
 .action-result {
-  display: none;
-  margin-top: 11px;
-  padding: 11px 12px;
-  border-radius: var(--r-xs);
-  font-size: 12px;
-  line-height: 1.6;
-  font-family: var(--mono);
-  border: 1px solid transparent;
+  display: none; margin-top: 10px;
+  padding: 11px 12px; border-radius: var(--r-xs);
+  font-size: 11.5px; line-height: 1.6; font-family: var(--mono);
 }
 .action-result.visible { display: block; }
-.action-result.ok  { background: var(--green-dim); border-color: var(--green-bd); color: var(--green); }
-.action-result.err { background: var(--red-dim);   border-color: var(--red-bd);   color: var(--red); }
-.ar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.75; margin-bottom: 3px; font-weight: 700; }
+.action-result.ok  { background: var(--green-dim); border: 1px solid rgba(0,230,118,0.25); color: var(--green); }
+.action-result.err { background: var(--red-dim);   border: 1px solid rgba(255,59,59,0.25);  color: var(--red); }
+.ar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.7; margin-bottom: 3px; font-weight: 700; }
 .ar-msg   { font-weight: 600; }
 .ar-hint  { font-size: 10.5px; opacity: 0.8; margin-top: 4px; }
 
-/* Console / activity log — kept dark deliberately: one lively,
-   stamped-ledger panel amid the calm paper palette */
-.log-card {
-  display: flex; flex-direction: column;
-  min-height: 0;
-  border-radius: var(--r);
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(33,30,25,0.08), 0 16px 32px -18px rgba(33,30,25,0.30);
-  border: 1px solid #2A2620;
+/* Log history */
+.log-history { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
+.log-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 11px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  cursor: pointer; transition: all 0.14s;
 }
+.log-item:hover { background: rgba(255,255,255,0.04); border-color: var(--border-hi); }
+.log-item-name { font-family: var(--mono); font-size: 10.5px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-item-meta { font-size: 10px; color: var(--text-lo); white-space: nowrap; font-family: var(--mono); }
+.log-badge { padding: 2px 7px; border-radius: 100px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; flex-shrink: 0; }
+.log-badge.ok  { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,230,118,0.20); }
+.log-badge.err { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,59,59,0.20); }
+
+/* ═══════════════════════════════════════════════════════
+   CONTENT AREA
+═══════════════════════════════════════════════════════ */
+.content {
+  display: flex; flex-direction: column;
+  gap: 16px; overflow: hidden; min-height: 0;
+}
+
+.page-head { flex-shrink: 0; }
+.page-title {
+  font-size: 22px; font-weight: 800; color: var(--text-hi);
+  letter-spacing: -0.02em; line-height: 1.2;
+  background: linear-gradient(135deg, #FFFFFF 0%, #A8B4CC 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.page-sub { font-size: 13px; color: var(--text-mid); margin-top: 3px; font-weight: 500; }
+
+/* Stats row — floating glass cards */
+.stats-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 14px; flex-shrink: 0;
+}
+
+.stat-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r);
+  backdrop-filter: blur(20px);
+  padding: 20px 22px;
+  display: flex; align-items: center; gap: 16px;
+  transition: all 0.22s;
+  position: relative; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Inner rim lighting per card */
+.stat-card:nth-child(1) { border-top-color: rgba(255,255,255,0.15); }
+.stat-card:nth-child(2) { border-top-color: rgba(0,230,118,0.35); }
+.stat-card:nth-child(3) { border-top-color: rgba(255,59,59,0.35); }
+
+.stat-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.20) 50%, transparent 100%);
+}
+.stat-card:nth-child(2)::after { background: linear-gradient(90deg, transparent 0%, rgba(0,230,118,0.40) 50%, transparent 100%); }
+.stat-card:nth-child(3)::after { background: linear-gradient(90deg, transparent 0%, rgba(255,59,59,0.40) 50%, transparent 100%); }
+
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10); }
+
+.stat-card-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sci-neutral { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--border); }
+.sci-green   { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,230,118,0.20); box-shadow: 0 0 16px var(--green-glow); }
+.sci-red     { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,59,59,0.20);  box-shadow: 0 0 16px var(--red-glow); }
+
+.stat-card-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-lo); }
+.stat-card-val {
+  font-size: 34px; font-weight: 800; line-height: 1;
+  color: var(--text-hi); margin-top: 4px;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.stat-card-val.green { color: var(--green); text-shadow: 0 0 24px var(--green-glow); }
+.stat-card-val.red   { color: var(--red);   text-shadow: 0 0 24px var(--red-glow); }
+
+/* ── Activity log — terminal ── */
+.log-card {
+  flex: 1;
+  background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r);
+  backdrop-filter: blur(20px);
+  display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+
 .log-card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #33302A;
-  background: linear-gradient(180deg, #221F1A, #1C1913);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  background: rgba(0,0,0,0.20);
 }
 .log-card-title { display: flex; align-items: center; gap: 12px; }
 .terminal-dots { display: flex; gap: 6px; }
-.terminal-dots span { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 1px 1px rgba(0,0,0,0.25); }
-.td-red { background: #C86A5A; }
-.td-amber { background: var(--brass-hi); }
-.td-green { background: #6FA383; }
-.log-card-name { font-family: var(--mono); font-size: 11.5px; color: #A69E8C; font-weight: 500; }
-.log-badge-status { padding: 3px 9px; border-radius: 100px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid transparent; }
-.lbs-ready   { background: rgba(255,255,255,0.06); color: #93897A; border-color: rgba(255,255,255,0.10); }
-.lbs-running { background: rgba(196,146,47,0.16); color: var(--brass-hi); border-color: rgba(196,146,47,0.30); }
-.lbs-done    { background: rgba(111,163,131,0.16); color: #8FCBAA; border-color: rgba(111,163,131,0.30); }
-.lbs-error   { background: rgba(200,106,90,0.16); color: #E4988A; border-color: rgba(200,106,90,0.30); }
+.terminal-dots span { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+.td-red   { background: #FF5F57; color: #FF5F57; }
+.td-amber { background: #FEBC2E; color: #FEBC2E; }
+.td-green { background: #28C840; color: #28C840; }
+
+.log-card-name { font-family: var(--mono); font-size: 12px; color: var(--text-mid); font-weight: 500; }
+
+.log-badge-status {
+  padding: 3px 10px; border-radius: 100px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.lbs-ready   { background: rgba(255,255,255,0.06); color: var(--text-lo); border: 1px solid var(--border); }
+.lbs-running { background: var(--orange-dim); color: var(--orange); border: 1px solid var(--orange-bd); box-shadow: 0 0 10px var(--orange-glow); }
+.lbs-done    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,230,118,0.25); }
+.lbs-error   { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,59,59,0.25); }
+
 .log-card-actions { display: flex; gap: 6px; }
 .btn-sm {
-  padding: 5px 10px;
+  padding: 5px 11px;
   background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.10);
+  border: 1px solid var(--border);
   border-radius: var(--r-xs);
   font-family: var(--font); font-size: 11px; font-weight: 600;
-  color: #A69E8C; cursor: pointer; transition: all 0.14s;
+  color: var(--text-mid); cursor: pointer; transition: all 0.14s;
   display: flex; align-items: center; gap: 5px;
 }
-.btn-sm:hover { background: rgba(255,255,255,0.09); color: #EFEAE0; }
+.btn-sm:hover { background: rgba(255,255,255,0.09); color: var(--text-hi); border-color: var(--border-hi); }
 
+/* Terminal body */
 .terminal-body {
-  flex: 1; background: #17140F; overflow-y: auto;
-  padding: 16px 20px;
-  font-family: var(--mono); font-size: 12.5px; line-height: 1.8;
-  color: #C9C2B4; min-height: 0;
-  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent;
+  flex: 1; background: rgba(0,0,0,0.45);
+  overflow-y: auto; padding: 16px 20px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.85;
+  color: #8BA0C0; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.10) transparent;
 }
-.terminal-body::-webkit-scrollbar { width: 6px; }
-.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 10px; }
-.log-line { display: block; white-space: pre-wrap; word-break: break-all; }
-.log-line.success { color: #7DC79E; }
-.log-line.error   { color: #E58A78; }
-.log-line.warning { color: var(--brass-hi); }
-.log-line.info    { color: #7FA8CB; }
-.log-line.muted   { color: #5C574B; }
-.log-line.header  { color: #EFEAE0; font-weight: 600; }
-.log-line.default { color: #C9C2B4; }
-.term-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: #45403655; }
-.term-empty-title { font-size: 13px; font-family: var(--font); font-weight: 600; color: #6E6858; }
-.term-empty-sub   { font-size: 11px; color: #504B40; font-family: var(--mono); }
+.terminal-body::-webkit-scrollbar { width: 5px; }
+.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 10px; }
 
-/* ─────────────────────────────────────────────
+.log-line { display: block; white-space: pre-wrap; word-break: break-all; }
+.log-line.success { color: var(--green); text-shadow: 0 0 10px var(--green-glow); }
+.log-line.error   { color: var(--red);   text-shadow: 0 0 10px var(--red-glow); }
+.log-line.warning { color: var(--amber); }
+.log-line.info    { color: var(--cyan);  }
+.log-line.muted   { color: var(--text-lo); }
+.log-line.header  { color: var(--text-hi); font-weight: 600; }
+.log-line.default { color: #8BA0C0; }
+
+.term-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 12px; color: var(--text-lo);
+}
+.term-empty-title { font-size: 13px; font-family: var(--font); font-weight: 600; color: var(--text-mid); }
+.term-empty-sub   { font-size: 11px; color: var(--text-lo); font-family: var(--mono); }
+
+/* ═══════════════════════════════════════════════════════
    TOAST
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 #toast {
   position: fixed; bottom: 20px; right: 20px;
-  padding: 12px 16px; border-radius: var(--r-sm);
+  padding: 13px 18px; border-radius: var(--r-sm);
   font-size: 13px; font-weight: 600;
-  display: flex; align-items: center; gap: 9px;
+  display: flex; align-items: center; gap: 10px;
   z-index: 200; transform: translateY(60px); opacity: 0;
   transition: all 0.28s cubic-bezier(0.34,1.5,0.64,1);
   pointer-events: none;
-  background: var(--paper-2);
+  background: rgba(15,20,32,0.95);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border-hi);
-  box-shadow: 0 20px 40px -12px rgba(33,30,25,0.35);
-  color: var(--ink); max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.60);
+  color: var(--text-hi); max-width: 340px;
 }
 #toast.show { transform: translateY(0); opacity: 1; }
-#toast.success { border-left: 4px solid var(--green); }
-#toast.error   { border-left: 4px solid var(--red); }
-#toast.info    { border-left: 4px solid var(--blue); }
+#toast.success { border-left: 3px solid var(--green); box-shadow: 0 8px 32px rgba(0,0,0,0.60), 0 0 20px var(--green-glow); }
+#toast.error   { border-left: 3px solid var(--red);   box-shadow: 0 8px 32px rgba(0,0,0,0.60), 0 0 20px var(--red-glow); }
+#toast.info    { border-left: 3px solid var(--cyan);  box-shadow: 0 8px 32px rgba(0,0,0,0.60), 0 0 20px var(--cyan-glow); }
 
-/* ─────────────────────────────────────────────
-   OVERLAYS / DIALOGS
-───────────────────────────────────────────── */
-.overlay { display: none; position: fixed; inset: 0; background: rgba(28,25,19,0.45); backdrop-filter: blur(2px); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+/* ═══════════════════════════════════════════════════════
+   OVERLAYS
+═══════════════════════════════════════════════════════ */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(5,8,15,0.75);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  z-index: 100; align-items: center; justify-content: center; padding: 20px;
+}
 .overlay.show { display: flex; }
+
 .dialog {
-  background: var(--paper-2);
+  background: linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%);
+  border: 1px solid var(--border-hi);
   border-radius: var(--r-lg);
-  padding: 28px 30px;
-  max-width: 440px; width: 100%;
-  box-shadow: 0 30px 60px -14px rgba(0,0,0,0.45);
+  padding: 30px 32px; max-width: 440px; width: 100%;
+  backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.10);
   animation: pop-in 0.24s cubic-bezier(0.34,1.4,0.64,1);
 }
-@keyframes pop-in { from { opacity:0; transform:scale(0.95) translateY(8px); } }
-.dialog-icon { width: 48px; height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: inset 0 1px 3px rgba(33,30,25,0.14); }
-.di-amber { background: var(--amber-dim); }
-.di-blue  { background: var(--blue-dim); }
-.di-red   { background: var(--red-dim); }
-.dialog-title { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
-.dialog-body  { font-size: 13.5px; color: var(--muted); line-height: 1.65; margin-bottom: 22px; font-weight: 500; }
-.dialog-body strong { color: var(--ink); font-weight: 700; }
-.dialog-body .blue { color: var(--blue); font-weight: 700; }
-.dialog-actions { display: flex; gap: 8px; }
-.btn-dlg-cancel {
-  flex: 1; padding: 12px;
-  background: var(--paper); border: none;
-  border-radius: var(--r-xs); color: var(--ink-2);
-  font-family: var(--font); font-weight: 600; font-size: 14px;
-  cursor: pointer; transition: all 0.14s;
-  box-shadow: inset 0 1px 3px rgba(33,30,25,0.10);
-}
-.btn-dlg-cancel:hover { color: var(--ink); }
-.btn-dlg-ok { flex: 1; padding: 13px; border: none; border-radius: var(--r-xs); font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.12s ease; }
-.btn-dlg-ok.orange {
-  background: linear-gradient(180deg, var(--copper-hi) 0%, var(--copper) 60%, #7C3413 100%);
-  color: #FDF1E6; box-shadow: 0 2px 0 #5E260C, 0 5px 14px rgba(166,70,27,0.35); text-shadow: 0 1px 1px rgba(0,0,0,0.2);
-}
-.btn-dlg-ok.orange:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #5E260C, 0 7px 18px rgba(166,70,27,0.42); }
-.btn-dlg-ok.blue {
-  background: linear-gradient(180deg, #4E7BA3 0%, var(--blue) 60%, #223C52 100%);
-  color: #EAF1F7; box-shadow: 0 2px 0 #1C3040, 0 5px 14px rgba(57,94,127,0.32); text-shadow: 0 1px 1px rgba(0,0,0,0.16);
-}
-.btn-dlg-ok.blue:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #1C3040, 0 7px 18px rgba(57,94,127,0.40); }
-.btn-dlg-ok.red {
-  background: linear-gradient(180deg, #C24B33 0%, var(--red) 60%, #7E2A1A 100%);
-  color: #FBEAE3; box-shadow: 0 2px 0 #6B2416, 0 5px 14px rgba(166,58,38,0.32); text-shadow: 0 1px 1px rgba(0,0,0,0.16);
-}
-.btn-dlg-ok.red:hover { transform: translateY(-1px); box-shadow: 0 3px 0 #6B2416, 0 7px 18px rgba(166,58,38,0.40); }
-.btn-dlg-ok:active { transform: translateY(1px) !important; }
+@keyframes pop-in { from { opacity:0; transform:scale(0.94) translateY(10px); } }
 
-/* ─────────────────────────────────────────────
-   UTILITIES
-───────────────────────────────────────────── */
+.dialog-icon {
+  width: 50px; height: 50px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px;
+}
+.di-amber { background: var(--orange-dim); border: 1px solid var(--orange-bd); box-shadow: 0 0 20px var(--orange-glow); }
+.di-blue  { background: var(--blue-dim);   border: 1px solid rgba(77,142,255,0.30); box-shadow: 0 0 20px var(--blue-glow); }
+.di-red   { background: var(--red-dim);    border: 1px solid rgba(255,59,59,0.30);  box-shadow: 0 0 20px var(--red-glow); }
+
+.dialog-title { font-size: 20px; font-weight: 800; color: var(--text-hi); margin-bottom: 9px; letter-spacing: -0.01em; }
+.dialog-body  { font-size: 13.5px; color: var(--text-mid); line-height: 1.65; margin-bottom: 24px; font-weight: 500; }
+.dialog-body strong { color: var(--text-hi); font-weight: 700; }
+.dialog-body .hi    { color: var(--cyan); font-weight: 700; }
+
+.dialog-actions { display: flex; gap: 10px; }
+
+.btn-dlg-cancel {
+  flex: 1; padding: 13px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r-xs);
+  color: var(--text); font-family: var(--font); font-weight: 600; font-size: 14px;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-dlg-cancel:hover { background: rgba(255,255,255,0.10); color: var(--text-hi); }
+
+.btn-dlg-ok {
+  flex: 1; padding: 13px; border: none; border-radius: var(--r-xs);
+  font-family: var(--font); font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: all 0.14s;
+  position: relative; overflow: hidden;
+}
+.btn-dlg-ok::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+  border-radius: inherit; pointer-events: none;
+}
+.btn-dlg-ok.orange {
+  background: linear-gradient(145deg, #FF7030 0%, var(--orange) 100%);
+  color: #fff;
+  box-shadow: 0 0 20px var(--orange-glow), 0 3px 0 #7A1A00, inset 0 1px 0 rgba(255,255,255,0.20);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.btn-dlg-ok.orange:hover { transform: translateY(-1px); box-shadow: 0 0 28px rgba(255,85,0,0.50), 0 4px 0 #7A1A00; }
+.btn-dlg-ok.orange:active { transform: translateY(1px); box-shadow: 0 0 12px var(--orange-glow), 0 1px 0 #7A1A00; }
+.btn-dlg-ok.blue {
+  background: linear-gradient(145deg, #6BA8FF 0%, var(--blue) 100%);
+  color: #fff;
+  box-shadow: 0 0 20px var(--blue-glow), 0 3px 0 #0A2A88, inset 0 1px 0 rgba(255,255,255,0.20);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.btn-dlg-ok.blue:hover { transform: translateY(-1px); box-shadow: 0 0 28px rgba(77,142,255,0.50), 0 4px 0 #0A2A88; }
+.btn-dlg-ok.blue:active { transform: translateY(1px); }
+.btn-dlg-ok.red {
+  background: linear-gradient(145deg, #FF5555 0%, var(--red) 100%);
+  color: #fff;
+  box-shadow: 0 0 20px var(--red-glow), 0 3px 0 #660000, inset 0 1px 0 rgba(255,255,255,0.20);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.btn-dlg-ok.red:hover { transform: translateY(-1px); box-shadow: 0 0 28px rgba(255,59,59,0.50), 0 4px 0 #660000; }
+.btn-dlg-ok.red:active { transform: translateY(1px); }
+
+/* Utility */
 .spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.65s linear infinite; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-::selection { background: rgba(147,101,14,0.16); }
+button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+::selection { background: var(--orange-dim); color: var(--text-hi); }
 
-@media (max-width: 1180px) {
-  .work-row { grid-template-columns: 1fr; }
-}
-@media (max-width: 1000px) {
-  main { grid-template-columns: 250px 1fr; gap: 16px; padding: 16px 18px; }
-}
-@media (max-width: 860px) {
+/* Responsive */
+@media (max-width: 1100px) { main { grid-template-columns: 260px 1fr; gap: 16px; padding: 16px 18px; } }
+@media (max-width: 900px) {
   main { grid-template-columns: 1fr; height: auto; overflow: visible; }
+  .sidebar { overflow: visible; }
+  .content { overflow: visible; }
   .hdr-seg { display: none; }
-  .work-row { grid-template-columns: 1fr; }
-  .terminal-body { min-height: 320px; }
+  .log-card { min-height: 400px; }
 }
 @media (max-width: 640px) {
   header { padding: 0 16px; }
   main { padding: 14px; gap: 14px; }
   .stats-row { grid-template-columns: 1fr; }
+  #toast { left: 14px; right: 14px; bottom: 14px; max-width: none; }
 }
 </style>
 <script>
+// Prevent flash of unstyled content
 document.documentElement.style.visibility = 'hidden';
-document.addEventListener('DOMContentLoaded', function() { document.documentElement.style.visibility = ''; });
+document.addEventListener('DOMContentLoaded', function() {
+  document.documentElement.style.visibility = '';
+});
 </script>
 </head>
 <body>
@@ -717,8 +836,8 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
 <!-- HEADER -->
 <header>
   <div class="hdr-brand">
-    <div class="hdr-seal">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="hdr-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z"/>
       </svg>
     </div>
@@ -741,8 +860,8 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
 
   <div class="hdr-right">
     <div class="api-pill">
-      <span class="status-dot" id="status-dot"></span>
-      <span id="status-text">Checking…</span>
+      <span class="api-dot" id="status-dot"></span>
+      <span id="status-text">Connecting</span>
     </div>
   </div>
 </header>
@@ -753,35 +872,33 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
   <!-- SIDEBAR -->
   <aside class="sidebar">
 
-    <!-- Session — ticket-stub styling -->
-    <div class="sb-card emboss ticket">
-      <div class="ticket-head">
-        <span class="ticket-eyebrow">Session</span>
-        <span class="ticket-no" id="stat-time">— : —</span>
-      </div>
-      <div class="perf"></div>
-      <div class="stats-grid">
-        <div class="stat-tile">
-          <div class="stat-num" id="stat-runs">0</div>
-          <div class="stat-lbl">Runs Today</div>
-        </div>
-        <div class="stat-tile">
-          <div class="stat-num green" id="stat-booked">0</div>
-          <div class="stat-lbl">Booked</div>
-        </div>
-        <div class="stat-tile">
-          <div class="stat-num red" id="stat-failed">0</div>
-          <div class="stat-lbl">Failed</div>
-        </div>
-        <div class="stat-tile">
-          <div class="stat-num mono" id="stat-last">Ready</div>
-          <div class="stat-lbl">Status</div>
+    <!-- Session stats -->
+    <div class="sb-card">
+      <div class="sb-section">
+        <div class="sb-label">Session</div>
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="stat-num" id="stat-runs">0</div>
+            <div class="stat-lbl">Runs Today</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-num green" id="stat-booked">0</div>
+            <div class="stat-lbl">Booked</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-num red" id="stat-failed">0</div>
+            <div class="stat-lbl">Failed</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-num mono" id="stat-time">—</div>
+            <div class="stat-lbl">Last Run</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Booking control -->
-    <div class="sb-card emboss">
+    <!-- Booking -->
+    <div class="sb-card">
       <div class="sb-section">
         <div class="sb-label">Booking Mode</div>
         <div class="mode-seg">
@@ -797,11 +914,11 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
 
         <div id="notice-test" class="notice test-notice">
           <svg width="13" height="13" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span><strong>Test Mode:</strong> No real DHL call. Fake tracking returned. Airtable untouched.</span>
+          <span><strong>Test Mode:</strong> Script runs fully but no real DHL call is made. Fake tracking numbers returned. Airtable is NOT updated.</span>
         </div>
         <div id="notice-prod" class="notice prod-notice hidden">
           <svg width="13" height="13" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span><strong>Production:</strong> Real shipments booked. Cannot be undone.</span>
+          <span><strong>Production:</strong> Real DHL shipments will be booked. Real labels generated. Airtable will be updated. Cannot be undone.</span>
         </div>
       </div>
 
@@ -813,33 +930,76 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
           <span id="btn-label">Run Test Booking</span>
         </button>
         <div class="prog-wrap" id="progress-wrap">
-          <div class="prog-track"><div class="prog-fill running" id="progress-bar"></div></div>
+          <div class="prog-track">
+            <div class="prog-fill running" id="progress-bar"></div>
+          </div>
           <div class="prog-lbl" id="progress-label">Initialising…</div>
         </div>
       </div>
 
+      <!-- Downloads -->
       <div class="sb-section" id="downloads-card">
         <div class="sb-label" style="color:var(--green)">Downloads Ready</div>
         <a class="dl-link" href="#" onclick="downloadFile('csv'); return false;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <div><div>DHL Order CSV</div><div class="dl-meta">Latest run</div></div>
+          <div>
+            <div>DHL Order CSV</div>
+            <div class="dl-meta">Latest run</div>
+          </div>
           <svg style="margin-left:auto;color:var(--faint)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </a>
         <a class="dl-link" href="#" onclick="downloadFile('labels'); return false;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          <div><div>Shipping Labels (ZIP)</div><div class="dl-meta">All PDF labels</div></div>
+          <div>
+            <div>Shipping Labels (ZIP)</div>
+            <div class="dl-meta">All PDF labels</div>
+          </div>
           <svg style="margin-left:auto;color:var(--faint)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </a>
       </div>
     </div>
 
-    <!-- Log Files -->
-    <div class="sb-card emboss" style="flex:1; display:flex; flex-direction:column; min-height:0;">
-      <div class="sb-section" style="padding-bottom:0; flex-shrink:0;">
-        <div class="sb-label" style="margin-bottom:0">Log Files</div>
+    <!-- Cancel Shipment -->
+    <div class="sb-card">
+      <div class="sb-section">
+        <div class="sb-label" style="color:var(--red)">Cancel Shipment</div>
+        <input type="text" class="awb-input" id="cancel-awb-input" placeholder="AWB / Tracking Number" onkeydown="if(event.key==='Enter') confirmCancel()"/>
+        <button class="btn-action btn-cancel-ship" id="btn-cancel-ship" onclick="confirmCancel()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          Cancel Shipment
+        </button>
+        <div class="action-result" id="cancel-result">
+          <div class="ar-label" id="cr-label">Result</div>
+          <div class="ar-msg" id="cr-msg">—</div>
+          <div class="ar-hint" id="cr-hint"></div>
+        </div>
       </div>
-      <div class="log-history" id="history-list">
-        <div style="font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:center;padding:10px">Loading…</div>
+    </div>
+
+    <!-- Return Label -->
+    <div class="sb-card">
+      <div class="sb-section">
+        <div class="sb-label" style="color:var(--blue)">Return Label</div>
+        <input type="text" class="awb-input" id="return-awb-input" placeholder="Original AWB / Tracking Number" onkeydown="if(event.key==='Enter') bookReturn()"/>
+        <button class="btn-action btn-return-lbl" id="btn-return" onclick="bookReturn()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+          Book Return Label
+        </button>
+        <div class="action-result" id="return-result">
+          <div class="ar-label" id="return-label-status">Result</div>
+          <div class="ar-msg" id="return-msg">—</div>
+          <div class="ar-hint" id="return-hint"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Files -->
+    <div class="sb-card">
+      <div class="sb-section" style="flex:1">
+        <div class="sb-label">Log Files</div>
+        <div class="log-history" id="history-list">
+          <div style="font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:center;padding:10px">Loading…</div>
+        </div>
       </div>
     </div>
 
@@ -848,108 +1008,75 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
   <!-- CONTENT -->
   <section class="content">
 
+    <!-- Page heading -->
     <div class="page-head">
-      <div>
-        <div class="page-title">DHL Shipping Operations</div>
-        <div class="page-sub">Manage bookings, returns and shipment activity</div>
-      </div>
-      <div class="page-rule"></div>
+      <div class="page-title">DHL Shipping Operations</div>
+      <div class="page-sub">Manage bookings, returns and shipment activity</div>
     </div>
 
+    <!-- Stats row -->
     <div class="stats-row">
-      <div class="stat-card emboss">
+      <div class="stat-card">
         <div class="stat-card-icon sci-neutral">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0123 7.24v9.53a2 2 0 01-1.11 1.79l-8 4a2 2 0 01-1.78 0l-8-4a2 2 0 01-1.11-1.8V7.24a2 2 0 011.11-1.79l8-4a2 2 0 011.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg>
         </div>
-        <div><div class="stat-card-lbl">Processed</div><div class="stat-card-val" id="rv-total">—</div></div>
+        <div>
+          <div class="stat-card-lbl">Processed</div>
+          <div class="stat-card-val" id="rv-total">—</div>
+        </div>
       </div>
-      <div class="stat-card emboss">
+      <div class="stat-card">
         <div class="stat-card-icon sci-green">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <div><div class="stat-card-lbl">Succeeded</div><div class="stat-card-val green" id="rv-ok">—</div></div>
+        <div>
+          <div class="stat-card-lbl">Succeeded</div>
+          <div class="stat-card-val green" id="rv-ok">—</div>
+        </div>
       </div>
-      <div class="stat-card emboss">
+      <div class="stat-card">
         <div class="stat-card-icon sci-red">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </div>
-        <div><div class="stat-card-lbl">Failed</div><div class="stat-card-val red" id="rv-fail">—</div></div>
+        <div>
+          <div class="stat-card-lbl">Failed</div>
+          <div class="stat-card-val red" id="rv-fail">—</div>
+        </div>
       </div>
     </div>
 
-    <div class="work-row">
-
-      <!-- Shipment Actions — tabbed Cancel / Return -->
-      <div class="actions-card emboss">
-        <div class="actions-tabs">
-          <button class="action-tab active tab-red" id="tab-cancel" onclick="switchActionTab('cancel')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            Cancel Shipment
-          </button>
-          <button class="action-tab tab-blue" id="tab-return" onclick="switchActionTab('return')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-            Return Label
-          </button>
-        </div>
-
-        <div class="actions-panel" id="panel-cancel">
-          <div class="actions-lede">Sends a cancellation to DHL for an AWB that hasn't been picked up yet. On success, the Airtable order resets for re-booking.</div>
-          <input type="text" class="awb-input" id="cancel-awb-input" placeholder="AWB / Tracking Number" onkeydown="if(event.key==='Enter') confirmCancel()"/>
-          <button class="btn-action btn-cancel-ship" id="btn-cancel-ship" onclick="confirmCancel()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            Cancel Shipment
-          </button>
-          <div class="action-result" id="cancel-result">
-            <div class="ar-label" id="cr-label">Result</div>
-            <div class="ar-msg" id="cr-msg">—</div>
-            <div class="ar-hint" id="cr-hint"></div>
+    <!-- Activity log -->
+    <div class="log-card">
+      <div class="log-card-header">
+        <div class="log-card-title">
+          <div class="terminal-dots">
+            <span class="td-red"></span>
+            <span class="td-amber"></span>
+            <span class="td-green"></span>
           </div>
+          <span class="log-card-name" id="terminal-title">airtable_transform.py</span>
+          <span class="log-badge-status lbs-ready" id="terminal-badge">READY</span>
         </div>
-
-        <div class="actions-panel" id="panel-return" hidden>
-          <div class="actions-lede">Books a return label against an already-shipped AWB and uploads it to Airtable once DHL confirms.</div>
-          <input type="text" class="awb-input" id="return-awb-input" placeholder="Original AWB / Tracking Number" onkeydown="if(event.key==='Enter') bookReturn()"/>
-          <button class="btn-action btn-return-lbl" id="btn-return" onclick="bookReturn()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-            Book Return Label
+        <div class="log-card-actions">
+          <button class="btn-sm" onclick="clearTerminal(true)">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Clear
           </button>
-          <div class="action-result" id="return-result">
-            <div class="ar-label" id="return-label-status">Result</div>
-            <div class="ar-msg" id="return-msg">—</div>
-            <div class="ar-hint" id="return-hint"></div>
-          </div>
+          <button class="btn-sm" onclick="scrollBottom()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            Bottom
+          </button>
         </div>
       </div>
-
-      <!-- Console -->
-      <div class="log-card">
-        <div class="log-card-header">
-          <div class="log-card-title">
-            <div class="terminal-dots"><span class="td-red"></span><span class="td-amber"></span><span class="td-green"></span></div>
-            <span class="log-card-name" id="terminal-title">airtable_transform.py</span>
-            <span class="log-badge-status lbs-ready" id="terminal-badge">READY</span>
-          </div>
-          <div class="log-card-actions">
-            <button class="btn-sm" onclick="clearTerminal(true)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-              Clear
-            </button>
-            <button class="btn-sm" onclick="scrollBottom()">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-              Bottom
-            </button>
-          </div>
-        </div>
-        <div class="terminal-body carved" id="terminal">
-          <div class="term-empty" id="terminal-empty">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            <div class="term-empty-title">Waiting for activity</div>
-            <div class="term-empty-sub">Run a booking to see activity here.</div>
-          </div>
+      <div class="terminal-body" id="terminal">
+        <div class="term-empty" id="terminal-empty">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <div class="term-empty-title">Waiting for activity</div>
+          <div class="term-empty-sub">Run a booking to see activity here.</div>
         </div>
       </div>
-
     </div>
+
   </section>
 </main>
 
@@ -990,6 +1117,7 @@ document.addEventListener('DOMContentLoaded', function() { document.documentElem
   </div>
 </div>
 
+
 <script>
 // ════════════════════════════════════════════
 //  CONFIG
@@ -1020,6 +1148,7 @@ const $progB   = document.getElementById('progress-bar');
 const $progL   = document.getElementById('progress-label');
 const $toast   = document.getElementById('toast');
 
+// SVG icon strings for button swaps
 const SVG_TEST = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
 const SVG_PROD = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
 
@@ -1035,9 +1164,12 @@ async function checkHealth() {
     setStatus('error', 'API Offline');
   }
 }
+
 function setStatus(state, text) {
-  document.getElementById('status-dot').className  = 'status-dot ' + state;
-  document.getElementById('status-text').textContent = text;
+  const dot  = document.getElementById('status-dot');
+  const span = document.getElementById('status-text');
+  dot.className  = 'status-dot ' + state;
+  span.textContent = text;
 }
 
 // ════════════════════════════════════════════
@@ -1045,12 +1177,15 @@ function setStatus(state, text) {
 // ════════════════════════════════════════════
 function setMode(mode) {
   currentMode = mode;
+
   document.getElementById('mode-test').className = 'mode-btn test' + (mode === 'test' ? ' active' : '');
   document.getElementById('mode-prod').className = 'mode-btn prod' + (mode === 'prod' ? ' active' : '');
-  document.getElementById('hc-test').className = 'hdr-seg-btn' + (mode === 'test' ? ' active-test' : '');
-  document.getElementById('hc-prod').className = 'hdr-seg-btn' + (mode === 'prod' ? ' active-prod' : '');
+  document.getElementById('hc-test').className   = 'hc-mode' + (mode === 'test' ? ' active-test' : '');
+  document.getElementById('hc-prod').className   = 'hc-mode' + (mode === 'prod' ? ' active-prod' : '');
+
   document.getElementById('notice-test').classList.toggle('hidden', mode !== 'test');
   document.getElementById('notice-prod').classList.toggle('hidden', mode !== 'prod');
+
   if (mode === 'prod') {
     $btnBook.className   = 'btn-run prod-btn';
     $btnIcon.innerHTML   = SVG_PROD;
@@ -1063,17 +1198,7 @@ function setMode(mode) {
 }
 
 // ════════════════════════════════════════════
-//  SHIPMENT ACTIONS TABS
-// ════════════════════════════════════════════
-function switchActionTab(tab) {
-  document.getElementById('tab-cancel').classList.toggle('active', tab === 'cancel');
-  document.getElementById('tab-return').classList.toggle('active', tab === 'return');
-  document.getElementById('panel-cancel').hidden = tab !== 'cancel';
-  document.getElementById('panel-return').hidden = tab !== 'return';
-}
-
-// ════════════════════════════════════════════
-//  CONFIRM DIALOG (RUN)
+//  CONFIRM DIALOG
 // ════════════════════════════════════════════
 function confirmRun() {
   if (isRunning) return;
@@ -1085,7 +1210,8 @@ function confirmRun() {
   const okBtn   = document.getElementById('confirm-ok-btn');
 
   if (currentMode === 'prod') {
-    wrap.className = 'dialog-icon di-amber';
+    wrap.style.background = 'var(--amber-glow)';
+    wrap.style.borderColor = 'rgba(245,166,35,0.25)';
     svg.setAttribute('stroke','var(--amber)');
     svg.innerHTML = `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`;
     title.textContent = 'Book Real Shipments?';
@@ -1093,7 +1219,8 @@ function confirmRun() {
     okBtn.textContent = 'Confirm & Book';
     okBtn.className = 'btn-dlg-ok orange';
   } else {
-    wrap.className = 'dialog-icon di-blue';
+    wrap.style.background = 'var(--blue-dim)';
+    wrap.style.borderColor = 'var(--blue-border)';
     svg.setAttribute('stroke','var(--blue)');
     svg.innerHTML = `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>`;
     title.textContent = 'Run Test Booking?';
@@ -1103,7 +1230,10 @@ function confirmRun() {
   }
   overlay.classList.add('show');
 }
-function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
+
+function closeConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('show');
+}
 
 // ════════════════════════════════════════════
 //  EXECUTE RUN (SSE Streaming)
@@ -1146,6 +1276,7 @@ function handleSSEMessage(msg) {
     case 'start':
       appendLog(`\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
       break;
+
     case 'log':
       appendLog(msg.line);
       const m = msg.line.match(/(\d+)\/(\d+)/);
@@ -1170,6 +1301,7 @@ function handleSSEMessage(msg) {
         if (t) lastRunTimestamp = t[1];
       }
       break;
+
     case 'done':
       if (msg.success) {
         appendLog('\n  Run completed successfully.', 'success');
@@ -1185,6 +1317,7 @@ function handleSSEMessage(msg) {
       finishRun(msg.success);
       loadHistory();
       break;
+
     case 'error':
       appendLog(`\n  ${msg.message}`, 'error');
       showToast(msg.message, 'error');
@@ -1196,7 +1329,10 @@ function handleSSEMessage(msg) {
 // ════════════════════════════════════════════
 //  DOWNLOADS
 // ════════════════════════════════════════════
-function showDownloads() { document.getElementById('downloads-card').classList.add('visible'); }
+function showDownloads() {
+  document.getElementById('downloads-card').classList.add('visible');
+}
+
 function downloadFile(type) {
   let url;
   if (type === 'csv')    url = `${API_BASE}/download/csv`;
@@ -1220,6 +1356,7 @@ function classifyLine(line) {
   if (line.startsWith('=') || line.startsWith('-') || line.includes('BATCH') || line.includes('Starting')) return 'header';
   return 'default';
 }
+
 function appendLog(line, forcedClass) {
   $empty.style.display = 'none';
   const cls = forcedClass || classifyLine(line);
@@ -1228,6 +1365,7 @@ function appendLog(line, forcedClass) {
   span.textContent = line + '\n';
   $term.appendChild(span);
   $term.scrollTop = $term.scrollHeight;
+
   if (line.includes('Fake tracking') || line.includes('AWB:')) {
     sessionStats.booked++;
     document.getElementById('stat-booked').textContent = sessionStats.booked;
@@ -1237,20 +1375,29 @@ function appendLog(line, forcedClass) {
     document.getElementById('stat-failed').textContent = sessionStats.failed;
   }
 }
+
 function clearTerminal(showEmpty = true) {
-  $term.querySelectorAll('.log-line').forEach(el => el.remove());
-  if (showEmpty) $empty.style.display = 'flex';
+  $term.innerHTML = '';
+  if (showEmpty) { $empty.style.display = ''; $term.appendChild($empty); }
+  updateResultCard('total', '—');
+  updateResultCard('ok', '—');
+  updateResultCard('fail', '—');
+  $ttitle.textContent = 'airtable_transform.py';
+  $tbadge.textContent = 'READY';
+  $tbadge.className   = 'terminal-badge ready';
 }
+
 function scrollBottom() { $term.scrollTop = $term.scrollHeight; }
 
 // ════════════════════════════════════════════
-//  RUN STATE
+//  PROGRESS HELPERS
 // ════════════════════════════════════════════
 function setProgress(pct, label) {
   $progB.classList.remove('running');
   $progB.style.width = pct + '%';
   $progL.textContent = label;
 }
+
 function setRunning(running) {
   isRunning = running;
   $btnBook.disabled = running;
@@ -1260,12 +1407,12 @@ function setRunning(running) {
     $progL.textContent = 'Starting…';
     $btnIcon.innerHTML = `<span class="spinner"></span>`;
     $btnLbl.textContent = 'Running…';
-    setStatus('online', 'API Online');
-    document.getElementById('stat-last').textContent = 'Running';
+    setStatus('running', 'Booking in progress…');
     $tbadge.textContent = 'RUNNING';
-    $tbadge.className   = 'log-badge-status lbs-running';
+    $tbadge.className   = 'terminal-badge running';
   }
 }
+
 function finishRun(success) {
   isRunning = false;
   eventSource?.close();
@@ -1274,12 +1421,14 @@ function finishRun(success) {
   $btnBook.disabled = false;
   $btnIcon.innerHTML = currentMode === 'prod' ? SVG_PROD : SVG_TEST;
   $btnLbl.textContent = currentMode === 'prod' ? 'Book Real Shipments' : 'Run Test Booking';
-  document.getElementById('stat-last').textContent = success ? 'Done' : 'Error';
   $tbadge.textContent = success ? 'DONE' : 'ERROR';
-  $tbadge.className   = success ? 'log-badge-status lbs-done' : 'log-badge-status lbs-error';
+  $tbadge.className   = success ? 'terminal-badge done' : 'terminal-badge error';
   setStatus('online', 'API Online');
 }
-function updateResultCard(type, value) { document.getElementById(`rv-${type}`).textContent = value; }
+
+function updateResultCard(type, value) {
+  document.getElementById(`rv-${type}`).textContent = value;
+}
 
 // ════════════════════════════════════════════
 //  TOAST
@@ -1308,7 +1457,7 @@ async function loadHistory() {
     const data = await res.json();
     const list = document.getElementById('history-list');
     if (!data.logs || data.logs.length === 0) {
-      list.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;padding:12px;">No log files yet.</div>`;
+      list.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">No log files yet.</div>`;
       return;
     }
     const logIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
@@ -1316,40 +1465,42 @@ async function loadHistory() {
     list.innerHTML = data.logs.map(f => {
       const isFailed = f.filename.startsWith('failed_orders');
       const date = new Date(f.modified * 1000).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-      return `<div class="log-item" title="${f.filename}">
-        <span style="color:${isFailed ? 'var(--red)' : 'var(--faint)'}">${isFailed ? errIcon : logIcon}</span>
-        <span class="log-item-name">${f.filename}</span>
-        <span class="log-item-meta">${f.size_kb}kb · ${date}</span>
-        <span class="log-badge ${isFailed ? 'err' : 'ok'}">${isFailed ? 'FAIL' : 'LOG'}</span>
+      return `<div class="history-item" title="${f.filename}">
+        <span class="history-item-icon" style="color:${isFailed ? 'var(--red)' : 'var(--text-lo)'}">${isFailed ? errIcon : logIcon}</span>
+        <span class="history-item-name">${f.filename}</span>
+        <span class="history-item-meta">${f.size_kb}kb · ${date}</span>
+        <span class="badge ${isFailed ? 'err' : 'ok'}">${isFailed ? 'FAIL' : 'LOG'}</span>
       </div>`;
     }).join('');
   } catch {
     document.getElementById('history-list').innerHTML =
-      `<div style="font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;padding:12px;">Could not load logs.</div>`;
+      `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-lo);text-align:center;padding:12px;">Could not load logs.</div>`;
   }
 }
 
-// ════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────
 //  RETURN LABEL
-// ════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────
 async function bookReturn(){
   const awb=document.getElementById('return-awb-input').value.trim();
-  if(!awb){document.getElementById('return-label-status').textContent='Error';document.getElementById('return-msg').textContent='Please enter an AWB number.';document.getElementById('return-result').className='action-result visible err';return}
-  const btn=document.getElementById('btn-return');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Booking…';document.getElementById('return-result').className='action-result';
+  if(!awb){document.getElementById('return-label-status').textContent='Error';document.getElementById('return-msg').textContent='Please enter an AWB number.';document.getElementById('return-result').style.display='block';return}
+  const btn=document.getElementById('btn-return');btn.disabled=true;btn.textContent='Booking…';document.getElementById('return-result').style.display='none';
   try{
     const resp=await fetch('/book-return',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({awb})});
     const data=await resp.json();
     const statusEl=document.getElementById('return-label-status');const msgEl=document.getElementById('return-msg');const hintEl=document.getElementById('return-hint');
-    const resultEl=document.getElementById('return-result');
-    if(data.success){statusEl.textContent='Return Label Booked';msgEl.textContent=`Return AWB: ${data.return_awb}`;hintEl.textContent=`Order: ${data.order_number} — Label uploaded to Airtable`;resultEl.className='action-result visible ok';}
-    else{statusEl.textContent='Failed';msgEl.textContent=data.error||'Unknown error';hintEl.textContent='Check the original AWB and try again.';resultEl.className='action-result visible err';}
-  }catch(err){document.getElementById('return-label-status').textContent='Error';document.getElementById('return-msg').textContent=err.message;document.getElementById('return-result').className='action-result visible err';}
-  finally{btn.disabled=false;btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Book Return Label'}
+    if(data.success){statusEl.textContent='✅ Return Label Booked';statusEl.style.color='var(--green)';msgEl.textContent=`Return AWB: ${data.return_awb}`;hintEl.textContent=`Order: ${data.order_number} — Label uploaded to Airtable`}
+    else{statusEl.textContent='❌ Failed';statusEl.style.color='var(--red)';msgEl.textContent=data.error||'Unknown error';hintEl.textContent='Check the original AWB and try again.'}
+    document.getElementById('return-result').style.display='block';
+  }catch(err){document.getElementById('return-label-status').textContent='❌ Error';document.getElementById('return-msg').textContent=err.message;document.getElementById('return-result').style.display='block'}
+  finally{btn.disabled=false;btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Book Return Label'}
 }
+
 
 // ════════════════════════════════════════════
 //  CANCEL SHIPMENT
 // ════════════════════════════════════════════
+
 function confirmCancel() {
   const awb = document.getElementById('cancel-awb-input').value.trim();
   if (!awb) {
@@ -1357,19 +1508,32 @@ function confirmCancel() {
     document.getElementById('cancel-awb-input').focus();
     return;
   }
+
   document.getElementById('cancel-confirm-awb').textContent = awb;
+  document.getElementById('cancel-confirm-body').innerHTML =
+    `This will send a <strong>DELETE</strong> request to DHL for AWB <strong>${awb}</strong>.<br><br>
+    If DHL confirms cancellation, the Airtable order will be automatically reset so it can be re-booked.<br><br>
+    ⚠️ Works <strong>only before DHL picks up / scans</strong> the parcel.<br>
+    If already scanned → call DHL UAE: <strong style="color:var(--amber)">+971 600 567 567</strong>`;
+
   document.getElementById('cancel-confirm-overlay').classList.add('show');
 }
-function closeCancelConfirm() { document.getElementById('cancel-confirm-overlay').classList.remove('show'); }
+
+function closeCancelConfirm() {
+  document.getElementById('cancel-confirm-overlay').classList.remove('show');
+}
 
 async function executeCancelShipment() {
   closeCancelConfirm();
+
   const awb = document.getElementById('cancel-awb-input').value.trim();
   const btn = document.getElementById('btn-cancel-ship');
+  const resultBox = document.getElementById('action-result');
 
+  // Lock UI
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> Cancelling…`;
-  document.getElementById('cancel-result').className = 'action-result';
+  resultBox.className = 'action-result';
 
   try {
     const res  = await fetch(`${API_BASE}/cancel-dhl`, {
@@ -1379,38 +1543,39 @@ async function executeCancelShipment() {
     });
     const data = await res.json();
 
-    const resultEl = document.getElementById('cancel-result');
+    const resultEl = document.getElementById('action-result');
     const labelEl  = document.getElementById('cr-label');
     const msgEl    = document.getElementById('cr-msg');
     const hintEl   = document.getElementById('cr-hint');
 
     if (data.dhl_cancelled) {
       resultEl.className  = 'action-result visible ok';
-      labelEl.textContent = 'Cancelled';
+      labelEl.textContent = '✅ Cancelled';
       msgEl.textContent   = data.message || 'Shipment cancelled successfully.';
       hintEl.textContent  = data.airtable_reset === true
         ? 'Airtable cleared — order can now be re-booked.'
         : data.airtable_reset === false
-          ? 'Airtable reset failed — clear manually.'
+          ? '⚠️ Airtable reset failed — clear manually.'
           : '';
-      showToast(`AWB ${awb} cancelled`, 'success');
+      showToast(`AWB ${awb} cancelled ✅`, 'success');
       document.getElementById('cancel-awb-input').value = '';
     } else {
       resultEl.className  = 'action-result visible err';
-      labelEl.textContent = 'Cancellation Failed';
+      labelEl.textContent = '❌ Cancellation Failed';
       msgEl.textContent   = data.error || 'DHL rejected the cancellation.';
       hintEl.textContent  = data.guidance || 'If parcel is in transit: call DHL UAE +971 600 567 567 with the AWB number.';
       showToast('Cancellation failed — see details below.', 'error');
     }
+
   } catch (err) {
-    document.getElementById('cancel-result').className = 'action-result visible err';
-    document.getElementById('cr-label').textContent = 'Network Error';
+    document.getElementById('action-result').className = 'cancel-result visible err';
+    document.getElementById('cr-label').textContent = '❌ Network Error';
     document.getElementById('cr-msg').textContent   = String(err);
     document.getElementById('cr-hint').textContent  = 'Check the API server is running.';
     showToast('Network error — could not reach API.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Cancel Shipment`;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Cancel Shipment`;
   }
 }
 
@@ -1423,6 +1588,7 @@ async function init() {
   loadHistory();
   setInterval(checkHealth, 30000);
 }
+
 init();
 </script>
 </body>
