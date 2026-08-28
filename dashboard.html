@@ -233,18 +233,33 @@ main {
 .sidebar::-webkit-scrollbar { width: 5px; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 10px; }
 
+/* Sticky fade at the bottom of the sidebar — signals "more below" instead of
+   letting the last card's button get sliced off with no explanation. It sticks
+   to the scrollport bottom, so once you actually reach the end it has nothing
+   left to fade over and disappears. */
+.sidebar::after {
+  content: '';
+  display: block;
+  position: sticky;
+  bottom: -1px;
+  height: 26px;
+  margin-top: -26px;
+  background: linear-gradient(to bottom, rgba(245,244,242,0) 0%, var(--paper) 85%);
+  pointer-events: none;
+}
+
 .sb-card {
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: var(--r);
   box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   overflow: hidden;
 }
 .sb-card:last-child { margin-bottom: 0; }
 
 .sb-section {
-  padding: 16px 18px;
+  padding: 13px 16px;
   border-bottom: 1px solid var(--border);
 }
 .sb-section:last-child { border-bottom: none; }
@@ -255,7 +270,7 @@ main {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--faint);
-  margin-bottom: 12px;
+  margin-bottom: 9px;
 }
 
 /* Stats grid */
@@ -269,11 +284,11 @@ main {
   background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  padding: 12px 13px;
+  padding: 9px 11px;
 }
 
 .stat-num {
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 800;
   color: var(--ink);
   line-height: 1;
@@ -330,13 +345,13 @@ main {
 
 /* Notice banners */
 .notice {
-  padding: 11px 13px;
+  padding: 9px 11px;
   border-radius: var(--r-xs);
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 11.5px;
+  line-height: 1.42;
   font-weight: 500;
   display: flex;
-  gap: 9px;
+  gap: 8px;
   align-items: flex-start;
 }
 .notice.hidden { display: none; }
@@ -355,7 +370,7 @@ main {
 /* Primary action button */
 .btn-run {
   width: 100%;
-  padding: 13px 18px;
+  padding: 11px 16px;
   border-radius: var(--r-sm);
   border: none;
   font-family: var(--font);
