@@ -1633,14 +1633,11 @@ def build_dhl_payload(row):
                     "invoice": {
                         "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
                         "date"  : datetime.now().strftime("%Y-%m-%d"),
+                        # DHL expects an array of plain strings here — not objects
                         "customerDataTextEntries": [
-                            {
-                                "textEntry": (
-                                    f"Payer of Duties/Taxes: {importer_party['Company']}"
-                                    + (f" | VAT: {importer_vat}" if importer_vat else "")
-                                    + (f" | Account: {duty_account}" if duty_account else "")
-                                )
-                            }
+                            f"Payer of Duties/Taxes: {importer_party['Company']}"
+                            + (f" | VAT: {importer_vat}" if importer_vat else "")
+                            + (f" | Account: {duty_account}" if duty_account else "")
                         ],
                     },
                     "exportReason": F["export_reason"],
