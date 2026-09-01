@@ -2465,39 +2465,47 @@ def book_return_label(original_awb):
             data       = resp.json()
             return_awb = data.get("shipmentTrackingNumber", "")
             documents  = data.get("documents", [])
-            label_b64  = next(
-                (d["content"] for d in documents if "label" in d.get("typeCode", "").lower()),
-                None
-            )
             print(f"   ✅ Return AWB: {return_awb}")
 
-            # ── Step 5: Upload return label to Airtable ──────────────────
-            if label_b64:
-                label_fname = f"return_label_{order_number}.pdf"
+            # ── Step 5: Upload BOTH the return label and the return
+            # commercial invoice to Airtable. Previously only the "label"
+            # typeCode was extracted here — the "invoice" document DHL
+            # also returns (COMMERCIAL_INVOICE_P_10) was silently dropped.
+            orders_record_id, _ = find_order_record_by_tracking(original_awb)
+            if orders_record_id:
+                print(f"   🔗 Orders record ID: {orders_record_id}")
+            else:
+                orders_record_id = record_id  # fallback
+                print(f"   ⚠️  Orders record not found — using SOL record ID as fallback")
 
-                # Look up the Sales Orders record ID by AWB (SOL record_id won't work)
-                orders_record_id, _ = find_order_record_by_tracking(original_awb)
-                if orders_record_id:
-                    print(f"   🔗 Orders record ID: {orders_record_id}")
-                else:
-                    orders_record_id = record_id  # fallback
-                    print(f"   ⚠️  Orders record not found — using SOL record ID as fallback")
+            base_id = TABLE_CONFIG["orders"]["base_id"]
+            for doc in documents:
+                type_code   = doc.get("typeCode", "").lower()
+                content_b64 = doc.get("content")
+                if not content_b64:
+                    continue
 
-                if orders_record_id:
-                    base_id  = TABLE_CONFIG["orders"]["base_id"]
-                    field_id = "fldG3hmHH8cTPwzxo"  # Shipment Label file field
-                    up_resp  = requests.post(
-                        f"https://content.airtable.com/v0/{base_id}/{orders_record_id}/{field_id}/uploadAttachment",
-                        headers={"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"},
-                        json={"contentType": "application/pdf", "file": label_b64, "filename": label_fname},
-                        timeout=60,
-                    )
-                    if up_resp.status_code == 200:
-                        print(f"   📎 Return label uploaded to Airtable alongside original label")
-                    else:
-                        print(f"   ⚠️  Airtable upload failed: HTTP {up_resp.status_code} — {up_resp.text[:200]}")
+                if "label" in type_code or "waybill" in type_code:
+                    field_id, fname, doc_key = "fldG3hmHH8cTPwzxo", f"return_label_{order_number}.pdf", "label"
+                elif "invoice" in type_code:
+                    field_id, fname, doc_key = "fldp7fi4xvhqCybQ7", f"return_invoice_{order_number}.pdf", "invoice"
                 else:
+                    continue
+
+                if not orders_record_id:
                     print(f"   ⚠️  Could not find Sales Orders record for AWB {original_awb}")
+                    break
+
+                up_resp = requests.post(
+                    f"https://content.airtable.com/v0/{base_id}/{orders_record_id}/{field_id}/uploadAttachment",
+                    headers={"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"},
+                    json={"contentType": "application/pdf", "file": content_b64, "filename": fname},
+                    timeout=60,
+                )
+                if up_resp.status_code == 200:
+                    print(f"   📎 Return {doc_key} uploaded to Airtable alongside original {doc_key}")
+                else:
+                    print(f"   ⚠️  Return {doc_key} upload failed: HTTP {up_resp.status_code} — {up_resp.text[:200]}")
 
             return {
                 "success"     : True,
