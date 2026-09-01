@@ -1633,21 +1633,14 @@ def build_dhl_payload(row):
                     "invoice": {
                         "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
                         "date"  : datetime.now().strftime("%Y-%m-%d"),
-                        # DHL: array of plain strings, each max 45 chars.
-                        # Split across two lines so long UK/EU values still fit.
-                        "customerDataTextEntries": [
-                            f"Payer: {importer_party['Company']}"[:45],
-                            (
-                                (f"VAT {importer_vat} | " if importer_vat else "")
-                                + (f"A/C {duty_account}" if duty_account else "")
-                            )[:45],
-                        ],
                     },
                     "exportReason": F["export_reason"],
                 },
             }),
             "description"       : F["contents"],
             **({} if is_domestic else {"incoterm": "DDP"}),
+            # DHL-confirmed field for the "Payer of GST / VAT" line on the invoice.
+            **({"payerVATNumber": importer_vat} if (not is_domestic and importer_vat) else {}),
             "unitOfMeasurement": "metric",
         },
         "shipmentNotification": [
@@ -2031,6 +2024,7 @@ def validate_credentials_dhl():
         f"&destinationCountryCode=DE&destinationCityName=Berlin"
         f"&weight=1.5&length=35&width=30&height=7"
         f"&plannedShippingDate={datetime.now().strftime('%Y-%m-%d')}"
+        f"&isCustomsDeclarable=true&unitOfMeasurement=metric"
     )
  
     try:
@@ -2401,7 +2395,9 @@ def book_return_label(original_awb):
                     "height": FIXED["height"],
                 },
                 "customerReferences": [
-                    {"typeCode": "CU", "value": order_number[:35]},
+                    # DHL customs matches returns to the original export AWB via this
+                    # field to grant Duty/VAT exemption (only BOE charges apply).
+                    {"typeCode": "CU", "value": original_awb[:35]},
                 ],
             }],
             "isCustomsDeclarable"  : False if is_domestic else True,
