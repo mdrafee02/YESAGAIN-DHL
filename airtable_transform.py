@@ -1635,12 +1635,14 @@ def build_dhl_payload(row):
                         "date"  : datetime.now().strftime("%Y-%m-%d"),
                     },
                     "exportReason": F["export_reason"],
+                    # DHL: payerVATNumber lives inside exportDeclaration, not top-level content
+                    # (confirmed extraneous there — Sana's example groups it with
+                    # destinationPortName/placeOfIncoterm/recipientReference/exporter).
+                    **({"payerVATNumber": importer_vat} if importer_vat else {}),
                 },
             }),
             "description"       : F["contents"],
             **({} if is_domestic else {"incoterm": "DDP"}),
-            # DHL-confirmed field for the "Payer of GST / VAT" line on the invoice.
-            **({"payerVATNumber": importer_vat} if (not is_domestic and importer_vat) else {}),
             "unitOfMeasurement": "metric",
         },
         "shipmentNotification": [
