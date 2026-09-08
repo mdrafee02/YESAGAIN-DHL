@@ -1416,8 +1416,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
         product_name = (r.get("Sales Product Name (from Sales Order Lines)", "")
                         or r.get("Sales Product Name", ""))
         pp = detect_product_profile(product_sku, product_name)
-        if pp is not PRODUCT_PROFILES["laptop"]:
-            print(f"   📦 {order_number} → detected product type: {pp['contents']}")
+        print(f"   📦 {order_number} → SKU: {product_sku!r} | detected: {pp['contents']}")
  
         rules       = get_destination_rules(country, order_number)
         shipper_acc = rules["shipper_account"]
