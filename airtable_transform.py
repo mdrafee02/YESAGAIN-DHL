@@ -202,14 +202,24 @@ def detect_product_profile(sku="", product_name=""):
     to name-keyword matching if the SKU is missing/unrecognized, and
     defaults to "laptop" for anything else — preserves current behaviour
     for every order type already shipping correctly.
+
+    Airtable lookup/rollup fields (like these) come back from the API as
+    a LIST even when there's only one linked record — e.g. ["IP-16E-..."]
+    not "IP-16E-...". Unwrap that first, or str(["IP-..."]) becomes the
+    literal text "['IP-...']" and every prefix check silently fails.
     """
-    sku_u = str(sku or "").strip().upper()
+    def _unwrap(val):
+        if isinstance(val, list):
+            return str(val[0]).strip() if val else ""
+        return str(val).strip() if val is not None else ""
+
+    sku_u = _unwrap(sku).upper()
     if sku_u.startswith("IP-"):
         return PRODUCT_PROFILES["phone"]
     if sku_u.startswith("AW-"):
         return PRODUCT_PROFILES["watch"]
 
-    name = str(product_name or "").strip().lower()
+    name = _unwrap(product_name).lower()
     if "iphone" in name or "smartphone" in name:
         return PRODUCT_PROFILES["phone"]
     if "watch" in name:
