@@ -174,21 +174,18 @@ PRODUCT_PROFILES = {
     "phone": {
         "contents"  : "Used phone",
         "item_desc" : "Used phone",
-        # Standard HS code for cellular/smartphones — widely used, but NOT
-        # yet confirmed against your DHL "My Product/Item List" (only
-        # "Used laptop" is registered there today). Verify with DHL/your
-        # customs broker before high-volume phone shipments.
-        "commodity" : "8517.12.0000",
+        "commodity" : "8517.13.0000",   # confirmed via DHL Global Trade Services — "Smartphones"
         "weight"    : 0.8, "length": 20, "width": 15, "height": 5,
         "item_net"  : 0.6, "item_gross": 0.8,
     },
     "watch": {
         "contents"  : "Used smart watch",
         "item_desc" : "Used smart watch",
-        # HS classification for smartwatches is genuinely split across
-        # customs authorities (electronics 8517.62 vs. wrist-watch 9102.12).
-        # NOT confirmed — verify before shipping any watch order.
-        "commodity" : "8517.62.0000",
+        # Confirmed via DHL Global Trade Services for GPS-only Apple Watches
+        # (no SIM/cellular): "Other wrist-watches with electronic display".
+        # If you ever stock Cellular (SIM) models, that is a DIFFERENT code
+        # — 8517.62.90.0005 — do not reuse this one for those.
+        "commodity" : "9102.12.0099",
         "weight"    : 0.4, "length": 13, "width": 18, "height": 4,
         "item_net"  : 0.3, "item_gross": 0.4,
     },
