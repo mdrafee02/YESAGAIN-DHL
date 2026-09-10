@@ -14,6 +14,8 @@ import json
 import base64
 import time
 import os
+import hashlib
+from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from urllib.parse import quote
@@ -35,6 +37,17 @@ AIRTABLE_CRS_RMA_API_KEY = os.getenv("AIRTABLE_CRS_RMA_API_KEY", AIRTABLE_RMA_AP
 DHL_API_KEY    = os.getenv("DHL_API_KEY")
 DHL_API_SECRET = os.getenv("DHL_API_SECRET")
 DHL_TEST_MODE  = os.getenv("DHL_TEST_MODE", "true").strip().lower() == "true"
+
+# ── Local UAE return pickup scheduling (customer self-serve link) ─────────
+PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
+PICKUP_LINK_SECRET = os.getenv("PICKUP_LINK_SECRET")
+if not PICKUP_LINK_SECRET:
+    print("   ⚠️  PICKUP_LINK_SECRET is not set — falling back to DHL_API_SECRET. "
+          "Set a dedicated PICKUP_LINK_SECRET before relying on this in production.")
+    PICKUP_LINK_SECRET = DHL_API_SECRET or "insecure-dev-fallback-secret"
+if PUBLIC_APP_URL == "http://localhost:5000":
+    print("   ⚠️  PUBLIC_APP_URL is not set — pickup links will point at localhost "
+          "and will NOT work for real customers. Set it in your deployment environment.")
  
 DHL_BASE_URL_TEST = "https://express.api.dhl.com/mydhlapi/test"
 DHL_BASE_URL_PROD = "https://express.api.dhl.com/mydhlapi"
@@ -2292,6 +2305,184 @@ def find_order_record_by_tracking(tracking_number):
 
 
 # ============================================================
+# LOCAL UAE RETURN PICKUP — customer self-serve booking link
+# ============================================================
+#
+# Design: instead of guessing a pickup date/time or messaging the
+# customer and parsing a free-text reply, the customer gets a link.
+# They open it, pick a date + morning/afternoon window, and submit —
+# that triggers the actual DHL pickup request. The link is encrypted
+# (not just signed) since it carries the customer's name/address/phone,
+# and it expires after 5 days.
+#
+# ⚠️  The DHL POST /pickups payload below is NOT yet verified against
+# DHL's sandbox. It is built from DHL's public MyDHL API documentation
+# and general patterns already working elsewhere in this file, but it
+# has not been tested against a live response. Before this goes to
+# production: run one real domestic return in Test Mode, generate a
+# link, submit a slot, and read DHL's actual response. If DHL rejects
+# a field, fix it against that exact error — do not guess again.
+
+PICKUP_LINK_TTL_SECONDS = 5 * 24 * 3600  # 5 days, matches the plan
+
+def _pickup_fernet():
+    """Derive a valid Fernet key from PICKUP_LINK_SECRET (any length string)."""
+    key = hashlib.sha256(PICKUP_LINK_SECRET.encode("utf-8")).digest()
+    return Fernet(base64.urlsafe_b64encode(key))
+
+
+def generate_pickup_link(original_awb, return_awb, order_number,
+                          name, address1, address2, city, country_code, phone):
+    """
+    Build a signed + encrypted, 5-day-expiring URL the customer opens to
+    choose a pickup date/time for a local UAE return. Everything needed
+    to schedule the pickup travels inside the token — no database needed.
+    """
+    payload = {
+        "original_awb": original_awb,
+        "return_awb"  : return_awb,
+        "order_number": order_number,
+        "name"        : name,
+        "address1"    : address1,
+        "address2"    : address2,
+        "city"        : city,
+        "country_code": country_code,
+        "phone"       : phone,
+    }
+    token = _pickup_fernet().encrypt(json.dumps(payload).encode("utf-8"))
+    return f"{PUBLIC_APP_URL}/schedule-pickup?token={quote(token.decode('utf-8'))}"
+
+
+def verify_pickup_token(token):
+    """
+    Decrypt + validate a pickup token. Returns the decoded dict on
+    success, or None if the token is invalid, tampered with, or expired
+    (>5 days old).
+    """
+    try:
+        raw = _pickup_fernet().decrypt(token.encode("utf-8"), ttl=PICKUP_LINK_TTL_SECONDS)
+        return json.loads(raw.decode("utf-8"))
+    except InvalidToken:
+        print("   ⚠️  Pickup token invalid or expired")
+        return None
+    except Exception as e:
+        print(f"   ⚠️  Pickup token could not be parsed: {e}")
+        return None
+
+
+def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instructions=""):
+    """
+    Call DHL's POST /pickups to request a courier collection for a
+    domestic UAE return shipment. `details` is the dict decoded from
+    the customer's pickup token (see generate_pickup_link above).
+
+    UNVERIFIED against DHL's live API — see the section header above.
+    Logs the full outgoing payload and full DHL response so any
+    rejection can be fixed against the real error DHL returns.
+    """
+    base_url = DHL_BASE_URL_TEST if DHL_TEST_MODE else DHL_BASE_URL_PROD
+
+    planned_dt = f"{pickup_date}T{ready_time}:00 GMT+04:00"
+
+    payload = {
+        "plannedPickupDateAndTime": planned_dt,
+        "closeTime"    : close_time,
+        "location"     : "Residence",
+        "locationType"  : "residence",
+        "accounts": [
+            {"typeCode": "shipper", "number": str(FIXED["account_shipper"])},
+        ],
+        "specialInstructions": (
+            [{"value": instructions[:200]}] if instructions else []
+        ),
+        "requestorAddress": {
+            "postalCode" : "00000",
+            "cityName"   : details.get("city", ""),
+            "countryCode": details.get("country_code", "AE"),
+            "addressLine1": details.get("address1", ""),
+            **({"addressLine2": details["address2"]} if details.get("address2") else {}),
+        },
+        "shipmentDetails": [
+            {
+                "productCode": "N",
+                "isCustomsDeclarable": False,
+                "shipmentTrackingNumber": details.get("return_awb", ""),
+                "unitOfMeasurement": "metric",
+                "packages": [
+                    {"weight": PRODUCT_PROFILES["laptop"]["weight"],
+                     "dimensions": {
+                         "length": PRODUCT_PROFILES["laptop"]["length"],
+                         "width" : PRODUCT_PROFILES["laptop"]["width"],
+                         "height": PRODUCT_PROFILES["laptop"]["height"],
+                     }},
+                ],
+            }
+        ],
+        "customerDetails": {
+            "shipperDetails": {
+                "postalAddress": {
+                    "postalCode" : "00000",
+                    "cityName"   : details.get("city", ""),
+                    "countryCode": details.get("country_code", "AE"),
+                    "addressLine1": details.get("address1", ""),
+                    **({"addressLine2": details["address2"]} if details.get("address2") else {}),
+                },
+                "contactInformation": {
+                    "fullName": details.get("name", "Customer"),
+                    "phone"   : details.get("phone", ""),
+                },
+            },
+        },
+    }
+
+    print(f"   📤 DHL /pickups payload: {json.dumps(payload, indent=2)}")
+
+    try:
+        resp = requests.post(
+            f"{base_url}/pickups",
+            json=payload,
+            auth=(DHL_API_KEY, DHL_API_SECRET),
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            timeout=30,
+        )
+        print(f"   📥 DHL /pickups response HTTP {resp.status_code}: {resp.text[:800]}")
+
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            return {
+                "success": True,
+                "confirmation_number": data.get("dispatchConfirmationNumbers", [None])[0]
+                                        or data.get("confirmationNumber", ""),
+            }
+        else:
+            return {"success": False, "error": resp.text[:500]}
+
+    except Exception as e:
+        print(f"   ❌ Exception scheduling pickup: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def confirm_customer_pickup(token, pickup_date, ready_time, close_time, instructions=""):
+    """
+    Called from the /confirm-pickup route once a customer has picked a
+    date/time on the pickup_booking.html page. Verifies the token first,
+    then schedules the actual DHL pickup.
+    """
+    details = verify_pickup_token(token)
+    if not details:
+        return {"success": False, "error": "This link is invalid or has expired. Please contact support."}
+
+    if not pickup_date or not ready_time or not close_time:
+        return {"success": False, "error": "Pickup date and time window are required."}
+
+    result = _schedule_return_pickup(details, pickup_date, ready_time, close_time, instructions)
+    if result.get("success"):
+        result["order_number"] = details.get("order_number", "")
+        result["return_awb"]   = details.get("return_awb", "")
+    return result
+
+
+# ============================================================
 # RETURN LABEL
 # ============================================================
 
@@ -2587,11 +2778,36 @@ def book_return_label(original_awb):
                 else:
                     print(f"   ⚠️  Return {doc_key} upload failed: HTTP {up_resp.status_code} — {up_resp.text[:200]}")
 
-            return {
+            result = {
                 "success"     : True,
                 "return_awb"  : return_awb,
                 "order_number": order_number,
             }
+
+            # Local UAE returns need a customer to actually hand the package
+            # to DHL. This is never possible to guarantee via drop-off the
+            # way it can be for international, so generate a self-serve
+            # pickup-booking link. Wrapped in try/except so a problem here
+            # can never take down the label/invoice success above it.
+            if is_domestic:
+                try:
+                    pickup_link = generate_pickup_link(
+                        original_awb=original_awb,
+                        return_awb=return_awb,
+                        order_number=order_number,
+                        name=cust_name,
+                        address1=cust_addr1,
+                        address2=cust_addr2,
+                        city=cust_city,
+                        country_code=dest_country,
+                        phone=f"+{phone_cc}{cust_phone}",
+                    )
+                    result["pickup_link"] = pickup_link
+                    print(f"   🔗 Pickup booking link: {pickup_link}")
+                except Exception as e:
+                    print(f"   ⚠️  Could not generate pickup link (label/invoice are still fine): {e}")
+
+            return result
         else:
             error = resp.text[:500]
             print(f"   ❌ DHL return failed HTTP {resp.status_code}: {error}")
