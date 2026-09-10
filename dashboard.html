@@ -1078,7 +1078,17 @@ async function bookReturn(){
     const data=await resp.json();
     const statusEl=document.getElementById('return-label-status');const msgEl=document.getElementById('return-msg');const hintEl=document.getElementById('return-hint');
     const resultEl=document.getElementById('return-result');
-    if(data.success){statusEl.textContent='Return Label Booked';msgEl.textContent=`Return AWB: ${data.return_awb}`;hintEl.textContent=`Order: ${data.order_number} — Label uploaded to Airtable`;resultEl.className='action-result visible ok';}
+    if(data.success){
+      statusEl.textContent='Return Label Booked';
+      msgEl.textContent=`Return AWB: ${data.return_awb}`;
+      hintEl.textContent=`Order: ${data.order_number} — Label uploaded to Airtable`;
+      resultEl.className='action-result visible ok';
+      if(data.pickup_link){
+        hintEl.innerHTML += `<br><br><strong>Local UAE return</strong> — send this link to the customer so DHL can collect it:<br>` +
+          `<button type="button" onclick="navigator.clipboard.writeText('${data.pickup_link}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy pickup link',1500)" ` +
+          `style="margin-top:6px;padding:6px 12px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;font-size:12px;font-weight:600;cursor:pointer;">Copy pickup link</button>`;
+      }
+    }
     else{statusEl.textContent='Failed';msgEl.textContent=data.error||'Unknown error';hintEl.textContent='Check the original AWB and try again.';resultEl.className='action-result visible err';}
   }catch(err){document.getElementById('return-label-status').textContent='Error';document.getElementById('return-msg').textContent=err.message;document.getElementById('return-result').className='action-result visible err';}
   finally{btn.disabled=false;btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Book Return Label'}
