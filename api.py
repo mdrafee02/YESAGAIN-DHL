@@ -172,6 +172,14 @@ except Exception as _e:
     _return_label_import_error = str(_e)
     print(f"[ERROR] Failed to import book_return_label: {_e}")
 
+try:
+    from airtable_transform import confirm_customer_pickup as _confirm_customer_pickup
+    _pickup_import_error = None
+except Exception as _e:
+    _confirm_customer_pickup = None
+    _pickup_import_error = str(_e)
+    print(f"[ERROR] Failed to import confirm_customer_pickup: {_e}")
+
 @app.route("/book-return", methods=["POST"])
 def book_return():
     """Book a return label for an existing shipment by original AWB."""
@@ -189,18 +197,61 @@ def book_return():
         print(f"[book-return] Result: {result}")
 
         if result.get("success"):
-            return jsonify({
+            response = {
                 "success"     : True,
                 "return_awb"  : result.get("return_awb", ""),
                 "order_number": result.get("order_number", ""),
                 "message"     : f"Return label booked — AWB: {result.get('return_awb', '')}",
-            })
+            }
+            # Only present for local UAE returns — international responses
+            # are completely unaffected, same shape as before this change.
+            if result.get("pickup_link"):
+                response["pickup_link"] = result["pickup_link"]
+            return jsonify(response)
         else:
             return jsonify({"success": False, "error": result.get("error", "Unknown error")}), 400
 
     except Exception as e:
         import traceback
         print(f"[book-return] Exception: {traceback.format_exc()}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/schedule-pickup", methods=["GET"])
+def schedule_pickup_page():
+    """Serve the customer-facing pickup booking page (reads ?token=... client-side)."""
+    return send_from_directory(SCRIPT_DIR, "pickup_booking.html")
+
+
+@app.route("/confirm-pickup", methods=["POST"])
+def confirm_pickup_route():
+    """Customer has picked a date/time on the pickup page — schedule it with DHL."""
+    if _pickup_import_error:
+        return jsonify({"success": False, "error": f"Import error: {_pickup_import_error}"}), 500
+
+    try:
+        data = request.get_json() or {}
+        token        = str(data.get("token", "")).strip()
+        pickup_date  = str(data.get("pickup_date", "")).strip()
+        ready_time   = str(data.get("ready_time", "")).strip()
+        close_time   = str(data.get("close_time", "")).strip()
+        instructions = str(data.get("instructions", "")).strip()
+
+        if not token:
+            return jsonify({"success": False, "error": "Missing pickup link token"}), 400
+
+        print(f"[confirm-pickup] Scheduling pickup for date={pickup_date} window={ready_time}-{close_time}")
+        result = _confirm_customer_pickup(token, pickup_date, ready_time, close_time, instructions)
+        print(f"[confirm-pickup] Result: {result}")
+
+        if result.get("success"):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        import traceback
+        print(f"[confirm-pickup] Exception: {traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
