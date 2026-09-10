@@ -1603,7 +1603,7 @@ def build_dhl_payload(row):
     addr2       = str(row.get("Address 2 (Ship TO)", "")).strip()
     
     postal_address = {
-        "postalCode"  : clean_postal_code(str(row.get("ZIP Postal Code (Ship TO)", "")).strip(), country) or "00000",
+        "postalCode"  : clean_postal_code(str(row.get("ZIP Postal Code (Ship TO)", "")).strip(), country),
         "cityName"    : str(row.get("City (Ship TO) (Required)", "")).strip(),
         "countryCode" : country,
         "addressLine1": raw_address[:45],
