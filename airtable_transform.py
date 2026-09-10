@@ -482,7 +482,14 @@ def clean_postal_code(postcode, country_code):
     """Ensure postal code matches DHL format. LU must be exactly 4 digits."""
     if not postcode:
         return ""
-    postcode = str(postcode).strip().upper()
+    postcode = str(postcode).strip()
+    # Pandas/Airtable missing values sometimes arrive already stringified
+    # (e.g. "nan", "NaN", "None") before this function ever sees them —
+    # treat those exactly like an empty value instead of printing them
+    # on the label.
+    if postcode.strip().lower() in ("nan", "none", "nat", "null"):
+        return ""
+    postcode = postcode.upper()
     if country_code == "LU":
         # Remove all non-digits, then take first 4 digits or pad
         digits = re.sub(r'\D', '', postcode)
