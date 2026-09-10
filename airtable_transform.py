@@ -2402,13 +2402,6 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
         "specialInstructions": (
             [{"value": instructions[:200]}] if instructions else []
         ),
-        "requestorAddress": {
-            "postalCode" : "00000",
-            "cityName"   : details.get("city", ""),
-            "countryCode": details.get("country_code", "AE"),
-            "addressLine1": details.get("address1", ""),
-            **({"addressLine2": details["address2"]} if details.get("address2") else {}),
-        },
         "shipmentDetails": [
             {
                 "productCode": "N",
@@ -2435,8 +2428,9 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
                     **({"addressLine2": details["address2"]} if details.get("address2") else {}),
                 },
                 "contactInformation": {
-                    "fullName": details.get("name", "Customer"),
-                    "phone"   : details.get("phone", ""),
+                    "companyName": details.get("name", "Customer"),
+                    "fullName"   : details.get("name", "Customer"),
+                    "phone"      : details.get("phone", ""),
                 },
             },
         },
