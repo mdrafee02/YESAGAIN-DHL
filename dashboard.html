@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>DHL Logistics Operations Center</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12' fill='%23D99A4E'/%3E%3Cpath d='M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4 2-4 2L2 9.2l.3 1 5.7 2 7-4.5 1 1-4.5 7 1 .3 2.3-1.8z' fill='none' stroke='%233A2510' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -170,13 +171,9 @@ header{height:82px;flex-shrink:0;position:sticky;top:0;z-index:60;
 .hs-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 8px var(--gold-hi);
   flex-shrink:0;animation:hsdot 2s ease-in-out infinite}
 @keyframes hsdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
-.hdr-seg{display:flex;gap:2px;padding:3px;border-radius:100px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
-.hdr-seg-btn{padding:7px 18px;border:none;border-radius:100px;background:transparent;cursor:pointer;
-  font-family:var(--f);font-size:12px;font-weight:500;color:var(--muted);
-  display:flex;align-items:center;gap:6px;transition:all .2s}
-.hdr-seg-btn:hover{color:#fff}
-.hdr-seg-btn.active-test{background:rgba(255,255,255,.12);color:#fff}
-.hdr-seg-btn.active-prod{background:var(--gold);color:#2A1D0C;font-weight:600;box-shadow:0 0 18px rgba(233,184,124,.4)}
+.hdr-badge{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:100px;
+  background:var(--gold);color:#2A1D0C;font-family:var(--f);font-size:12px;font-weight:600;
+  box-shadow:0 0 18px rgba(233,184,124,.4)}
 .api{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:100px;
   background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:11.5px;font-weight:500;color:var(--muted)}
 .status-dot{width:6px;height:6px;border-radius:50%;background:var(--faint);flex-shrink:0}
@@ -208,18 +205,8 @@ main{flex:1;position:relative;z-index:1;display:grid;grid-template-columns:284px
 .sv.mono{font-family:var(--m);font-size:14px}
 .sk{font-size:9px;font-weight:500;color:var(--faint);margin-top:6px;letter-spacing:.08em;text-transform:uppercase}
 
-.mode-seg{display:flex;gap:2px;padding:3px;border-radius:var(--r);margin-bottom:12px;background:rgba(0,0,0,.24)}
-.mode-btn{flex:1;padding:9px 6px;border:none;border-radius:6px;background:transparent;cursor:pointer;
-  font-family:var(--f);font-size:11.5px;font-weight:500;color:var(--muted);
-  display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s}
-.mode-btn:hover{color:#fff}
-.mode-btn.active.test{background:rgba(255,255,255,.12);color:#fff}
-.mode-btn.active.prod{background:var(--gold);color:#2A1D0C;font-weight:600;box-shadow:0 0 16px rgba(233,184,124,.36)}
-
 .notice{padding:10px 12px;border-radius:var(--r);font-size:11.5px;line-height:1.55;
   display:flex;gap:8px;align-items:flex-start;border-left:2px solid}
-.notice.hidden{display:none}
-.notice-test{background:rgba(124,178,255,.08);border-color:var(--bl);color:#A9CCFF}
 .notice-prod{background:rgba(240,192,112,.08);border-color:var(--am);color:#F3D6A4}
 .notice strong{font-weight:600;color:#fff}
 
@@ -230,9 +217,6 @@ main{flex:1;position:relative;z-index:1;display:grid;grid-template-columns:284px
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);
   transform:skewX(-20deg);animation:sweep 3.4s ease-in-out infinite}
 @keyframes sweep{0%,72%{left:-55%}88%,100%{left:130%}}
-.btn-run.test-btn{color:#fff;background:rgba(255,255,255,.11);border:1px solid var(--line-hi)}
-.btn-run.test-btn:hover{background:rgba(255,255,255,.17);transform:translateY(-1px)}
-.btn-run.test-btn:active{transform:translateY(1px)}
 .btn-run.prod-btn{color:#2A1D0C;background:linear-gradient(180deg,var(--gold-hi),var(--gold));
   box-shadow:0 0 26px rgba(233,184,124,.44)}
 .btn-run.prod-btn:hover{transform:translateY(-1px);box-shadow:0 0 40px rgba(233,184,124,.6)}
@@ -402,8 +386,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 @media(max-width:1100px){main{grid-template-columns:258px 1fr;gap:13px;padding:14px 16px}}
-@media(max-width:900px){main{grid-template-columns:1fr;height:auto;overflow:visible}.sidebar{overflow:visible}.content{overflow:visible}.hdr-seg{display:none}.tcard{min-height:400px}.plant,.globe,.conv{display:none}}
-@media(max-width:640px){header{padding:0 15px}main{padding:13px;gap:12px}.mrow{grid-template-columns:1fr}#toast{left:13px;right:13px;max-width:none}}
+@media(max-width:900px){main{grid-template-columns:1fr;height:auto;overflow:visible}.sidebar{overflow:visible}.content{overflow:visible}.tcard{min-height:400px}.plant,.globe,.conv{display:none}}
+@media(max-width:640px){header{padding:0 15px}main{padding:13px;gap:12px}.mrow{grid-template-columns:1fr}#toast{left:13px;right:13px;max-width:none}.hdr-badge{display:none}}
 
 /* ── terminal motion ── */
 .tbody{position:relative}
@@ -509,16 +493,6 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
       <div class="hs"><span class="hs-dot"></span>DHL Booking Dashboard</div>
     </div>
   </div>
-  <div class="hdr-seg">
-    <button class="hdr-seg-btn active-test" id="hc-test" onclick="setMode('test')">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Test Mode
-    </button>
-    <button class="hdr-seg-btn" id="hc-prod" onclick="setMode('prod')">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-      Production
-    </button>
-  </div>
   <div class="api">
     <span class="status-dot" id="status-dot"></span>
     <span id="status-text">Checking</span>
@@ -544,29 +518,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
     <div class="card">
       <div class="sec">
         <div class="lbl">Booking Mode</div>
-        <div class="mode-seg">
-          <button class="mode-btn test active" id="mode-test" onclick="setMode('test')">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Test
-          </button>
-          <button class="mode-btn prod" id="mode-prod" onclick="setMode('prod')">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Production
-          </button>
-        </div>
-        <div id="notice-test" class="notice notice-test">
-          <svg width="12" height="12" style="flex-shrink:0;margin-top:2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span><strong>Test Mode:</strong> Script runs fully but no real DHL call is made. Fake tracking numbers returned. Airtable is NOT updated.</span>
-        </div>
-        <div id="notice-prod" class="notice notice-prod hidden">
+        <div id="notice-prod" class="notice notice-prod">
           <svg width="12" height="12" style="flex-shrink:0;margin-top:2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span><strong>Production:</strong> Real DHL shipments will be booked. Real labels generated. Airtable will be updated. Cannot be undone.</span>
         </div>
       </div>
       <div class="sec">
-        <button class="btn-run test-btn" id="btn-book" onclick="confirmRun()">
-          <span id="btn-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
-          <span id="btn-label">Run Test Booking</span>
+        <button class="btn-run prod-btn" id="btn-book" onclick="confirmRun()">
+          <span id="btn-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+          <span id="btn-label">Book Shipments</span>
         </button>
         <div class="progress-wrap" id="progress-wrap">
           <div class="pt"><div class="pf running" id="progress-bar"></div></div>
@@ -736,7 +696,6 @@ const API_BASE = window.location.origin;
 // ════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════
-let currentMode  = 'test';
 let isRunning    = false;
 let eventSource  = null;
 let lastRunTimestamp = null;
@@ -778,28 +737,6 @@ function setStatus(state, text) {
 }
 
 // ════════════════════════════════════════════
-//  MODE
-// ════════════════════════════════════════════
-function setMode(mode) {
-  currentMode = mode;
-  document.getElementById('mode-test').className = 'mode-btn test' + (mode === 'test' ? ' active' : '');
-  document.getElementById('mode-prod').className = 'mode-btn prod' + (mode === 'prod' ? ' active' : '');
-  document.getElementById('hc-test').className = 'hdr-seg-btn' + (mode === 'test' ? ' active-test' : '');
-  document.getElementById('hc-prod').className = 'hdr-seg-btn' + (mode === 'prod' ? ' active-prod' : '');
-  document.getElementById('notice-test').classList.toggle('hidden', mode !== 'test');
-  document.getElementById('notice-prod').classList.toggle('hidden', mode !== 'prod');
-  if (mode === 'prod') {
-    $btnBook.className   = 'btn-run prod-btn';
-    $btnIcon.innerHTML   = SVG_PROD;
-    $btnLbl.textContent  = 'Book Real Shipments';
-  } else {
-    $btnBook.className   = 'btn-run test-btn';
-    $btnIcon.innerHTML   = SVG_TEST;
-    $btnLbl.textContent  = 'Run Test Booking';
-  }
-}
-
-// ════════════════════════════════════════════
 //  SHIPMENT ACTIONS TABS
 // ════════════════════════════════════════════
 function switchActionTab(tab) {
@@ -821,23 +758,13 @@ function confirmRun() {
   const body    = document.getElementById('confirm-body');
   const okBtn   = document.getElementById('confirm-ok-btn');
 
-  if (currentMode === 'prod') {
-    wrap.className = 'dialog-icon di-amber';
-    svg.setAttribute('stroke','var(--amber)');
-    svg.innerHTML = `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`;
-    title.textContent = 'Book Real Shipments?';
-    body.innerHTML = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
-    okBtn.textContent = 'Confirm & Book';
-    okBtn.className = 'btn-dlg-ok orange';
-  } else {
-    wrap.className = 'dialog-icon di-blue';
-    svg.setAttribute('stroke','var(--blue)');
-    svg.innerHTML = `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>`;
-    title.textContent = 'Run Test Booking?';
-    body.innerHTML = 'This will run in <span class="blue">TEST MODE</span>.<br><br>No real DHL call will be made. Fake tracking numbers will be returned. Airtable will NOT be updated.';
-    okBtn.textContent = 'Run Test';
-    okBtn.className = 'btn-dlg-ok blue';
-  }
+  wrap.className = 'dialog-icon di-amber';
+  svg.setAttribute('stroke','var(--amber)');
+  svg.innerHTML = `<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`;
+  title.textContent = 'Book Real Shipments?';
+  body.innerHTML = 'This will run <strong>--send-to-dhl</strong> in <strong>PRODUCTION MODE</strong>.<br><br>Real DHL labels will be created and Airtable will be updated. <strong>This cannot be undone.</strong>';
+  okBtn.textContent = 'Confirm & Book';
+  okBtn.className = 'btn-dlg-ok orange';
   overlay.classList.add('show');
 }
 function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
@@ -853,12 +780,9 @@ function executeRun() {
   clearTerminal(false);
   document.getElementById('downloads-card').classList.remove('visible');
 
-  const testMode = (currentMode === 'test');
-  const url = `${API_BASE}/stream-dhl?test=${testMode ? '1' : '0'}`;
+  const url = `${API_BASE}/stream-dhl?test=0`;
 
-  $ttitle.textContent = testMode
-    ? 'airtable_transform.py --send-to-dhl --test'
-    : 'airtable_transform.py --send-to-dhl';
+  $ttitle.textContent = 'airtable_transform.py --send-to-dhl';
 
   if (eventSource) eventSource.close();
   eventSource = new EventSource(url);
@@ -1009,8 +933,8 @@ function finishRun(success) {
   $progB.classList.remove('running');
   setProgress(100, success ? 'Completed successfully' : 'Completed with errors');
   $btnBook.disabled = false;
-  $btnIcon.innerHTML = currentMode === 'prod' ? SVG_PROD : SVG_TEST;
-  $btnLbl.textContent = currentMode === 'prod' ? 'Book Real Shipments' : 'Run Test Booking';
+  $btnIcon.innerHTML = SVG_PROD;
+  $btnLbl.textContent = 'Book Real Shipments';
   document.getElementById('stat-last').textContent = success ? 'Done' : 'Error';
   $tbadge.textContent = success ? 'DONE' : 'ERROR';
   $tbadge.className   = success ? 'log-badge-status lbs-done' : 'log-badge-status lbs-error';
@@ -1166,7 +1090,6 @@ async function executeCancelShipment() {
 // ════════════════════════════════════════════
 async function init() {
   await checkHealth();
-  setMode('test');
   loadHistory();
   setInterval(checkHealth, 30000);
 }
