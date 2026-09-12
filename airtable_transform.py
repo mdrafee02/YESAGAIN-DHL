@@ -162,7 +162,7 @@ FIXED = {
     "length"              : 35,
     "width"               : 30,
     "height"              : 7,
-    "export_reason"       : "Personal use",
+    "export_reason"       : "Sale of goods",
     "dig_customs"         : "Y",
     "item_desc"           : "Used laptop",
     "commodity"           : "8471.49.0000",
