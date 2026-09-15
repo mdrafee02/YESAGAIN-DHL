@@ -2177,7 +2177,8 @@ def cancel_dhl_shipment(tracking_number):
             "error"  : "Invalid or simulated tracking number — nothing to cancel."
         }
 
-    url = f"{DHL_BASE_URL_PROD}/shipments/{tracking_number}"
+    base_url = DHL_BASE_URL_TEST if DHL_TEST_MODE else DHL_BASE_URL_PROD
+    url = f"{base_url}/shipments/{tracking_number}"
     print(f"\n🗑️  Cancelling DHL shipment: {tracking_number}")
     print(f"   URL: DELETE {url}")
 
@@ -2339,11 +2340,17 @@ def _pickup_fernet():
 
 
 def generate_pickup_link(original_awb, return_awb, order_number,
-                          name, address1, address2, city, country_code, phone):
+                          name, address1, address2, city, country_code, phone,
+                          weight=None, length=None, width=None, height=None):
     """
     Build a signed + encrypted, 5-day-expiring URL the customer opens to
     choose a pickup date/time for a local UAE return. Everything needed
     to schedule the pickup travels inside the token — no database needed.
+
+    weight/length/width/height carry the ACTUAL detected product's
+    package dimensions (laptop/phone/watch) through to the pickup
+    request — without these, the pickup step has no way to know what's
+    actually being collected.
     """
     payload = {
         "original_awb": original_awb,
@@ -2355,6 +2362,10 @@ def generate_pickup_link(original_awb, return_awb, order_number,
         "city"        : city,
         "country_code": country_code,
         "phone"       : phone,
+        "weight"      : weight,
+        "length"      : length,
+        "width"       : width,
+        "height"      : height,
     }
     token = _pickup_fernet().encrypt(json.dumps(payload).encode("utf-8"))
     return f"{PUBLIC_APP_URL}/schedule-pickup?token={quote(token.decode('utf-8'))}"
@@ -2400,7 +2411,7 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
             {"typeCode": "shipper", "number": str(FIXED["account_shipper"])},
         ],
         "specialInstructions": (
-            [{"value": instructions[:200]}] if instructions else []
+            [{"value": instructions[:80]}] if instructions else []
         ),
         "shipmentDetails": [
             {
@@ -2409,11 +2420,11 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
                 "shipmentTrackingNumber": details.get("return_awb", ""),
                 "unitOfMeasurement": "metric",
                 "packages": [
-                    {"weight": PRODUCT_PROFILES["laptop"]["weight"],
+                    {"weight": details.get("weight") or PRODUCT_PROFILES["laptop"]["weight"],
                      "dimensions": {
-                         "length": PRODUCT_PROFILES["laptop"]["length"],
-                         "width" : PRODUCT_PROFILES["laptop"]["width"],
-                         "height": PRODUCT_PROFILES["laptop"]["height"],
+                         "length": details.get("length") or PRODUCT_PROFILES["laptop"]["length"],
+                         "width" : details.get("width")  or PRODUCT_PROFILES["laptop"]["width"],
+                         "height": details.get("height") or PRODUCT_PROFILES["laptop"]["height"],
                      }},
                 ],
             }
@@ -2421,7 +2432,7 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
         "customerDetails": {
             "shipperDetails": {
                 "postalAddress": {
-                    "postalCode" : "00000",
+                    "postalCode" : "",
                     "cityName"   : details.get("city", ""),
                     "countryCode": details.get("country_code", "AE"),
                     "addressLine1": details.get("address1", ""),
@@ -2443,7 +2454,7 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
             f"{base_url}/pickups",
             json=payload,
             auth=(DHL_API_KEY, DHL_API_SECRET),
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            headers={"Content-Type": "application/json", "Accept": "application/json", "x-version": "3.3.2"},
             timeout=30,
         )
         print(f"   📥 DHL /pickups response HTTP {resp.status_code}: {resp.text[:800]}")
@@ -2460,6 +2471,85 @@ def _schedule_return_pickup(details, pickup_date, ready_time, close_time, instru
 
     except Exception as e:
         print(f"   ❌ Exception scheduling pickup: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _save_pickup_confirmation_to_airtable(original_awb, order_number, confirmation_number,
+                                           pickup_date, ready_time, close_time):
+    """
+    Save the DHL dispatch confirmation number as a small text file in the
+    same Airtable attachment field already used for the label/invoice —
+    no new Airtable field needed. Wrapped by the caller so a failure here
+    never affects the actual pickup confirmation shown to the customer.
+    """
+    orders_record_id, _ = find_order_record_by_tracking(original_awb)
+    if not orders_record_id:
+        print(f"   ⚠️  Could not find Sales Orders record for AWB {original_awb} — "
+              f"pickup confirmation number not saved to Airtable")
+        return
+
+    note = (
+        f"Pickup Confirmation Number: {confirmation_number}\n"
+        f"Order: {order_number}\n"
+        f"Return AWB: {original_awb}\n"
+        f"Scheduled: {pickup_date}, {ready_time}-{close_time}\n"
+    )
+    content_b64 = base64.b64encode(note.encode("utf-8")).decode("utf-8")
+    base_id = TABLE_CONFIG["orders"]["base_id"]
+    field_id = "fldG3hmHH8cTPwzxo"  # same field the return label/invoice already use
+
+    up_resp = requests.post(
+        f"https://content.airtable.com/v0/{base_id}/{orders_record_id}/{field_id}/uploadAttachment",
+        headers={"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"},
+        json={"contentType": "text/plain", "file": content_b64, "filename": f"pickup_confirmation_{order_number}.txt"},
+        timeout=60,
+    )
+    if up_resp.status_code == 200:
+        print(f"   📎 Pickup confirmation number saved to Airtable")
+    else:
+        print(f"   ⚠️  Pickup confirmation upload failed: HTTP {up_resp.status_code} — {up_resp.text[:200]}")
+
+
+def cancel_pickup(confirmation_number, requestor_name, reason):
+    """
+    Cancel a previously scheduled DHL pickup using its dispatch
+    confirmation number. Built directly from DHL's official
+    DELETE /pickups/{dispatchConfirmationNumber} schema — requestorName
+    and reason are both required query parameters per that schema, and
+    x-version is a required header with a fixed documented value.
+    """
+    base_url = DHL_BASE_URL_TEST if DHL_TEST_MODE else DHL_BASE_URL_PROD
+    url = f"{base_url}/pickups/{confirmation_number}"
+    params = {
+        "requestorName": requestor_name,
+        "reason": reason,
+    }
+    headers = {
+        "Accept": "application/json",
+        "x-version": "3.3.2",  # required, fixed value per DHL schema — do not change
+    }
+
+    print(f"   📤 DHL DELETE /pickups/{confirmation_number} — requestorName={requestor_name!r}, reason={reason!r}")
+
+    try:
+        resp = requests.delete(
+            url, params=params,
+            auth=(DHL_API_KEY, DHL_API_SECRET),
+            headers=headers,
+            timeout=30,
+        )
+        print(f"   📥 DHL /pickups DELETE response HTTP {resp.status_code}: {resp.text[:500]}")
+
+        if resp.status_code == 200:
+            return {"success": True}
+        elif resp.status_code == 404:
+            return {"success": False, "error": "Pickup not found — it may already be cancelled, "
+                                                 "or the confirmation number is incorrect."}
+        else:
+            return {"success": False, "error": resp.text[:500]}
+
+    except Exception as e:
+        print(f"   ❌ Exception cancelling pickup: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -2480,6 +2570,20 @@ def confirm_customer_pickup(token, pickup_date, ready_time, close_time, instruct
     if result.get("success"):
         result["order_number"] = details.get("order_number", "")
         result["return_awb"]   = details.get("return_awb", "")
+
+        if result.get("confirmation_number"):
+            try:
+                _save_pickup_confirmation_to_airtable(
+                    original_awb=details.get("original_awb", ""),
+                    order_number=details.get("order_number", ""),
+                    confirmation_number=result["confirmation_number"],
+                    pickup_date=pickup_date,
+                    ready_time=ready_time,
+                    close_time=close_time,
+                )
+            except Exception as e:
+                print(f"   ⚠️  Could not save pickup confirmation to Airtable (pickup itself is still fine): {e}")
+
     return result
 
 
@@ -2802,6 +2906,10 @@ def book_return_label(original_awb):
                         city=cust_city,
                         country_code=dest_country,
                         phone=f"+{phone_cc}{cust_phone}",
+                        weight=pp["weight"],
+                        length=pp["length"],
+                        width=pp["width"],
+                        height=pp["height"],
                     )
                     result["pickup_link"] = pickup_link
                     print(f"   🔗 Pickup booking link: {pickup_link}")
