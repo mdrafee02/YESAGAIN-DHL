@@ -55,7 +55,7 @@ def stream_dhl():
     test_mode = request.args.get("test", "0") == "1"
 
     def generate():
-        cmd = ["python", "-u", "airtable_transform.py", "--send-to-dhl"]
+        cmd = [sys.executable, "-u", "airtable_transform.py", "--send-to-dhl"]
         if test_mode:
             cmd.append("--test")
         env = os.environ.copy()
@@ -174,9 +174,13 @@ except Exception as _e:
 
 try:
     from airtable_transform import confirm_customer_pickup as _confirm_customer_pickup
+    from airtable_transform import verify_pickup_token as _verify_pickup_token
+    from airtable_transform import cancel_pickup as _cancel_pickup
     _pickup_import_error = None
 except Exception as _e:
     _confirm_customer_pickup = None
+    _verify_pickup_token = None
+    _cancel_pickup = None
     _pickup_import_error = str(_e)
     print(f"[ERROR] Failed to import confirm_customer_pickup: {_e}")
 
@@ -219,8 +223,35 @@ def book_return():
 
 @app.route("/schedule-pickup", methods=["GET"])
 def schedule_pickup_page():
-    """Serve the customer-facing pickup booking page (reads ?token=... client-side)."""
-    return send_from_directory(SCRIPT_DIR, "pickup_booking.html")
+    """
+    Serve the customer-facing pickup booking page. Decrypts the token
+    server-side just far enough to inject the order number (never the
+    address or phone — those stay inside the token until submission)
+    so the page can show "Return: <order>" and catch an expired/invalid
+    link immediately, instead of only after the customer fills the form.
+    """
+    token = request.args.get("token", "").strip()
+    order_number = ""
+    token_valid = False
+
+    if token and _verify_pickup_token:
+        details = _verify_pickup_token(token)
+        if details:
+            token_valid = True
+            order_number = str(details.get("order_number", ""))
+
+    html_path = os.path.join(SCRIPT_DIR, "pickup_booking.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    injected = (
+        "<script>window.__PICKUP_INFO__ = "
+        + json.dumps({"hasToken": bool(token), "valid": token_valid, "orderNumber": order_number})
+        + ";</script>"
+    )
+    html = html.replace("<!--PICKUP_INFO_PLACEHOLDER-->", injected)
+
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
 @app.route("/confirm-pickup", methods=["POST"])
@@ -252,6 +283,40 @@ def confirm_pickup_route():
     except Exception as e:
         import traceback
         print(f"[confirm-pickup] Exception: {traceback.format_exc()}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/cancel-pickup", methods=["POST"])
+def cancel_pickup_route():
+    """Cancel a previously scheduled DHL pickup by its dispatch confirmation number."""
+    if _pickup_import_error:
+        return jsonify({"success": False, "error": f"Import error: {_pickup_import_error}"}), 500
+
+    try:
+        data = request.get_json() or {}
+        confirmation_number = str(data.get("confirmation_number", "")).strip()
+        requestor_name       = str(data.get("requestor_name", "")).strip()
+        reason               = str(data.get("reason", "")).strip()
+
+        if not confirmation_number:
+            return jsonify({"success": False, "error": "Confirmation number is required"}), 400
+        if not requestor_name:
+            return jsonify({"success": False, "error": "Requestor name is required"}), 400
+        if not reason:
+            return jsonify({"success": False, "error": "Reason is required"}), 400
+
+        print(f"[cancel-pickup] Cancelling pickup {confirmation_number}")
+        result = _cancel_pickup(confirmation_number, requestor_name, reason)
+        print(f"[cancel-pickup] Result: {result}")
+
+        if result.get("success"):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        import traceback
+        print(f"[cancel-pickup] Exception: {traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
