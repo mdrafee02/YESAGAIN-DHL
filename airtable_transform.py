@@ -1556,36 +1556,37 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
 # DHL API INTEGRATION
 # ============================================================
  
-def _importer_remarks(importer_party, importer_vat):
-    """
-    Name the Importer of Record in the commercial invoice's Remarks lines.
+# The 27 EU member states. The routing set EU_COUNTRIES also holds non-members
+# (CH, NO, IS, LI, RS, ...) where a French EORI/VAT does not identify an importer,
+# so only real member states get the named importer block.
+EU_MEMBER_STATES = {
+    "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU",
+    "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
+}
 
-    The invoice has no dedicated importer box, so the importer's VAT/EORI end
-    up printed beside the shipper's UAE address with no company attached —
-    UK customs could not tell whose numbers they were. Naming the company,
-    address and registration numbers here closes that gap without removing
-    anything customs already relies on.
+# Printed in the invoice's "Package Marks / Other Info" box.
+PACKAGE_MARKS = "Brown cardboard box with YesAgain logo"
+
+
+def _invoice_remarks(importer_party):
+    """
+    The two free-text lines the commercial invoice prints for UK shipments.
+
+    DHL's invoice template places the FIRST remark under "Remarks:" and any
+    later remarks in the "Package Marks / Other Info" box (seen on a real UK
+    invoice). So:
+      1. Remarks               -> the importer's name
+      2. Package Marks / Other -> a description of the packaging
+
+    The importer's address, VAT and EORI are NOT repeated here: they print in
+    the invoice's own IMPORTER block, via importerDetails.
 
     Each line is capped at 45 characters (DHL's limit on comparable free-text
-    invoice fields) and at most 3 lines are sent.
+    invoice fields).
     """
     company = str(importer_party.get("Company", "")).strip()
-    address = ", ".join(
-        p for p in (
-            str(importer_party.get("Address1", "")).strip(),
-            str(importer_party.get("City", "")).strip(),
-            str(importer_party.get("ZIP", "")).strip(),
-            str(importer_party.get("Country", "")).strip(),
-        ) if p
-    )
-    regs = " / ".join(
-        p for p in (
-            f"EORI {importer_party.get('EORI')}" if importer_party.get("EORI") else "",
-            f"VAT {importer_vat}" if importer_vat else "",
-        ) if p
-    )
-    lines = [f"Importer: {company}" if company else "", address, regs]
-    return [{"value": ln[:45]} for ln in lines if ln.strip()][:3]
+    lines = [f"Importer: {company}" if company else "", PACKAGE_MARKS]
+    return [{"value": ln[:45]} for ln in lines if ln.strip()]
 
 
 def _importer_details(importer_party, importer_vat):
@@ -1654,6 +1655,9 @@ def build_dhl_payload(row):
     shipper_account = rules["shipper_account"]
     duty_account    = rules["duty_account"]
     is_domestic     = (region == "domestic_uae")
+    # Declare the importer as its own named party (importerDetails + remarks) for the UK
+    # and for EU member states; everything else keeps its existing layout.
+    declare_importer = (region == "uk") or (region == "eu" and country in EU_MEMBER_STATES)
 
     # Destination-based importer VAT/EORI
     importer_party = rules["additional_party"]
@@ -1752,8 +1756,11 @@ def build_dhl_payload(row):
                 "registrationNumbers": [
                     *([{"typeCode": "VAT", "number": party["VAT"],  "issuerCountryCode": party["Country"]}] if party.get("VAT")  else []),
                     *([{"typeCode": "EOR", "number": party["EORI"], "issuerCountryCode": party["Country"]}] if party.get("EORI") else []),
-                    *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if importer_vat  else []),
-                    *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if importer_eori else []),
+                    # The importer's VAT/EORI go under the shipper's box only where there is
+                    # no separate importer block. UK has one (importerDetails below), so
+                    # showing them here as well put a GB tax number next to a UAE address.
+                    *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if (importer_vat  and not declare_importer) else []),
+                    *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if (importer_eori and not declare_importer) else []),
                 ],
             },
             "receiverDetails": {
@@ -1767,7 +1774,7 @@ def build_dhl_payload(row):
             },
             # UK only: declare the Importer of Record as its own named party.
             **({"importerDetails": _importer_details(importer_party, importer_vat)}
-               if region == "uk" else {}),
+               if declare_importer else {}),
         },
         "content": {
             "packages": [
@@ -1814,8 +1821,8 @@ def build_dhl_payload(row):
                     # UK only: name the Importer of Record on the invoice. The field
                     # shape comes from DHL's invoice-data schema; send_to_dhl() retries
                     # without it if DHL rejects it, so a booking is never lost over it.
-                    **({"remarks": _importer_remarks(importer_party, importer_vat)}
-                       if region == "uk" else {}),
+                    **({"remarks": _invoice_remarks(importer_party)}
+                       if declare_importer else {}),
                 },
             }),
             "description"       : row.get("Summary of Contents", F["contents"]),
