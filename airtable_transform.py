@@ -344,7 +344,7 @@ def resolve_country_code(raw):
  
 PARTY_UAE = {
     "Company"  : "YESAGAIN FZC",
-    "Name"     : "YESAGAIN",
+    "Name"     : "YESAGAIN FZC",
     "Address1" : "P MALL, SHARJAH FREE ZONE",
     "Country"  : "AE",
     "City"     : "SHARJAH",
