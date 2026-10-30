@@ -37,6 +37,12 @@ AIRTABLE_CRS_RMA_API_KEY = os.getenv("AIRTABLE_CRS_RMA_API_KEY", AIRTABLE_RMA_AP
 DHL_API_KEY    = os.getenv("DHL_API_KEY")
 DHL_API_SECRET = os.getenv("DHL_API_SECRET")
 DHL_TEST_MODE  = os.getenv("DHL_TEST_MODE", "true").strip().lower() == "true"
+# API version sent on shipment bookings. DHL prints the importer's email on the invoice from this
+# version on. Set DHL_API_VERSION="" in the environment to stop sending it (instant rollback).
+DHL_API_VERSION = os.getenv("DHL_API_VERSION", "3.3.2").strip()
+# "Trader Type" printed for the parties on the invoice. Set CONSIGNEE_TRADER_TYPE="" to leave it blank.
+SHIPPER_TRADER_TYPE   = os.getenv("SHIPPER_TRADER_TYPE", "business").strip()
+CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "direct_consumer").strip()
 
 # ── Local UAE return pickup scheduling (customer self-serve link) ─────────
 PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
@@ -389,7 +395,7 @@ PARTY_FRANCE = {
     "Country"  : "FR",
     "City"     : "TOULOUSE",
     "ZIP"      : "31100",
-    "Email"    : "logistics@yesagain.com",
+    "Email"    : "support@yesagain.com",
     "PhoneCC"  : 33,
     "Phone"    : "187661011",
     "VAT"      : "FR04919345207",
@@ -1444,6 +1450,9 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
                         or r.get("Sales Product Name", ""))
         pp = detect_product_profile(product_sku, product_name)
         print(f"   📦 {order_number} → SKU: {product_sku!r} | detected: {pp['contents']}")
+        _kind = next((k for k, v in PRODUCT_PROFILES.items() if v["commodity"] == pp["commodity"]), "laptop")
+        _desc = build_goods_descriptions(product_sku, product_name, _kind)
+        desc_short, desc_long = _desc if _desc else (pp["contents"], pp["item_desc"])
  
         rules       = get_destination_rules(country, order_number)
         shipper_acc = rules["shipper_account"]
@@ -1508,7 +1517,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
             "Declared Value Currency (Required)"        : F["currency"],
             "Declared Value (Required)"                 : declared_val,
             "Product Code (3 Letter)"                   : F["product_code"],
-            "Summary of Contents"                       : pp["contents"],
+            "Summary of Contents"                       : desc_short,
             "SHIPMENT TYPE"                             : F["shipment_type"],
             "Total Shipment Pieces"                     : qty,
             "Piece Dimensions (Unit of Measure)"        : F["dim_unit"],
@@ -1520,7 +1529,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
  
             # --- INVOICE / ITEM ---
             "INVOICE NO."                               : order_number,
-            "ITEM DESCRIPTION"                          : pp["item_desc"],
+            "ITEM DESCRIPTION"                          : desc_long,
             "ITEM COMMODITY"                            : pp["commodity"],
             "ITM QTY"                                   : qty,
             "ITM UNITS"                                 : F["item_units"],
@@ -1556,6 +1565,104 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
 # DHL API INTEGRATION
 # ============================================================
  
+# ═══ GOODS DESCRIPTIONS ══════════════════════════════════════════════════════════════
+# Longest line-item description we send (about 4 lines in the invoice's Description column)
+MAX_ITEM_DESC  = 150
+MAX_SHORT_DESC = 70      # shipment-level "contents" line
+
+def _chip_label(code):
+    code = str(code).upper()
+    m = re.fullmatch(r"I([3579])", code)
+    if m:
+        return f"Intel Core i{m.group(1)}", True
+    m = re.fullmatch(r"M(\d)([PM])?\d+", code)
+    if m:
+        return "Apple M" + m.group(1) + {"P": " Pro", "M": " Max"}.get(m.group(2), ""), False
+    return "", False
+
+def _storage_label(tok):
+    tok = str(tok)
+    if not tok.isdigit():
+        return ""
+    n = int(tok)
+    return f"{n} TB" if n <= 8 else f"{n} GB"
+
+def _parse_macbook(sku):
+    t = str(sku).upper().split("-")
+    if len(t) not in (7, 8) or t[0] not in ("AIR", "PRO"):
+        return None
+    fam, size, year, chip, clock, ram, stor = t[:7]
+    if not (size.isdigit() and re.fullmatch(r"20\d\d", year) and ram.isdigit()):
+        return None
+    chip_l, intel = _chip_label(chip)
+    stor_l = _storage_label(stor)
+    if not chip_l or not stor_l:
+        return None
+    return dict(model="MacBook " + ("Air" if fam == "AIR" else "Pro"), size=int(size), year=year,
+                chip=chip_l, intel=intel, clock=clock, ram=int(ram), storage=stor_l)
+
+_IPHONE_SUFFIX = {"": "", "PRO": " Pro", "PROMAX": " Pro Max", "MAX": " Max", "PLUS": " Plus", "MINI": " mini", "E": "e"}
+def _parse_iphone(sku):
+    t = str(sku).upper().split("-")
+    if len(t) < 3 or t[0] != "IP":
+        return None
+    m = re.fullmatch(r"(\d{1,2})(PROMAX|PRO|MAX|PLUS|MINI|E)?", t[1])
+    stor = _storage_label(t[2])
+    if not m or not stor:
+        return None
+    return dict(model="iPhone " + m.group(1) + _IPHONE_SUFFIX[m.group(2) or ""], storage=stor)
+
+def _fit(variants, limit):
+    """first variant that fits the limit; otherwise the shortest one, cut on a word boundary"""
+    for v in variants:
+        if len(v) <= limit:
+            return v
+    v = variants[-1]
+    return v[:limit].rsplit(" ", 1)[0].rstrip(",;")
+
+def build_goods_descriptions(sku, name, kind):
+    """
+    (short, long) goods descriptions for the invoice.
+    DHL customs teams ask for: common description, type/quality, material and intended use.
+    kind = "laptop" | "phone" | "watch" (the product profile that was detected).
+    Returns None when the SKU is not understood well enough — callers then keep the old wording,
+    so nothing is ever described as something it isn't (e.g. an iPad is left alone).
+    """
+    s = str(sku).upper()
+    if s.startswith("IPD"):                 # iPad: no profile/HS code yet — do not describe it as a laptop
+        return None
+    if kind == "laptop":
+        mb = _parse_macbook(sku)
+        if mb:
+            spec = mb["chip"] + (f" {mb['clock']} GHz" if mb["intel"] else "")
+            base = f"Apple {mb['model']} {mb['size']}-inch"
+            short = f"Used {base} laptop ({mb['year']})"
+            long_ = _fit([
+                f"Used refurbished {base} laptop computer ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for personal or office computing",
+                f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for office computing",
+                f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for computing",
+            ], MAX_ITEM_DESC)
+            return short[:MAX_SHORT_DESC], long_
+        if s.startswith(("AIR", "PRO")):    # looks like a MacBook but the SKU did not parse — keep old wording
+            return None
+        return "Used laptop computer", "Used refurbished laptop computer, metal and plastic casing, for personal or office computing"
+    if kind == "phone":
+        ip = _parse_iphone(sku)
+        if ip:
+            short = f"Used Apple {ip['model']} smartphone"
+            long_ = _fit([
+                f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal body, for mobile communication",
+                f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal, for communication",
+            ], MAX_ITEM_DESC)
+            return short[:MAX_SHORT_DESC], long_
+        return None
+    if kind == "watch":
+        if s.startswith("AW"):
+            return "Used Apple Watch smart watch", "Used refurbished Apple Watch smart watch, metal case with glass display, for time keeping and fitness tracking"
+        return None
+    return None
+
+
 # The 27 EU member states. The routing set EU_COUNTRIES also holds non-members
 # (CH, NO, IS, LI, RS, ...) where a French EORI/VAT does not identify an importer,
 # so only real member states get the named importer block.
@@ -1614,6 +1721,11 @@ def _importer_details(importer_party, importer_vat):
     email = str(importer_party.get("Email", "")).strip()
     addr2 = str(importer_party.get("Address2", "")).strip()
 
+    regs = [
+        *([{"typeCode": "VAT", "number": importer_vat, "issuerCountryCode": vat_issuer}] if importer_vat else []),
+        *([{"typeCode": "EOR", "number": eori,         "issuerCountryCode": country}]    if eori else []),
+    ]
+
     return {
         "postalAddress": {
             "postalCode"  : str(importer_party.get("ZIP", "")).strip(),
@@ -1628,10 +1740,7 @@ def _importer_details(importer_party, importer_vat):
             **({"email": email} if email else {}),
             **({"phone": phone} if phone else {}),
         },
-        "registrationNumbers": [
-            *([{"typeCode": "VAT", "number": importer_vat, "issuerCountryCode": vat_issuer}] if importer_vat else []),
-            *([{"typeCode": "EOR", "number": eori,         "issuerCountryCode": country}]    if eori else []),
-        ],
+        **({"registrationNumbers": regs} if regs else {}),
         "typeCode": "business",
     }
 
@@ -1655,12 +1764,20 @@ def build_dhl_payload(row):
     shipper_account = rules["shipper_account"]
     duty_account    = rules["duty_account"]
     is_domestic     = (region == "domestic_uae")
-    # Declare the importer as its own named party (importerDetails + remarks) for the UK
-    # and for EU member states; everything else keeps its existing layout.
-    declare_importer = (region == "uk") or (region == "eu" and country in EU_MEMBER_STATES)
+    # Every shipment that goes through customs names its importer as its own party
+    # (importerDetails + remarks). The importer is the registered local entity where we
+    # have one: Computer Remarketing Services Ltd for the UK, YESAGAIN (France) for the
+    # 27 EU member states. Everywhere else we have no local registration, so the importer
+    # is YESAGAIN FZC itself (the former Palm Tree company, which is also the shipper).
+    # Domestic UAE has no customs, so no importer is declared.
+    declare_importer = not is_domestic
 
     # Destination-based importer VAT/EORI
     importer_party = rules["additional_party"]
+    if region == "eu" and country not in EU_MEMBER_STATES:
+        # Switzerland, Norway, ... are routed as "eu" but are not member states, so the
+        # French registration does not identify an importer there.
+        importer_party = PARTY_UAE
     importer_vat   = importer_vat_for(country, importer_party.get("VAT", ""))
     importer_eori  = importer_party.get("EORI", "")
     vat_issuer     = (importer_vat[:2].upper() if importer_vat else importer_party.get("Country", ""))
@@ -1762,6 +1879,7 @@ def build_dhl_payload(row):
                     *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if (importer_vat  and not declare_importer) else []),
                     *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if (importer_eori and not declare_importer) else []),
                 ],
+                **({"typeCode": SHIPPER_TRADER_TYPE} if (SHIPPER_TRADER_TYPE and not is_domestic) else {}),
             },
             "receiverDetails": {
                 "postalAddress": postal_address,
@@ -1771,8 +1889,9 @@ def build_dhl_payload(row):
                     "email"      : str(row.get("Email Address (Ship TO)", "")).strip(),
                     "phone"      : full_phone,
                 },
+                **({"typeCode": CONSIGNEE_TRADER_TYPE} if (CONSIGNEE_TRADER_TYPE and not is_domestic) else {}),
             },
-            # UK only: declare the Importer of Record as its own named party.
+            # Declare the Importer of Record as its own named party.
             **({"importerDetails": _importer_details(importer_party, importer_vat)}
                if declare_importer else {}),
         },
@@ -1814,6 +1933,10 @@ def build_dhl_payload(row):
                         "date"  : datetime.now().strftime("%Y-%m-%d"),
                     },
                     "exportReason": F["export_reason"],
+                    # Named place for the Incoterm (DDP + destination city) and the type of export —
+                    # both were blank on every invoice. Sana confirmed Create Shipment accepts them.
+                    **({"placeOfIncoterm": str(postal_address.get("cityName", "")).strip()[:35]} if str(postal_address.get("cityName", "")).strip() else {}),
+                    "shipmentType": "commercial",
                     # DHL: payerVATNumber lives inside exportDeclaration, not top-level content
                     # (confirmed extraneous there — Sana's example groups it with
                     # destinationPortName/placeOfIncoterm/recipientReference/exporter).
@@ -2112,7 +2235,8 @@ def send_to_dhl(row, verbose=False):
  
     url = f"{base_url}/shipments"
  
-    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json",
+               **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
     payload = build_dhl_payload(row)
  
     country = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
@@ -2131,22 +2255,33 @@ def send_to_dhl(row, verbose=False):
         print(f"   ❌ Connection error for {order_number}: {e}")
         return {"success": False, "order_number": order_number, "error": str(e)}
 
-    # The UK importer fields (importerDetails, remarks) are optional additions. If
-    # DHL rejects one, drop just that field and resend rather than losing the
-    # booking — at most twice. A rejected request creates no shipment, so a retry
-    # cannot produce a duplicate.
-    for _ in range(2):
+    # Optional invoice fields (importer block, remarks, trader types, place of incoterm, shipment
+    # type, the detailed description). If DHL rejects one, drop just that field and resend rather
+    # than losing the booking. A rejected request creates no shipment, so a retry cannot produce a
+    # duplicate. At most 6 resends.
+    for _ in range(6):
         if response.status_code in (200, 201):
             break
         _err  = response.text.lower()
         _cust = payload.get("customerDetails", {})
         _decl = payload.get("content", {}).get("exportDeclaration", {})
+        _rcv, _shp = _cust.get("receiverDetails", {}), _cust.get("shipperDetails", {})
+        _items = _decl.get("lineItems", [])
+        _short = str(row.get("Summary of Contents", "") or "")[:MAX_SHORT_DESC]
         if "importerdetails" in _err and _cust.get("importerDetails"):
-            _dropped = "importerDetails"
-            _cust.pop("importerDetails", None)
+            _dropped = "importerDetails";  _cust.pop("importerDetails", None)
         elif "remarks" in _err and _decl.get("remarks"):
-            _dropped = "remarks"
-            _decl.pop("remarks", None)
+            _dropped = "remarks";          _decl.pop("remarks", None)
+        elif "placeofincoterm" in _err and _decl.get("placeOfIncoterm"):
+            _dropped = "placeOfIncoterm";  _decl.pop("placeOfIncoterm", None)
+        elif "shipmenttype" in _err and _decl.get("shipmentType"):
+            _dropped = "shipmentType";     _decl.pop("shipmentType", None)
+        elif "receiverdetails" in _err and "typecode" in _err and _rcv.get("typeCode"):
+            _dropped = "consignee trader type"; _rcv.pop("typeCode", None)
+        elif "shipperdetails" in _err and "typecode" in _err and _shp.get("typeCode"):
+            _dropped = "shipper trader type";   _shp.pop("typeCode", None)
+        elif "description" in _err and _items and _short and _items[0].get("description") != _short:
+            _dropped = "detailed description (using the short one)"; _items[0]["description"] = _short
         else:
             break
         print(f"   ⚠️  DHL rejected {_dropped} — retrying without it")
@@ -2160,7 +2295,7 @@ def send_to_dhl(row, verbose=False):
         except requests.exceptions.ConnectionError as e:
             print(f"   ❌ Connection error for {order_number}: {e}")
             return {"success": False, "order_number": order_number, "error": str(e)}
- 
+
     if response.status_code in (200, 201):
         data            = response.json()
         tracking_number = data.get("shipmentTrackingNumber", "")
@@ -4956,6 +5091,86 @@ if __name__ == "__main__":
 # # DHL API INTEGRATION
 # # ============================================================
  
+# # The 27 EU member states. The routing set EU_COUNTRIES also holds non-members
+# # (CH, NO, IS, LI, RS, ...) where a French EORI/VAT does not identify an importer,
+# # so only real member states get the named importer block.
+# EU_MEMBER_STATES = {
+#     "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU",
+#     "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
+# }
+
+# # Printed in the invoice's "Package Marks / Other Info" box.
+# PACKAGE_MARKS = "Brown cardboard box with YesAgain logo"
+
+
+# def _invoice_remarks(importer_party):
+#     """
+#     The two free-text lines the commercial invoice prints for UK shipments.
+
+#     DHL's invoice template places the FIRST remark under "Remarks:" and any
+#     later remarks in the "Package Marks / Other Info" box (seen on a real UK
+#     invoice). So:
+#       1. Remarks               -> the importer's name
+#       2. Package Marks / Other -> a description of the packaging
+
+#     The importer's address, VAT and EORI are NOT repeated here: they print in
+#     the invoice's own IMPORTER block, via importerDetails.
+
+#     Each line is capped at 45 characters (DHL's limit on comparable free-text
+#     invoice fields).
+#     """
+#     company = str(importer_party.get("Company", "")).strip()
+#     lines = [f"Importer: {company}" if company else "", PACKAGE_MARKS]
+#     return [{"value": ln[:45]} for ln in lines if ln.strip()]
+
+
+# def _importer_details(importer_party, importer_vat):
+#     """
+#     The Importer of Record as DHL's structured `importerDetails` party — its
+#     own company name, address, contact and registration numbers — so it is
+#     declared as a distinct entity instead of only its VAT/EORI numbers
+#     appearing under the shipper's UAE address.
+
+#     Registration type codes ("VAT", "EOR") are the same ones the shipper block
+#     already sends successfully. send_to_dhl() retries without this block if
+#     DHL rejects it, so a booking is never lost over it.
+#     """
+#     company = str(importer_party.get("Company", "")).strip()
+#     country = str(importer_party.get("Country", "")).strip()
+#     eori    = str(importer_party.get("EORI", "")).strip()
+#     vat_issuer = importer_vat[:2].upper() if importer_vat else country
+
+#     # International format: the national trunk "0" is not dialled after +CC
+#     # (01908656700 -> +441908656700).
+#     cc     = str(importer_party.get("PhoneCC", "")).strip()
+#     digits = re.sub(r"\D", "", str(importer_party.get("Phone", ""))).lstrip("0")
+#     phone  = f"+{cc}{digits}" if (cc and digits) else ""
+
+#     email = str(importer_party.get("Email", "")).strip()
+#     addr2 = str(importer_party.get("Address2", "")).strip()
+
+#     return {
+#         "postalAddress": {
+#             "postalCode"  : str(importer_party.get("ZIP", "")).strip(),
+#             "cityName"    : str(importer_party.get("City", "")).strip(),
+#             "countryCode" : country,
+#             "addressLine1": str(importer_party.get("Address1", "")).strip()[:45],
+#             **({"addressLine2": addr2[:45]} if addr2 else {}),
+#         },
+#         "contactInformation": {
+#             "companyName": company[:100],
+#             "fullName"   : (str(importer_party.get("Name", "")).strip() or company)[:255],
+#             **({"email": email} if email else {}),
+#             **({"phone": phone} if phone else {}),
+#         },
+#         "registrationNumbers": [
+#             *([{"typeCode": "VAT", "number": importer_vat, "issuerCountryCode": vat_issuer}] if importer_vat else []),
+#             *([{"typeCode": "EOR", "number": eori,         "issuerCountryCode": country}]    if eori else []),
+#         ],
+#         "typeCode": "business",
+#     }
+
+
 # def build_dhl_payload(row):
 #     F = FIXED
 #     from datetime import timedelta
@@ -4975,6 +5190,9 @@ if __name__ == "__main__":
 #     shipper_account = rules["shipper_account"]
 #     duty_account    = rules["duty_account"]
 #     is_domestic     = (region == "domestic_uae")
+#     # Declare the importer as its own named party (importerDetails + remarks) for the UK
+#     # and for EU member states; everything else keeps its existing layout.
+#     declare_importer = (region == "uk") or (region == "eu" and country in EU_MEMBER_STATES)
 
 #     # Destination-based importer VAT/EORI
 #     importer_party = rules["additional_party"]
@@ -5073,8 +5291,11 @@ if __name__ == "__main__":
 #                 "registrationNumbers": [
 #                     *([{"typeCode": "VAT", "number": party["VAT"],  "issuerCountryCode": party["Country"]}] if party.get("VAT")  else []),
 #                     *([{"typeCode": "EOR", "number": party["EORI"], "issuerCountryCode": party["Country"]}] if party.get("EORI") else []),
-#                     *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if importer_vat  else []),
-#                     *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if importer_eori else []),
+#                     # The importer's VAT/EORI go under the shipper's box only where there is
+#                     # no separate importer block. UK has one (importerDetails below), so
+#                     # showing them here as well put a GB tax number next to a UAE address.
+#                     *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if (importer_vat  and not declare_importer) else []),
+#                     *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if (importer_eori and not declare_importer) else []),
 #                 ],
 #             },
 #             "receiverDetails": {
@@ -5086,6 +5307,9 @@ if __name__ == "__main__":
 #                     "phone"      : full_phone,
 #                 },
 #             },
+#             # UK only: declare the Importer of Record as its own named party.
+#             **({"importerDetails": _importer_details(importer_party, importer_vat)}
+#                if declare_importer else {}),
 #         },
 #         "content": {
 #             "packages": [
@@ -5129,6 +5353,11 @@ if __name__ == "__main__":
 #                     # (confirmed extraneous there — Sana's example groups it with
 #                     # destinationPortName/placeOfIncoterm/recipientReference/exporter).
 #                     **({"payerVATNumber": importer_vat} if importer_vat else {}),
+#                     # UK only: name the Importer of Record on the invoice. The field
+#                     # shape comes from DHL's invoice-data schema; send_to_dhl() retries
+#                     # without it if DHL rejects it, so a booking is never lost over it.
+#                     **({"remarks": _invoice_remarks(importer_party)}
+#                        if declare_importer else {}),
 #                 },
 #             }),
 #             "description"       : row.get("Summary of Contents", F["contents"]),
@@ -5436,6 +5665,36 @@ if __name__ == "__main__":
 #     except requests.exceptions.ConnectionError as e:
 #         print(f"   ❌ Connection error for {order_number}: {e}")
 #         return {"success": False, "order_number": order_number, "error": str(e)}
+
+#     # The UK importer fields (importerDetails, remarks) are optional additions. If
+#     # DHL rejects one, drop just that field and resend rather than losing the
+#     # booking — at most twice. A rejected request creates no shipment, so a retry
+#     # cannot produce a duplicate.
+#     for _ in range(2):
+#         if response.status_code in (200, 201):
+#             break
+#         _err  = response.text.lower()
+#         _cust = payload.get("customerDetails", {})
+#         _decl = payload.get("content", {}).get("exportDeclaration", {})
+#         if "importerdetails" in _err and _cust.get("importerDetails"):
+#             _dropped = "importerDetails"
+#             _cust.pop("importerDetails", None)
+#         elif "remarks" in _err and _decl.get("remarks"):
+#             _dropped = "remarks"
+#             _decl.pop("remarks", None)
+#         else:
+#             break
+#         print(f"   ⚠️  DHL rejected {_dropped} — retrying without it")
+#         print(f"       DHL said: {response.text[:300]}")
+#         try:
+#             response = requests.post(url, json=payload, headers=headers,
+#                                      auth=(DHL_API_KEY, DHL_API_SECRET), timeout=30)
+#         except requests.exceptions.Timeout:
+#             print(f"   ❌ Timeout sending {order_number}")
+#             return {"success": False, "order_number": order_number, "error": "Timeout"}
+#         except requests.exceptions.ConnectionError as e:
+#             print(f"   ❌ Connection error for {order_number}: {e}")
+#             return {"success": False, "order_number": order_number, "error": str(e)}
  
 #     if response.status_code in (200, 201):
 #         data            = response.json()
