@@ -221,6 +221,9 @@ main{flex:1;position:relative;z-index:1;display:grid;grid-template-columns:284px
   box-shadow:0 0 26px rgba(233,184,124,.44)}
 .btn-run.prod-btn:hover{transform:translateY(-1px);box-shadow:0 0 40px rgba(233,184,124,.6)}
 .btn-run.prod-btn:active{transform:translateY(1px)}
+.btn-run.check-btn{background:transparent;color:var(--bl);border:1px solid rgba(120,170,255,.45);box-shadow:none;margin-bottom:10px}
+.btn-run.check-btn:hover{background:rgba(120,170,255,.12);transform:translateY(-1px)}
+.check-hint{font-size:10.5px;color:var(--muted);margin:-4px 2px 12px;line-height:1.45}
 .btn-run:disabled{opacity:.42;cursor:not-allowed;transform:none!important}
 .btn-run:disabled::after{animation:none}
 
@@ -493,6 +496,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
       <div class="hs"><span class="hs-dot"></span>DHL Booking Dashboard</div>
     </div>
   </div>
+  <div class="hdr-badge">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    Production
+  </div>
   <div class="api">
     <span class="status-dot" id="status-dot"></span>
     <span id="status-text">Checking</span>
@@ -524,9 +531,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
         </div>
       </div>
       <div class="sec">
+        <button class="btn-run check-btn" id="btn-check" onclick="runCheck()">
+          <span id="btn-check-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <span id="btn-check-label">Check Orders</span>
+        </button>
+        <div class="check-hint">Asks DHL if each order would be accepted. Books nothing, makes no labels, and does not touch Airtable. Run this before booking.</div>
         <button class="btn-run prod-btn" id="btn-book" onclick="confirmRun()">
           <span id="btn-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
-          <span id="btn-label">Book Shipments</span>
+          <span id="btn-label">Book Real Shipments</span>
         </button>
         <div class="progress-wrap" id="progress-wrap">
           <div class="pt"><div class="pf running" id="progress-bar"></div></div>
@@ -699,6 +711,7 @@ const API_BASE = window.location.origin;
 //  STATE
 // ════════════════════════════════════════════
 let isRunning    = false;
+let checkMode    = false;   // true while the "Check Orders" run is active (books nothing)
 let eventSource  = null;
 let lastRunTimestamp = null;
 const sessionStats = { runs: 0, booked: 0, failed: 0 };
@@ -804,10 +817,34 @@ function executeRun() {
   };
 }
 
+function runCheck() {
+  if (isRunning) return;
+  checkMode = true;
+  setRunning(true);
+  clearTerminal(false);
+  document.getElementById('downloads-card').classList.remove('visible');
+
+  $ttitle.textContent = 'airtable_transform.py --check-dhl';
+
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource(`${API_BASE}/stream-check`);
+
+  eventSource.onmessage = function(e) {
+    try { handleSSEMessage(JSON.parse(e.data)); }
+    catch(err) { appendLog(e.data, 'default'); }
+  };
+  eventSource.onerror = function() {
+    appendLog('Connection to API lost.', 'error');
+    finishRun(false);
+  };
+}
+
 function handleSSEMessage(msg) {
   switch (msg.type) {
     case 'start':
-      appendLog(`\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
+      appendLog(checkMode
+        ? `\n  Checking orders with DHL — nothing will be booked\n`
+        : `\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
       break;
     case 'log':
       appendLog(msg.line);
@@ -834,6 +871,12 @@ function handleSSEMessage(msg) {
       }
       break;
     case 'done':
+      if (checkMode) {
+        appendLog(msg.success ? '\n  Check finished — nothing was booked.' : '\n  Check stopped — see the messages above.', msg.success ? 'success' : 'error');
+        showToast(msg.success ? 'Check finished — nothing was booked.' : 'Check stopped — see the log.', msg.success ? 'success' : 'error');
+        finishRun(msg.success);
+        break;
+      }
       if (msg.success) {
         appendLog('\n  Run completed successfully.', 'success');
         showToast('Booking run completed!', 'success');
@@ -917,12 +960,17 @@ function setProgress(pct, label) {
 function setRunning(running) {
   isRunning = running;
   $btnBook.disabled = running;
+  const $chk = document.getElementById('btn-check'); if ($chk) $chk.disabled = running;
   if (running) {
     $progW.classList.add('visible');
     $progB.classList.add('running');
     $progL.textContent = 'Starting…';
-    $btnIcon.innerHTML = `<span class="spinner"></span>`;
-    $btnLbl.textContent = 'Running…';
+    if (checkMode) {
+      document.getElementById('btn-check-label').textContent = 'Checking…';
+    } else {
+      $btnIcon.innerHTML = `<span class="spinner"></span>`;
+      $btnLbl.textContent = 'Running…';
+    }
     setStatus('online', 'API Online');
     document.getElementById('stat-last').textContent = 'Running';
     $tbadge.textContent = 'RUNNING';
@@ -933,10 +981,13 @@ function finishRun(success) {
   isRunning = false;
   eventSource?.close();
   $progB.classList.remove('running');
-  setProgress(100, success ? 'Completed successfully' : 'Completed with errors');
+  setProgress(100, success ? (checkMode ? 'Check finished' : 'Completed successfully') : (checkMode ? 'Check stopped' : 'Completed with errors'));
   $btnBook.disabled = false;
+  const $chk = document.getElementById('btn-check'); if ($chk) $chk.disabled = false;
+  const $chkL = document.getElementById('btn-check-label'); if ($chkL) $chkL.textContent = 'Check Orders';
   $btnIcon.innerHTML = SVG_PROD;
   $btnLbl.textContent = 'Book Real Shipments';
+  checkMode = false;
   document.getElementById('stat-last').textContent = success ? 'Done' : 'Error';
   $tbadge.textContent = success ? 'DONE' : 'ERROR';
   $tbadge.className   = success ? 'log-badge-status lbs-done' : 'log-badge-status lbs-error';
