@@ -111,6 +111,50 @@ def stream_check():
 
     return Response(generate(), mimetype="text/event-stream")
 
+# ── Cost estimate (books NOTHING, stores NOTHING) ───────────────────
+@app.route("/stream-estimate", methods=["GET"])
+def stream_estimate():
+    """Runs airtable_transform.py --estimate-cost and streams its output.
+    Read-only: never passes --send-to-dhl. DHL's terms forbid storing rate data, so the
+    quotes only pass through here to the browser and are not written to disk or logged."""
+    def generate():
+        cmd = [sys.executable, "-u", "airtable_transform.py", "--estimate-cost"]
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            cwd=SCRIPT_DIR,
+            env=env,
+            encoding="utf-8",
+            errors="replace"
+        )
+        try:
+            yield f"data: {json.dumps({'type': 'start', 'mode': 'estimate'})}\n\n"
+            for line in iter(process.stdout.readline, ''):
+                if not line:
+                    continue
+                text = line.rstrip()
+                if text.startswith("ESTIMATE_SUMMARY "):
+                    # machine-readable summary for the confirm dialog — not shown as a log line
+                    try:
+                        data = json.loads(text[len("ESTIMATE_SUMMARY "):])
+                    except ValueError:
+                        continue
+                    yield f"data: {json.dumps({'type': 'estimate', 'data': data})}\n\n"
+                    continue
+                yield f"data: {json.dumps({'type': 'log', 'line': text})}\n\n"
+            process.wait()
+            yield f"data: {json.dumps({'type': 'done', 'success': process.returncode == 0})}\n\n"
+        finally:
+            if process.poll() is None:      # browser closed the stream early: stop the script too
+                process.terminate()
+
+    return Response(generate(), mimetype="text/event-stream")
+
 # ── Cancel a DHL shipment by tracking number ─────────────────────────
 @app.route("/cancel-dhl", methods=["POST"])
 def cancel_dhl():
