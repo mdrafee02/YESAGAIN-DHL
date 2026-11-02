@@ -365,7 +365,7 @@ PARTY_UAE_MAINLAND = {
     "Country"  : "AE",
     "City"     : "SHARJAH",
     "ZIP"      : "00000",
-    "Email"    : "support@yesagain.com",
+    "Email"    : "support@yesagain.ae",
     "PhoneCC"  : 971,
     "Phone"    : "501851220",
     "VAT"      : "",
@@ -395,7 +395,7 @@ PARTY_FRANCE = {
     "Country"  : "FR",
     "City"     : "TOULOUSE",
     "ZIP"      : "31100",
-    "Email"    : "logistics@yesagain.com",
+    "Email"    : "support@yesagain.com",
     "PhoneCC"  : 33,
     "Phone"    : "561315853",
     "VAT"      : "FR04919345207",
@@ -3230,9 +3230,29 @@ def cancel_and_reset_shipment(tracking_number):
 # ============================================================
 # CHECK ORDERS WITH DHL — validates every order, books NOTHING
 # ============================================================
+# DHL's strict address check does not recognise our own Sharjah shipper address (the UAE has no postcodes,
+# so we send the placeholder 00000). Real bookings with this exact address have always been accepted, so
+# when these two are the ONLY problems the order is treated as fine.
+KNOWN_STRICT_NOTES = {"410501", "6020"}
+# Problems that are a warning about delivery, not a refusal: DHL may still book the order.
+SOFT_CODES = {"410509"}
+
+def _problem_code(text):
+    m_code = re.match(r"\s*(\d{3,6})\b", str(text))
+    return m_code.group(1) if m_code else ""
+
+
 def _explain_dhl_error(text):
     """Turn a DHL rejection into plain words. Returns (hint, fatal). fatal = every order would fail the same way."""
     t = str(text).lower()
+    code = _problem_code(text)
+    if code == "410509":
+        return ("DHL's address database does not recognise this receiver's postcode and city together. DHL may still book it, "
+                "but delivery can be delayed. Check the postcode and city in Airtable.", False)
+    if code == "410501":
+        return ("DHL's strict address check does not recognise our Sharjah shipper address. Real bookings with it work, so this is ignored.", False)
+    if code == "6020":
+        return ("DHL's strict address check failed. The address problems listed with it are the real reason.", False)
     if "8007" in t or "credit stop" in t:
         return ("The DHL account is on credit stop. Nothing can be booked until DHL lifts it.", True)
     if "420505" in t:
@@ -3265,7 +3285,7 @@ def validate_with_dhl(row, verbose=False):
     """
     order_number = str(row.get("Shipment Reference 1", "unknown")).strip()
     base = {"order_number": order_number, "ok": False, "booked": False, "fatal": False,
-            "message": "", "hint": "", "problems": [], "status_code": None, "tracking_number": "", "raw_response": {}}
+            "message": "", "hint": "", "problems": [], "notes": [], "soft": False, "status_code": None, "tracking_number": "", "raw_response": {}}
     if not DHL_API_KEY or not DHL_API_SECRET:
         return {**base, "message": "DHL_API_KEY or DHL_API_SECRET is missing", "fatal": True}
 
@@ -3279,7 +3299,7 @@ def validate_with_dhl(row, verbose=False):
     headers = {"Content-Type": "application/json", "Accept": "application/json",
                **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
     try:
-        response = requests.post(f"{DHL_BASE_URL_PROD}/shipments", params={"validateDataOnly": "true"},
+        response = requests.post(f"{DHL_BASE_URL_PROD}/shipments", params={"validateDataOnly": "true", "strictValidation": "false"},
                                  json=payload, headers=headers, auth=(DHL_API_KEY, DHL_API_SECRET), timeout=30)
     except requests.exceptions.Timeout:
         return {**base, "message": "Timeout — DHL did not answer"}
@@ -3307,11 +3327,21 @@ def validate_with_dhl(row, verbose=False):
     if not problems and "multiple problems" in str(detail).lower():
         problems = [f"(DHL gave no list, raw reply) {response.text[:500]}"]      # never lose the details
 
+    # Set aside the known strict-address notes about OUR shipper address. If nothing else is wrong, the order is fine.
+    candidates = problems or ([str(detail)] if _problem_code(detail) else [])
+    noted = [p for p in candidates if _problem_code(p) in KNOWN_STRICT_NOTES]
+    real  = [p for p in candidates if _problem_code(p) not in KNOWN_STRICT_NOTES]
+    if candidates and noted and not real:
+        return {**base, "ok": True, "notes": noted, "status_code": response.status_code}
+    if noted and real:
+        problems = real                       # show only the real problems
+
     fatal, hint = False, ""
     for p in [str(detail)] + problems:
         h, f = _explain_dhl_error(p)
         hint, fatal = hint or h, fatal or f
-    return {**base, "message": str(detail)[:220], "problems": problems, "hint": hint, "fatal": fatal}
+    soft = bool(problems) and all(_problem_code(p) in SOFT_CODES for p in problems)
+    return {**base, "message": str(detail)[:220], "problems": problems, "hint": hint, "fatal": fatal, "soft": soft}
 
 
 def run_dhl_check(result, df, verbose=False):
@@ -3333,7 +3363,7 @@ def run_dhl_check(result, df, verbose=False):
             if on and rid and rid != "nan":
                 record_id_map[on] = rid
 
-    accepted, problems, stopped, booked_info = 0, [], None, None
+    accepted, problems, stopped, booked_info, strict_note = 0, [], None, None, False
     seen_sets = {}        # identical problem lists are only printed once
     for idx, (_, row) in enumerate(result.iterrows(), start=1):
         order_number = str(row.get("Shipment Reference 1", "unknown"))
@@ -3357,11 +3387,15 @@ def run_dhl_check(result, df, verbose=False):
 
         if res["ok"]:
             accepted += 1
+            strict_note = strict_note or bool(res.get("notes"))
             print(f"[{idx}/{total}] {order_number}  → {dest}   ✅ DHL would accept this order")
             continue
 
         problems.append((order_number, dest, res["message"], res["hint"], res.get("problems", [])))
-        print(f"[{idx}/{total}] {order_number}  → {dest}   ❌ DHL would reject this order")
+        if res.get("soft"):
+            print(f"[{idx}/{total}] {order_number}  → {dest}   ⚠️  DHL would probably book this, but check the address")
+        else:
+            print(f"[{idx}/{total}] {order_number}  → {dest}   ❌ DHL would reject this order")
         print(f"        DHL says: {res['message']}")
         key = tuple(res.get("problems", []))
         if key and key in seen_sets:
@@ -3386,6 +3420,9 @@ def run_dhl_check(result, df, verbose=False):
     print(f"📋 CHECK COMPLETE — {checked} of {total} order(s) checked")
     print(f"   ✅ Would be accepted : {accepted}")
     print(f"   ❌ Need attention    : {len(problems)}")
+    if strict_note:
+        print(f"   ℹ️  DHL's strict address check does not recognise our Sharjah shipper address (the UAE has no postcodes).")
+        print(f"      Real bookings with this address have always worked, so that note was ignored.")
     if booked_info:
         print(f"   ⚠️  ONE ORDER WAS BOOKED FOR REAL: {booked_info[0]} (AWB {booked_info[1]}). It is recorded in Airtable.")
         print(f"   DHL did not honour the check switch. Do NOT use Check Orders again until this is sorted out.")
@@ -3409,6 +3446,186 @@ def run_dhl_check(result, df, verbose=False):
 
 
 # ============================================================
+# COST ESTIMATE (DHL Rating service) — read-only, nothing is stored
+# ============================================================
+# DHL's terms forbid storing rate data, so quotes are only ever printed to the dashboard
+# and never written to a file, the CSV, a log or Airtable.
+
+def _rate_price(product):
+    """DHL lists a price in several currency views; BILLC is the account's billing currency."""
+    prices = product.get("totalPrice") or []
+    for wanted in ("BILLC", "PULCL", "BASEC"):
+        for p in prices:
+            if p.get("currencyType") == wanted and p.get("price") is not None:
+                return float(p["price"]), str(p.get("priceCurrency", ""))
+    for p in prices:
+        if p.get("price") is not None:
+            return float(p["price"]), str(p.get("priceCurrency", ""))
+    return None, ""
+
+
+def _rate_days(product):
+    d = (product.get("deliveryCapabilities") or {}).get("totalTransitDays")
+    try:
+        return int(d)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_rate_estimate(payload):
+    """
+    Ask DHL's Rating service (GET /rates) what this exact shipment would cost. Books nothing.
+    The request is built from the same payload the booking would send, so the quote is for the
+    same route, weight and box size.
+
+    Returns {"ok": True, "pieces", "ours", "cheapest", "options", "warnings"} or {"ok": False, "error"}.
+      ours     = the product the booking really uses (P = Express Worldwide, N = domestic)
+      cheapest = the lowest-priced product DHL offers for this shipment (may be the same one)
+    """
+    try:
+        acc = next((a.get("number") for a in payload.get("accounts", []) if a.get("typeCode") == "shipper"), "")
+        cust = payload["customerDetails"]
+        s, r = cust["shipperDetails"]["postalAddress"], cust["receiverDetails"]["postalAddress"]
+        pieces = payload["content"]["packages"]
+        p0 = pieces[0]
+        dim = p0["dimensions"]
+        params = {
+            "accountNumber": acc,
+            "originCountryCode": s["countryCode"], "originCityName": s["cityName"],
+            "destinationCountryCode": r["countryCode"], "destinationCityName": r["cityName"],
+            "weight": float(p0["weight"]), "length": float(dim["length"]), "width": float(dim["width"]), "height": float(dim["height"]),
+            "plannedShippingDate": str(payload["plannedShippingDateAndTime"])[:10],
+            "isCustomsDeclarable": str(bool(payload["content"].get("isCustomsDeclarable"))).lower(),
+            "unitOfMeasurement": "metric",
+            "nextBusinessDay": "true",                  # still quote if the planned day has no pickup
+            "requestEstimatedDeliveryDate": "true",
+            "estimatedDeliveryDateType": "QDDC",        # the committed time, including customs clearance
+        }
+        # the UAE has no postcodes — the shipper's "00000" is a placeholder, so it is not sent
+        if str(s.get("postalCode", "")).strip("0 "):
+            params["originPostalCode"] = s["postalCode"]
+        if str(r.get("postalCode", "")).strip():
+            params["destinationPostalCode"] = r["postalCode"]
+    except (KeyError, IndexError, TypeError, AttributeError) as e:
+        return {"ok": False, "error": f"could not build the quote request ({type(e).__name__}: {e})"}
+
+    base_url = DHL_BASE_URL_TEST if DHL_TEST_MODE else DHL_BASE_URL_PROD
+    headers = {"Accept": "application/json", **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
+    try:
+        resp = requests.get(f"{base_url}/rates", params=params, headers=headers,
+                            auth=(DHL_API_KEY, DHL_API_SECRET), timeout=30)
+    except requests.exceptions.RequestException:
+        return {"ok": False, "error": "could not reach DHL (timeout or network)"}
+    if resp.status_code != 200:
+        try:
+            detail = resp.json().get("detail") or resp.text[:160]
+        except ValueError:
+            detail = resp.text[:160]
+        return {"ok": False, "error": str(detail)[:200]}
+    try:
+        data = resp.json()
+    except ValueError:
+        return {"ok": False, "error": "DHL's reply was not readable"}
+
+    options = []
+    for p in data.get("products") or []:
+        price, cur = _rate_price(p)
+        w = p.get("weight") or {}
+        options.append({"code": str(p.get("productCode", "")), "name": str(p.get("productName", "")),
+                        "price": price, "currency": cur, "days": _rate_days(p),
+                        "volumetric": w.get("volumetric"), "provided": w.get("provided")})
+    priced = sorted((o for o in options if o["price"] is not None),
+                    key=lambda o: (o["price"], o["days"] if o["days"] is not None else 99))
+    ours = next((o for o in options if o["code"] == str(payload.get("productCode", ""))), None)
+    return {"ok": True, "pieces": len(pieces), "ours": ours, "cheapest": priced[0] if priced else None,
+            "options": priced, "warnings": [str(w) for w in (data.get("warnings") or [])]}
+
+
+def run_cost_estimate(result, verbose=False):
+    """Print what DHL would charge to ship every order. Books nothing, stores nothing. Returns an exit code."""
+    if DHL_TEST_MODE:
+        print("\nℹ️  TEST MODE is on, so the script does not talk to DHL. The estimate needs DHL, so it was skipped.")
+        return 0
+    from concurrent.futures import ThreadPoolExecutor
+
+    total = len(result)
+    print(f"\n{'='*60}")
+    print(f"💶 COST ESTIMATE — asking DHL for the price of {total} order(s)")
+    print(f"   Nothing is booked and nothing is saved. Quotes are estimates.")
+    print(f"{'='*60}")
+
+    rows = [row for _, row in result.iterrows()]
+
+    def work(row):
+        try:
+            return get_rate_estimate(build_dhl_payload(row))
+        except Exception as e:                                   # one bad order must not stop the rest
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
+
+    money = lambda cur, amt: f"{cur} {amt:,.2f}".strip()
+    totals, priced, unpriced, cheaper_n, last_err = {}, 0, 0, 0, None
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(work, row) for row in rows]
+        for idx, (row, fut) in enumerate(zip(rows, futures), start=1):
+            order_number = str(row.get("Shipment Reference 1", "unknown"))
+            dest = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
+            est = fut.result()
+            head = f"[{idx}/{total}] {order_number}  → {dest}"
+            if not est["ok"]:
+                unpriced += 1
+                if est["error"] == last_err:
+                    print(f"{head}   could not be priced (same reason as above)")
+                else:
+                    print(f"{head}   could not be priced: {est['error']}")
+                last_err = est["error"]
+                continue
+            last_err = None
+            ours, cheapest, n = est["ours"], est["cheapest"], est["pieces"]
+            if not ours or ours["price"] is None:
+                unpriced += 1
+                why = est["warnings"][0] if est["warnings"] else "DHL gave no price for our usual service on this route"
+                print(f"{head}   could not be priced: {why[:160]}")
+                continue
+            priced += 1
+            cur = ours["currency"]
+            days = f"{ours['days']} day(s)" if ours["days"] is not None else "transit time n/a"
+            multi = f"  (×{n} pieces, approx.)" if n > 1 else ""
+            print(f"{head}   {ours['code']} {ours['name']}   {money(cur, ours['price'] * n)}   {days}{multi}")
+            vol, prov = ours.get("volumetric"), ours.get("provided")
+            if isinstance(vol, (int, float)) and isinstance(prov, (int, float)) and vol > prov:
+                print(f"        ⚖️  DHL would bill the box size ({vol} kg), not the declared {prov} kg")
+            cur_tot = totals.setdefault(cur, [0.0, 0.0])
+            cur_tot[0] += ours["price"] * n
+            if cheapest and cheapest["currency"] == cur and cheapest["price"] < ours["price"] - 1e-9:
+                cheaper_n += 1
+                cur_tot[1] += cheapest["price"] * n
+                pct = round((1 - cheapest["price"] / ours["price"]) * 100)
+                cd = f"{cheapest['days']} day(s)" if cheapest["days"] is not None else "transit n/a"
+                print(f"        cheaper option: {cheapest['code']} {cheapest['name']}  {money(cur, cheapest['price'] * n)}  (−{pct}%)  {cd}")
+            else:
+                cur_tot[1] += ours["price"] * n
+
+    print(f"\n{'='*60}")
+    print(f"💶 ESTIMATE COMPLETE — {priced} of {total} order(s) priced")
+    for cur, (now, best) in totals.items():
+        print(f"   Estimated shipping cost : {money(cur, now)}")
+        if best < now - 0.005:
+            print(f"   Cheapest options total  : {money(cur, best)}   (about {money(cur, now - best)} less)")
+    if cheaper_n:
+        print(f"   A cheaper DHL product exists on {cheaper_n} order(s). It may be slower or not support the same")
+        print(f"   duty service, so check before switching — the booking still uses our usual service.")
+    if unpriced:
+        print(f"   {unpriced} order(s) could not be priced (see above).")
+    print(f"   Estimates only: DHL's final bill can differ, and duties and taxes are billed separately.")
+    print(f"{'='*60}")
+    print("ESTIMATE_SUMMARY " + json.dumps({
+        "orders": total, "priced": priced, "unpriced": unpriced, "cheaper": cheaper_n,
+        "totals": {c: {"estimated": round(v[0], 2), "cheapest": round(v[1], 2)} for c, v in totals.items()},
+    }))
+    return 0
+
+
+# ============================================================
 # MAIN
 # ============================================================
 if __name__ == "__main__":
@@ -3419,6 +3636,7 @@ if __name__ == "__main__":
     test_override    = "--test"         in sys.argv
     verbose_flag     = "--verbose"      in sys.argv  # print full DHL payload per order
     check_flag       = "--check-dhl"    in sys.argv  # ask DHL to validate every order, book nothing
+    estimate_flag    = "--estimate-cost" in sys.argv  # ask DHL what every order would cost, book nothing
  
     if test_override:
         DHL_TEST_MODE = True
@@ -3573,6 +3791,10 @@ if __name__ == "__main__":
     # This runs BEFORE the booking code below and always exits, even if --send-to-dhl was also passed.
     if check_flag:
         sys.exit(run_dhl_check(result, df, verbose_flag))
+
+    # ── 4c. COST ESTIMATE (--estimate-cost): ask DHL for prices, book nothing, then stop ──
+    if estimate_flag:
+        sys.exit(run_cost_estimate(result, verbose_flag))
 
     # ── 5. SEND TO DHL (only if --send-to-dhl flag) ─────────
     if not send_to_dhl_flag:
