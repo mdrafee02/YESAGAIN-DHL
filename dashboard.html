@@ -365,6 +365,11 @@ main{flex:1;position:relative;z-index:1;display:grid;grid-template-columns:284px
 .di-red{background:rgba(255,118,118,.12)}
 .dtitle{font-size:19px;font-weight:600;color:#fff;margin-bottom:9px;letter-spacing:-.02em}
 .dbody{font-size:13px;color:var(--muted);line-height:1.68;margin-bottom:22px}
+.est-box{margin:-8px 0 20px;padding:11px 13px;border:1px solid var(--line);border-radius:var(--r);background:rgba(255,255,255,.04);font-size:12.5px;line-height:1.55;text-align:left;color:var(--ink-2)}
+.est-box strong{color:var(--gold)}
+.est-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.est-warn{color:var(--amber)}
+.est-load,.est-muted{color:var(--muted)}
 .dbody strong{color:#fff;font-weight:600}
 .dbody .blue{color:var(--bl);font-weight:600}
 .dacts{display:flex;gap:9px}
@@ -536,6 +541,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
           <span id="btn-check-label">Check Orders</span>
         </button>
         <div class="check-hint">Asks DHL if each order would be accepted. Books nothing, makes no labels, and does not touch Airtable. Run this before booking.</div>
+        <button class="btn-run check-btn" id="btn-estimate" onclick="runEstimate()">
+          <span id="btn-estimate-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.9-2.5 2s1.1 1.7 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2a2.5 2.5 0 0 1-2.5-1.5"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg></span>
+          <span id="btn-estimate-label">Estimate Cost</span>
+        </button>
+        <div class="check-hint">Asks DHL what each order would cost to ship, and whether a cheaper DHL product exists. Estimates only. Books nothing and saves nothing.</div>
         <button class="btn-run prod-btn" id="btn-book" onclick="confirmRun()">
           <span id="btn-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
           <span id="btn-label">Book Real Shipments</span>
@@ -677,6 +687,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
     </div>
     <div class="dtitle" id="confirm-title">Run Test Booking?</div>
     <div class="dbody" id="confirm-body"></div>
+    <div class="est-box" id="confirm-estimate" style="display:none"></div>
     <div class="dacts">
       <button class="btn-dlg-cancel" onclick="closeConfirm()">Cancel</button>
       <button class="btn-dlg-ok orange" id="confirm-ok-btn" onclick="executeRun()">Run Test</button>
@@ -712,6 +723,8 @@ const API_BASE = window.location.origin;
 // ════════════════════════════════════════════
 let isRunning    = false;
 let checkMode    = false;   // true while the "Check Orders" run is active (books nothing)
+let estimateMode = false;   // true while the "Estimate Cost" run is active (books nothing, saves nothing)
+let estES        = null;    // background estimate stream shown inside the confirm dialog
 let eventSource  = null;
 let lastRunTimestamp = null;
 const sessionStats = { runs: 0, booked: 0, failed: 0 };
@@ -781,8 +794,43 @@ function confirmRun() {
   okBtn.textContent = 'Confirm & Book';
   okBtn.className = 'btn-dlg-ok orange';
   overlay.classList.add('show');
+  loadConfirmEstimate();
 }
-function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
+function closeConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('show');
+  if (estES) { estES.close(); estES = null; }
+}
+
+// Shows DHL's estimated shipping cost inside the confirm dialog. Never blocks booking.
+function escHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderEstimate(d) {
+  const money = (cur, v) => `${escHtml(cur)} ${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const currencies = Object.keys((d && d.totals) || {});
+  if (!currencies.length) return '<span class="est-muted">DHL could not price these orders. You can still book.</span>';
+  let h = '';
+  currencies.forEach(c => { h += `<div>Estimated shipping cost: <strong>${money(c, d.totals[c].estimated)}</strong></div>`; });
+  h += `<div class="est-sub">${Number(d.priced)} of ${Number(d.orders)} orders priced by DHL</div>`;
+  if (Number(d.cheaper) > 0) h += `<div class="est-sub">A cheaper DHL product exists on ${Number(d.cheaper)} order(s). Use <b>Estimate Cost</b> to see which.</div>`;
+  if (Number(d.unpriced) > 0) h += `<div class="est-sub est-warn">${Number(d.unpriced)} order(s) could not be priced.</div>`;
+  h += '<div class="est-sub">Estimate only. Duties and taxes are billed separately.</div>';
+  return h;
+}
+function loadConfirmEstimate() {
+  const box = document.getElementById('confirm-estimate');
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '<span class="est-load">Asking DHL for the estimated shipping cost…</span>';
+  if (estES) { estES.close(); estES = null; }
+  let got = false;
+  const unavailable = () => { if (!got) box.innerHTML = '<span class="est-muted">Cost estimate unavailable. You can still book.</span>'; };
+  estES = new EventSource(`${API_BASE}/stream-estimate`);
+  estES.onmessage = function(e) {
+    let msg; try { msg = JSON.parse(e.data); } catch(err) { return; }
+    if (msg.type === 'estimate') { got = true; box.innerHTML = renderEstimate(msg.data); }
+    else if (msg.type === 'done') { unavailable(); if (estES) { estES.close(); estES = null; } }
+  };
+  estES.onerror = function() { unavailable(); if (estES) { estES.close(); estES = null; } };
+}
 
 // ════════════════════════════════════════════
 //  EXECUTE RUN (SSE Streaming)
@@ -839,12 +887,36 @@ function runCheck() {
   };
 }
 
+function runEstimate() {
+  if (isRunning) return;
+  estimateMode = true;
+  setRunning(true);
+  clearTerminal(false);
+  document.getElementById('downloads-card').classList.remove('visible');
+
+  $ttitle.textContent = 'airtable_transform.py --estimate-cost';
+
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource(`${API_BASE}/stream-estimate`);
+
+  eventSource.onmessage = function(e) {
+    try { handleSSEMessage(JSON.parse(e.data)); }
+    catch(err) { appendLog(e.data, 'default'); }
+  };
+  eventSource.onerror = function() {
+    appendLog('Connection to API lost.', 'error');
+    finishRun(false);
+  };
+}
+
 function handleSSEMessage(msg) {
   switch (msg.type) {
     case 'start':
       appendLog(checkMode
         ? `\n  Checking orders with DHL — nothing will be booked\n`
-        : `\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
+        : estimateMode
+          ? `\n  Asking DHL for shipping prices — nothing will be booked or saved\n`
+          : `\n  Starting booking run — Mode: ${msg.mode.toUpperCase()}\n`, 'header');
       break;
     case 'log':
       appendLog(msg.line);
@@ -870,7 +942,15 @@ function handleSSEMessage(msg) {
         if (t) lastRunTimestamp = t[1];
       }
       break;
+    case 'estimate':
+      break;   // the summary is also printed as log lines; the confirm dialog uses this event
     case 'done':
+      if (estimateMode) {
+        appendLog(msg.success ? '\n  Estimate finished — nothing was booked or saved.' : '\n  Estimate stopped — see the messages above.', msg.success ? 'success' : 'error');
+        showToast(msg.success ? 'Estimate finished — nothing was booked.' : 'Estimate stopped — see the log.', msg.success ? 'success' : 'error');
+        finishRun(msg.success);
+        break;
+      }
       if (checkMode) {
         appendLog(msg.success ? '\n  Check finished — nothing was booked.' : '\n  Check stopped — see the messages above.', msg.success ? 'success' : 'error');
         showToast(msg.success ? 'Check finished — nothing was booked.' : 'Check stopped — see the log.', msg.success ? 'success' : 'error');
@@ -961,12 +1041,15 @@ function setRunning(running) {
   isRunning = running;
   $btnBook.disabled = running;
   const $chk = document.getElementById('btn-check'); if ($chk) $chk.disabled = running;
+  const $est = document.getElementById('btn-estimate'); if ($est) $est.disabled = running;
   if (running) {
     $progW.classList.add('visible');
     $progB.classList.add('running');
     $progL.textContent = 'Starting…';
     if (checkMode) {
       document.getElementById('btn-check-label').textContent = 'Checking…';
+    } else if (estimateMode) {
+      document.getElementById('btn-estimate-label').textContent = 'Estimating…';
     } else {
       $btnIcon.innerHTML = `<span class="spinner"></span>`;
       $btnLbl.textContent = 'Running…';
@@ -981,13 +1064,16 @@ function finishRun(success) {
   isRunning = false;
   eventSource?.close();
   $progB.classList.remove('running');
-  setProgress(100, success ? (checkMode ? 'Check finished' : 'Completed successfully') : (checkMode ? 'Check stopped' : 'Completed with errors'));
+  setProgress(100, success ? (checkMode ? 'Check finished' : estimateMode ? 'Estimate finished' : 'Completed successfully') : (checkMode ? 'Check stopped' : estimateMode ? 'Estimate stopped' : 'Completed with errors'));
   $btnBook.disabled = false;
   const $chk = document.getElementById('btn-check'); if ($chk) $chk.disabled = false;
   const $chkL = document.getElementById('btn-check-label'); if ($chkL) $chkL.textContent = 'Check Orders';
+  const $est = document.getElementById('btn-estimate'); if ($est) $est.disabled = false;
+  const $estL = document.getElementById('btn-estimate-label'); if ($estL) $estL.textContent = 'Estimate Cost';
   $btnIcon.innerHTML = SVG_PROD;
   $btnLbl.textContent = 'Book Real Shipments';
   checkMode = false;
+  estimateMode = false;
   document.getElementById('stat-last').textContent = success ? 'Done' : 'Error';
   $tbadge.textContent = success ? 'DONE' : 'ERROR';
   $tbadge.className   = success ? 'log-badge-status lbs-done' : 'log-badge-status lbs-error';
