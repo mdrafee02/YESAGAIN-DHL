@@ -536,16 +536,6 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
         </div>
       </div>
       <div class="sec">
-        <button class="btn-run check-btn" id="btn-check" onclick="runCheck()">
-          <span id="btn-check-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-          <span id="btn-check-label">Check Orders</span>
-        </button>
-        <div class="check-hint">Asks DHL if each order would be accepted. Books nothing, makes no labels, and does not touch Airtable. Run this before booking.</div>
-        <button class="btn-run check-btn" id="btn-estimate" onclick="runEstimate()">
-          <span id="btn-estimate-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.9-2.5 2s1.1 1.7 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2a2.5 2.5 0 0 1-2.5-1.5"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg></span>
-          <span id="btn-estimate-label">Estimate Cost</span>
-        </button>
-        <div class="check-hint">Asks DHL what each order would cost to ship, and whether a cheaper DHL product exists. Estimates only. Books nothing and saves nothing.</div>
         <button class="btn-run prod-btn" id="btn-book" onclick="confirmRun()">
           <span id="btn-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
           <span id="btn-label">Book Real Shipments</span>
