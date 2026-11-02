@@ -3521,7 +3521,12 @@ def get_rate_estimate(payload):
             detail = resp.json().get("detail") or resp.text[:160]
         except ValueError:
             detail = resp.text[:160]
-        return {"ok": False, "error": str(detail)[:200]}
+        detail = str(detail)[:200]
+        # when DHL names a field it did not like, show the value we actually sent for it
+        sent = [f"{k}={params[k]!r}" for k in params if k in detail]
+        if sent:
+            detail += "  [we sent " + ", ".join(sent) + "]"
+        return {"ok": False, "error": detail}
     try:
         data = resp.json()
     except ValueError:
@@ -3541,6 +3546,63 @@ def get_rate_estimate(payload):
             "options": priced, "warnings": [str(w) for w in (data.get("warnings") or [])]}
 
 
+def _estimate_for_row(row):
+    """Quote for one order. NEVER raises, so a rating problem can never touch a booking."""
+    try:
+        return get_rate_estimate(build_dhl_payload(row))
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
+
+
+def booking_cost_lines(est):
+    """Log lines for one booked order, plus (amount, currency). amount is None when there is no price."""
+    if not est or not est.get("ok"):
+        why = str((est or {}).get("error", "no answer"))[:120]
+        return [f"  Cost     ⚠️   shipping cost unavailable ({why})"], None, ""
+    ours, cheapest, n = est["ours"], est["cheapest"], est["pieces"]
+    if not ours or ours["price"] is None:
+        why = est["warnings"][0] if est.get("warnings") else "DHL gave no price for this service"
+        return [f"  Cost     ⚠️   shipping cost unavailable ({why[:120]})"], None, ""
+    cur, amt = ours["currency"], ours["price"] * n
+    days = f"{ours['days']} day(s)" if ours["days"] is not None else "transit time n/a"
+    multi = f", ×{n} pieces approx." if n > 1 else ""
+    lines = [f"  Cost     💶  {cur} {amt:,.2f}  (DHL estimate: {ours['code']} {ours['name']}, {days}{multi})"]
+    vol, prov = ours.get("volumetric"), ours.get("provided")
+    if isinstance(vol, (int, float)) and isinstance(prov, (int, float)) and vol > prov:
+        lines.append(f"           ⚖️  DHL would bill the box size ({vol} kg), not the declared {prov} kg")
+    if cheapest and cheapest["currency"] == cur and cheapest["price"] < ours["price"] - 1e-9:
+        pct = round((1 - cheapest["price"] / ours["price"]) * 100)
+        lines.append(f"           cheaper option exists: {cheapest['code']} {cheapest['name']}  {cur} {cheapest['price'] * n:,.2f}  (−{pct}%)")
+    return lines, amt, cur
+
+
+def _log_booking_cost(future, state):
+    """
+    Print the shipping-cost line(s) for an order that was just booked. NEVER raises.
+    Quotes are only printed, never saved (DHL's terms forbid storing rate data), so nothing here
+    touches dhl_results or the log files. After two outages in a row we stop waiting for DHL.
+    """
+    try:
+        if state["outage"] >= 2:
+            est = {"ok": False, "error": "no answer from DHL's rating service (skipped)"}
+        else:
+            try:
+                est = future.result(timeout=20)
+            except Exception:
+                est = {"ok": False, "error": "no answer from DHL's rating service"}
+        lines, amt, cur = booking_cost_lines(est)
+        for ln in lines:
+            print(ln)
+        if amt is not None:
+            state["outage"] = 0
+            state["priced"] += 1
+            state["totals"][cur] = state["totals"].get(cur, 0.0) + amt
+        elif str(est.get("error", "")).startswith(("could not reach", "no answer")):
+            state["outage"] += 1
+    except Exception as e:
+        print(f"  Cost     ⚠️   shipping cost unavailable ({type(e).__name__})")
+
+
 def run_cost_estimate(result, verbose=False):
     """Print what DHL would charge to ship every order. Books nothing, stores nothing. Returns an exit code."""
     if DHL_TEST_MODE:
@@ -3556,11 +3618,7 @@ def run_cost_estimate(result, verbose=False):
 
     rows = [row for _, row in result.iterrows()]
 
-    def work(row):
-        try:
-            return get_rate_estimate(build_dhl_payload(row))
-        except Exception as e:                                   # one bad order must not stop the rest
-            return {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
+    work = _estimate_for_row                                     # one bad order must not stop the rest
 
     money = lambda cur, amt: f"{cur} {amt:,.2f}".strip()
     totals, priced, unpriced, cheaper_n, last_err = {}, 0, 0, 0, None
@@ -3823,6 +3881,16 @@ if __name__ == "__main__":
     success_count = 0
     fail_count    = 0
     failed_orders = []  # saved to JSON so you can retry just these
+
+    # ── Shipping cost: quoted in the background, PRINTED ONLY (never saved) ──
+    # Kept out of dhl_results and every log file on purpose: DHL's terms forbid storing rate data.
+    cost_pool, cost_futures = None, {}
+    cost_state = {"outage": 0, "priced": 0, "totals": {}}
+    if not DHL_TEST_MODE:
+        from concurrent.futures import ThreadPoolExecutor
+        cost_pool = ThreadPoolExecutor(max_workers=3)
+        for _i, (_, _r) in enumerate(result.iterrows(), start=1):
+            cost_futures[_i] = cost_pool.submit(_estimate_for_row, _r)
  
     # ── THE PROTECTED BATCH LOOP ─────────────────────────────
     # Each order is wrapped in try/except so one failure never
@@ -3848,6 +3916,8 @@ if __name__ == "__main__":
                 airtable_rec_id = record_id_map.get(order_number, "")
 
                 print(f"  DHL      ✅  AWB: {tracking_number}")
+                if cost_pool is not None:
+                    _log_booking_cost(cost_futures.get(idx), cost_state)
 
                 if DHL_TEST_MODE:
                     print(f"  Airtable ⏭️   TEST MODE — writeback skipped")
@@ -3909,6 +3979,9 @@ if __name__ == "__main__":
         if idx < total:
             time.sleep(1.0)
  
+    if cost_pool is not None:
+        cost_pool.shutdown(wait=False, cancel_futures=True)
+
     # ── 6. SAVE LOGS ─────────────────────────────────────────
     os.makedirs("logs", exist_ok=True)
  
@@ -3928,6 +4001,8 @@ if __name__ == "__main__":
     print(f"📊 BATCH COMPLETE")
     print(f"   ✅ Success : {success_count}/{total}")
     print(f"   ❌ Failed  : {fail_count}/{total}")
+    for _cur, _amt in cost_state["totals"].items():
+        print(f"   💶 Shipping cost : {_cur} {_amt:,.2f} for {cost_state['priced']} booked shipment(s) (DHL estimate)")
     print(f"   Full log  : {response_file}")
     print(f"{'='*60}")
  
