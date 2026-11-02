@@ -344,7 +344,7 @@ def resolve_country_code(raw):
  
 PARTY_UAE = {
     "Company"  : "YESAGAIN FZC",
-    "Name"     : "YESAGAIN FZC",
+    "Name"     : "YESAGAIN",
     "Address1" : "P MALL, SHARJAH FREE ZONE",
     "Country"  : "AE",
     "City"     : "SHARJAH",
@@ -3244,6 +3244,12 @@ def _explain_dhl_error(text):
             return (f"DHL rejected the optional {name}. A real booking would drop it and retry, so this order would still book. Tell Claude so the field can be fixed.", False)
     if "description" in t:
         return ("DHL rejected the goods description. A real booking would retry with the short description.", False)
+    m_extra = re.search(r"extraneous key \[(\w+)\]", str(text))
+    if m_extra:
+        return (f"DHL does not accept the field '{m_extra.group(1)}' in that place.", False)
+    m_req = re.search(r"required key \[(\w+)\] not found", str(text))
+    if m_req:
+        return (f"DHL needs the field '{m_req.group(1)}' and it is missing.", False)
     if "not allowed for this service" in t or "803" in t:
         return ("DHL says this account is not allowed to use this product or route.", False)
     return ("", False)
@@ -3259,7 +3265,7 @@ def validate_with_dhl(row, verbose=False):
     """
     order_number = str(row.get("Shipment Reference 1", "unknown")).strip()
     base = {"order_number": order_number, "ok": False, "booked": False, "fatal": False,
-            "message": "", "hint": "", "status_code": None, "tracking_number": "", "raw_response": {}}
+            "message": "", "hint": "", "problems": [], "status_code": None, "tracking_number": "", "raw_response": {}}
     if not DHL_API_KEY or not DHL_API_SECRET:
         return {**base, "message": "DHL_API_KEY or DHL_API_SECRET is missing", "fatal": True}
 
@@ -3294,8 +3300,18 @@ def validate_with_dhl(row, verbose=False):
         return {**base, "ok": True}
 
     detail = (body.get("detail") if isinstance(body, dict) else None) or response.text[:300]
-    hint, fatal = _explain_dhl_error(detail)
-    return {**base, "message": str(detail)[:220], "hint": hint, "fatal": fatal}
+    extra = body.get("additionalDetails") if isinstance(body, dict) else None
+    if isinstance(extra, str) and extra:
+        extra = [extra]
+    problems = [str(x).strip() for x in extra if str(x).strip()] if isinstance(extra, list) else []
+    if not problems and "multiple problems" in str(detail).lower():
+        problems = [f"(DHL gave no list, raw reply) {response.text[:500]}"]      # never lose the details
+
+    fatal, hint = False, ""
+    for p in [str(detail)] + problems:
+        h, f = _explain_dhl_error(p)
+        hint, fatal = hint or h, fatal or f
+    return {**base, "message": str(detail)[:220], "problems": problems, "hint": hint, "fatal": fatal}
 
 
 def run_dhl_check(result, df, verbose=False):
@@ -3318,6 +3334,7 @@ def run_dhl_check(result, df, verbose=False):
                 record_id_map[on] = rid
 
     accepted, problems, stopped, booked_info = 0, [], None, None
+    seen_sets = {}        # identical problem lists are only printed once
     for idx, (_, row) in enumerate(result.iterrows(), start=1):
         order_number = str(row.get("Shipment Reference 1", "unknown"))
         dest = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
@@ -3343,10 +3360,21 @@ def run_dhl_check(result, df, verbose=False):
             print(f"[{idx}/{total}] {order_number}  → {dest}   ✅ DHL would accept this order")
             continue
 
-        problems.append((order_number, dest, res["message"], res["hint"]))
+        problems.append((order_number, dest, res["message"], res["hint"], res.get("problems", [])))
         print(f"[{idx}/{total}] {order_number}  → {dest}   ❌ DHL would reject this order")
         print(f"        DHL says: {res['message']}")
-        if res["hint"]:
+        key = tuple(res.get("problems", []))
+        if key and key in seen_sets:
+            print(f"        (the same {len(key)} problem(s) as order {seen_sets[key]} above)")
+        else:
+            if key:
+                seen_sets[key] = order_number
+            for p in res.get("problems", [])[:8]:
+                print(f"          • {p[:260]}")
+                ph, _pf = _explain_dhl_error(p)
+                if ph:
+                    print(f"            → {ph}")
+        if res["hint"] and not res.get("problems"):
             print(f"        What it means: {res['hint']}")
         if res["fatal"]:
             stopped = "fatal"
@@ -3364,9 +3392,18 @@ def run_dhl_check(result, df, verbose=False):
     else:
         print(f"   Nothing was booked.")
     if problems and stopped != "fatal":
+        counts = {}
+        for _on, _d, _m, _h, plist in problems:
+            for p in (plist or [_m]):
+                counts[p] = counts.get(p, 0) + 1
+        repeated = [(p, n) for p, n in counts.items() if n >= 2]
+        if repeated:
+            print(f"\n   Same problem on several orders (fix these first):")
+            for p, n in sorted(repeated, key=lambda x: -x[1])[:6]:
+                print(f"     • on {n} orders: {p[:240]}")
         print(f"\n   Orders that need attention:")
-        for on, dest, msg, hint in problems:
-            print(f"     • {on} ({dest}): {hint or msg}")
+        for on, dest, msg, hint, plist in problems:
+            print(f"     • {on} ({dest}): {len(plist) or 1} problem(s)")
     print(f"{'='*60}")
     return 1 if stopped else 0
 
@@ -3673,8 +3710,6 @@ if __name__ == "__main__":
     print(f"{'='*60}")
  
     generate_lookup_html()
-
-
 
 
 
