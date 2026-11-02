@@ -365,7 +365,7 @@ PARTY_UAE_MAINLAND = {
     "Country"  : "AE",
     "City"     : "SHARJAH",
     "ZIP"      : "00000",
-    "Email"    : "support@yesagain.ae",
+    "Email"    : "support@yesagain.com",
     "PhoneCC"  : 971,
     "Phone"    : "501851220",
     "VAT"      : "",
@@ -395,9 +395,9 @@ PARTY_FRANCE = {
     "Country"  : "FR",
     "City"     : "TOULOUSE",
     "ZIP"      : "31100",
-    "Email"    : "support@yesagain.com",
+    "Email"    : "logistics@yesagain.com",
     "PhoneCC"  : 33,
-    "Phone"    : "187661011",
+    "Phone"    : "561315853",
     "VAT"      : "FR04919345207",
     "EORI"     : "FR91934520700022",
     "Rel"      : "IP",
@@ -3228,6 +3228,150 @@ def cancel_and_reset_shipment(tracking_number):
     return result
 
 # ============================================================
+# CHECK ORDERS WITH DHL — validates every order, books NOTHING
+# ============================================================
+def _explain_dhl_error(text):
+    """Turn a DHL rejection into plain words. Returns (hint, fatal). fatal = every order would fail the same way."""
+    t = str(text).lower()
+    if "8007" in t or "credit stop" in t:
+        return ("The DHL account is on credit stop. Nothing can be booked until DHL lifts it.", True)
+    if "420505" in t:
+        return ("DHL does not recognise the destination city or postcode. Check the spelling, or use the nearest main city.", False)
+    for needle, name in (("importerdetails", "importer block"), ("remarks", "remarks"), ("placeofincoterm", "place of incoterm"),
+                         ("shipmenttype", "shipment type"), ("receiverdetails", "consignee trader type"),
+                         ("shipperdetails", "shipper trader type")):
+        if needle in t:
+            return (f"DHL rejected the optional {name}. A real booking would drop it and retry, so this order would still book. Tell Claude so the field can be fixed.", False)
+    if "description" in t:
+        return ("DHL rejected the goods description. A real booking would retry with the short description.", False)
+    if "not allowed for this service" in t or "803" in t:
+        return ("DHL says this account is not allowed to use this product or route.", False)
+    return ("", False)
+
+
+def validate_with_dhl(row, verbose=False):
+    """
+    Ask DHL whether it would accept this order — WITHOUT booking it.
+    Sends the exact same request as a real booking, plus DHL's switch validateDataOnly=true.
+
+    Safety tripwire: if DHL ignores the switch and really creates a shipment, the result has
+    booked=True and the tracking number, so the caller can record it instead of losing it.
+    """
+    order_number = str(row.get("Shipment Reference 1", "unknown")).strip()
+    base = {"order_number": order_number, "ok": False, "booked": False, "fatal": False,
+            "message": "", "hint": "", "status_code": None, "tracking_number": "", "raw_response": {}}
+    if not DHL_API_KEY or not DHL_API_SECRET:
+        return {**base, "message": "DHL_API_KEY or DHL_API_SECRET is missing", "fatal": True}
+
+    try:
+        payload = build_dhl_payload(row)
+    except Exception as e:
+        return {**base, "message": f"Could not build the request: {e}"}
+    if verbose:
+        print(f"   Payload:{chr(10)}{json.dumps(payload, indent=2)}")
+
+    headers = {"Content-Type": "application/json", "Accept": "application/json",
+               **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
+    try:
+        response = requests.post(f"{DHL_BASE_URL_PROD}/shipments", params={"validateDataOnly": "true"},
+                                 json=payload, headers=headers, auth=(DHL_API_KEY, DHL_API_SECRET), timeout=30)
+    except requests.exceptions.Timeout:
+        return {**base, "message": "Timeout — DHL did not answer"}
+    except requests.exceptions.ConnectionError as e:
+        return {**base, "message": f"Connection error: {e}"}
+
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    base["status_code"] = response.status_code
+
+    if response.status_code in (200, 201):
+        tracking = str(body.get("shipmentTrackingNumber", "") or "").strip() if isinstance(body, dict) else ""
+        if tracking.isdigit() and len(tracking) >= 10:        # DHL really created a shipment
+            return {**base, "booked": True, "tracking_number": tracking, "raw_response": body,
+                    "message": f"DHL created a REAL shipment (AWB {tracking})"}
+        return {**base, "ok": True}
+
+    detail = (body.get("detail") if isinstance(body, dict) else None) or response.text[:300]
+    hint, fatal = _explain_dhl_error(detail)
+    return {**base, "message": str(detail)[:220], "hint": hint, "fatal": fatal}
+
+
+def run_dhl_check(result, df, verbose=False):
+    """Check every order with DHL and print a plain-language report. Books nothing. Returns an exit code."""
+    if DHL_TEST_MODE:
+        print("\nℹ️  TEST MODE is on, so the script does not talk to DHL. The check needs DHL, so it was skipped.")
+        return 0
+
+    total = len(result)
+    print(f"\n{'='*60}")
+    print(f"🔎 CHECK ONLY — asking DHL to validate {total} order(s)")
+    print(f"   Nothing is booked. No labels are made. Airtable is not touched.")
+    print(f"{'='*60}")
+
+    record_id_map = {}
+    if "_airtable_id" in df.columns:
+        for _, r in df.iterrows():
+            on, rid = str(r.get("Order Number", "")).strip(), str(r.get("_airtable_id", "")).strip()
+            if on and rid and rid != "nan":
+                record_id_map[on] = rid
+
+    accepted, problems, stopped, booked_info = 0, [], None, None
+    for idx, (_, row) in enumerate(result.iterrows(), start=1):
+        order_number = str(row.get("Shipment Reference 1", "unknown"))
+        dest = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
+        res = validate_with_dhl(row, verbose=verbose)
+
+        if res.get("booked"):
+            tracking = res["tracking_number"]
+            print(f"[{idx}/{total}] {order_number}  → {dest}   ⚠️  DHL BOOKED THIS ORDER FOR REAL (AWB {tracking})")
+            print("        DHL ignored the check switch. Recording this booking now so nothing is lost or doubled.")
+            rec = record_id_map.get(order_number, "")
+            if rec:
+                update_shipment_tracking_in_airtable(rec, order_number, tracking)
+                if res.get("raw_response") and upload_docs_to_airtable(rec, order_number, res["raw_response"]):
+                    mark_label_created_in_airtable(rec, order_number, tracking, dest)
+                print("        Airtable updated with the AWB, label and invoice.")
+            else:
+                print(f"        No Airtable record found. Write down AWB {tracking} and tell Claude.")
+            stopped, booked_info = "tripwire", (order_number, tracking)
+            break
+
+        if res["ok"]:
+            accepted += 1
+            print(f"[{idx}/{total}] {order_number}  → {dest}   ✅ DHL would accept this order")
+            continue
+
+        problems.append((order_number, dest, res["message"], res["hint"]))
+        print(f"[{idx}/{total}] {order_number}  → {dest}   ❌ DHL would reject this order")
+        print(f"        DHL says: {res['message']}")
+        if res["hint"]:
+            print(f"        What it means: {res['hint']}")
+        if res["fatal"]:
+            stopped = "fatal"
+            print(f"\n🛑 Stopping the check. Every other order would fail the same way.")
+            break
+
+    checked = accepted + len(problems)
+    print(f"\n{'='*60}")
+    print(f"📋 CHECK COMPLETE — {checked} of {total} order(s) checked")
+    print(f"   ✅ Would be accepted : {accepted}")
+    print(f"   ❌ Need attention    : {len(problems)}")
+    if booked_info:
+        print(f"   ⚠️  ONE ORDER WAS BOOKED FOR REAL: {booked_info[0]} (AWB {booked_info[1]}). It is recorded in Airtable.")
+        print(f"   DHL did not honour the check switch. Do NOT use Check Orders again until this is sorted out.")
+    else:
+        print(f"   Nothing was booked.")
+    if problems and stopped != "fatal":
+        print(f"\n   Orders that need attention:")
+        for on, dest, msg, hint in problems:
+            print(f"     • {on} ({dest}): {hint or msg}")
+    print(f"{'='*60}")
+    return 1 if stopped else 0
+
+
+# ============================================================
 # MAIN
 # ============================================================
 if __name__ == "__main__":
@@ -3237,6 +3381,7 @@ if __name__ == "__main__":
     send_to_dhl_flag = "--send-to-dhl" in sys.argv
     test_override    = "--test"         in sys.argv
     verbose_flag     = "--verbose"      in sys.argv  # print full DHL payload per order
+    check_flag       = "--check-dhl"    in sys.argv  # ask DHL to validate every order, book nothing
  
     if test_override:
         DHL_TEST_MODE = True
@@ -3387,6 +3532,11 @@ if __name__ == "__main__":
     result.to_csv(csv_out, index=False, encoding="utf-8-sig")
     print(f"\n✅ CSV saved: {csv_out}  ({len(result)} order(s))")
  
+    # ── 4b. CHECK ONLY (--check-dhl): validate with DHL, book nothing, then stop ──
+    # This runs BEFORE the booking code below and always exits, even if --send-to-dhl was also passed.
+    if check_flag:
+        sys.exit(run_dhl_check(result, df, verbose_flag))
+
     # ── 5. SEND TO DHL (only if --send-to-dhl flag) ─────────
     if not send_to_dhl_flag:
         print("\nℹ️  Dry run complete — CSV only.")
@@ -3532,7 +3682,6 @@ if __name__ == "__main__":
 
 
 
-
 # """
 # =============================================================
 #   AIRTABLE → DHL SHIPPING AUTOMATION SCRIPT
@@ -3572,6 +3721,12 @@ if __name__ == "__main__":
 # DHL_API_KEY    = os.getenv("DHL_API_KEY")
 # DHL_API_SECRET = os.getenv("DHL_API_SECRET")
 # DHL_TEST_MODE  = os.getenv("DHL_TEST_MODE", "true").strip().lower() == "true"
+# # API version sent on shipment bookings. DHL prints the importer's email on the invoice from this
+# # version on. Set DHL_API_VERSION="" in the environment to stop sending it (instant rollback).
+# DHL_API_VERSION = os.getenv("DHL_API_VERSION", "3.3.2").strip()
+# # "Trader Type" printed for the parties on the invoice. Set CONSIGNEE_TRADER_TYPE="" to leave it blank.
+# SHIPPER_TRADER_TYPE   = os.getenv("SHIPPER_TRADER_TYPE", "business").strip()
+# CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "direct_consumer").strip()
 
 # # ── Local UAE return pickup scheduling (customer self-serve link) ─────────
 # PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
@@ -3873,7 +4028,7 @@ if __name__ == "__main__":
  
 # PARTY_UAE = {
 #     "Company"  : "YESAGAIN FZC",
-#     "Name"     : "YESAGAIN",
+#     "Name"     : "YESAGAIN FZC",
 #     "Address1" : "P MALL, SHARJAH FREE ZONE",
 #     "Country"  : "AE",
 #     "City"     : "SHARJAH",
@@ -3924,7 +4079,7 @@ if __name__ == "__main__":
 #     "Country"  : "FR",
 #     "City"     : "TOULOUSE",
 #     "ZIP"      : "31100",
-#     "Email"    : "logistics@yesagain.com",
+#     "Email"    : "support@yesagain.com",
 #     "PhoneCC"  : 33,
 #     "Phone"    : "187661011",
 #     "VAT"      : "FR04919345207",
@@ -4979,6 +5134,9 @@ if __name__ == "__main__":
 #                         or r.get("Sales Product Name", ""))
 #         pp = detect_product_profile(product_sku, product_name)
 #         print(f"   📦 {order_number} → SKU: {product_sku!r} | detected: {pp['contents']}")
+#         _kind = next((k for k, v in PRODUCT_PROFILES.items() if v["commodity"] == pp["commodity"]), "laptop")
+#         _desc = build_goods_descriptions(product_sku, product_name, _kind)
+#         desc_short, desc_long = _desc if _desc else (pp["contents"], pp["item_desc"])
  
 #         rules       = get_destination_rules(country, order_number)
 #         shipper_acc = rules["shipper_account"]
@@ -5043,7 +5201,7 @@ if __name__ == "__main__":
 #             "Declared Value Currency (Required)"        : F["currency"],
 #             "Declared Value (Required)"                 : declared_val,
 #             "Product Code (3 Letter)"                   : F["product_code"],
-#             "Summary of Contents"                       : pp["contents"],
+#             "Summary of Contents"                       : desc_short,
 #             "SHIPMENT TYPE"                             : F["shipment_type"],
 #             "Total Shipment Pieces"                     : qty,
 #             "Piece Dimensions (Unit of Measure)"        : F["dim_unit"],
@@ -5055,7 +5213,7 @@ if __name__ == "__main__":
  
 #             # --- INVOICE / ITEM ---
 #             "INVOICE NO."                               : order_number,
-#             "ITEM DESCRIPTION"                          : pp["item_desc"],
+#             "ITEM DESCRIPTION"                          : desc_long,
 #             "ITEM COMMODITY"                            : pp["commodity"],
 #             "ITM QTY"                                   : qty,
 #             "ITM UNITS"                                 : F["item_units"],
@@ -5091,6 +5249,104 @@ if __name__ == "__main__":
 # # DHL API INTEGRATION
 # # ============================================================
  
+# # ═══ GOODS DESCRIPTIONS ══════════════════════════════════════════════════════════════
+# # Longest line-item description we send (about 4 lines in the invoice's Description column)
+# MAX_ITEM_DESC  = 150
+# MAX_SHORT_DESC = 70      # shipment-level "contents" line
+
+# def _chip_label(code):
+#     code = str(code).upper()
+#     m = re.fullmatch(r"I([3579])", code)
+#     if m:
+#         return f"Intel Core i{m.group(1)}", True
+#     m = re.fullmatch(r"M(\d)([PM])?\d+", code)
+#     if m:
+#         return "Apple M" + m.group(1) + {"P": " Pro", "M": " Max"}.get(m.group(2), ""), False
+#     return "", False
+
+# def _storage_label(tok):
+#     tok = str(tok)
+#     if not tok.isdigit():
+#         return ""
+#     n = int(tok)
+#     return f"{n} TB" if n <= 8 else f"{n} GB"
+
+# def _parse_macbook(sku):
+#     t = str(sku).upper().split("-")
+#     if len(t) not in (7, 8) or t[0] not in ("AIR", "PRO"):
+#         return None
+#     fam, size, year, chip, clock, ram, stor = t[:7]
+#     if not (size.isdigit() and re.fullmatch(r"20\d\d", year) and ram.isdigit()):
+#         return None
+#     chip_l, intel = _chip_label(chip)
+#     stor_l = _storage_label(stor)
+#     if not chip_l or not stor_l:
+#         return None
+#     return dict(model="MacBook " + ("Air" if fam == "AIR" else "Pro"), size=int(size), year=year,
+#                 chip=chip_l, intel=intel, clock=clock, ram=int(ram), storage=stor_l)
+
+# _IPHONE_SUFFIX = {"": "", "PRO": " Pro", "PROMAX": " Pro Max", "MAX": " Max", "PLUS": " Plus", "MINI": " mini", "E": "e"}
+# def _parse_iphone(sku):
+#     t = str(sku).upper().split("-")
+#     if len(t) < 3 or t[0] != "IP":
+#         return None
+#     m = re.fullmatch(r"(\d{1,2})(PROMAX|PRO|MAX|PLUS|MINI|E)?", t[1])
+#     stor = _storage_label(t[2])
+#     if not m or not stor:
+#         return None
+#     return dict(model="iPhone " + m.group(1) + _IPHONE_SUFFIX[m.group(2) or ""], storage=stor)
+
+# def _fit(variants, limit):
+#     """first variant that fits the limit; otherwise the shortest one, cut on a word boundary"""
+#     for v in variants:
+#         if len(v) <= limit:
+#             return v
+#     v = variants[-1]
+#     return v[:limit].rsplit(" ", 1)[0].rstrip(",;")
+
+# def build_goods_descriptions(sku, name, kind):
+#     """
+#     (short, long) goods descriptions for the invoice.
+#     DHL customs teams ask for: common description, type/quality, material and intended use.
+#     kind = "laptop" | "phone" | "watch" (the product profile that was detected).
+#     Returns None when the SKU is not understood well enough — callers then keep the old wording,
+#     so nothing is ever described as something it isn't (e.g. an iPad is left alone).
+#     """
+#     s = str(sku).upper()
+#     if s.startswith("IPD"):                 # iPad: no profile/HS code yet — do not describe it as a laptop
+#         return None
+#     if kind == "laptop":
+#         mb = _parse_macbook(sku)
+#         if mb:
+#             spec = mb["chip"] + (f" {mb['clock']} GHz" if mb["intel"] else "")
+#             base = f"Apple {mb['model']} {mb['size']}-inch"
+#             short = f"Used {base} laptop ({mb['year']})"
+#             long_ = _fit([
+#                 f"Used refurbished {base} laptop computer ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for personal or office computing",
+#                 f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for office computing",
+#                 f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for computing",
+#             ], MAX_ITEM_DESC)
+#             return short[:MAX_SHORT_DESC], long_
+#         if s.startswith(("AIR", "PRO")):    # looks like a MacBook but the SKU did not parse — keep old wording
+#             return None
+#         return "Used laptop computer", "Used refurbished laptop computer, metal and plastic casing, for personal or office computing"
+#     if kind == "phone":
+#         ip = _parse_iphone(sku)
+#         if ip:
+#             short = f"Used Apple {ip['model']} smartphone"
+#             long_ = _fit([
+#                 f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal body, for mobile communication",
+#                 f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal, for communication",
+#             ], MAX_ITEM_DESC)
+#             return short[:MAX_SHORT_DESC], long_
+#         return None
+#     if kind == "watch":
+#         if s.startswith("AW"):
+#             return "Used Apple Watch smart watch", "Used refurbished Apple Watch smart watch, metal case with glass display, for time keeping and fitness tracking"
+#         return None
+#     return None
+
+
 # # The 27 EU member states. The routing set EU_COUNTRIES also holds non-members
 # # (CH, NO, IS, LI, RS, ...) where a French EORI/VAT does not identify an importer,
 # # so only real member states get the named importer block.
@@ -5149,6 +5405,11 @@ if __name__ == "__main__":
 #     email = str(importer_party.get("Email", "")).strip()
 #     addr2 = str(importer_party.get("Address2", "")).strip()
 
+#     regs = [
+#         *([{"typeCode": "VAT", "number": importer_vat, "issuerCountryCode": vat_issuer}] if importer_vat else []),
+#         *([{"typeCode": "EOR", "number": eori,         "issuerCountryCode": country}]    if eori else []),
+#     ]
+
 #     return {
 #         "postalAddress": {
 #             "postalCode"  : str(importer_party.get("ZIP", "")).strip(),
@@ -5163,10 +5424,7 @@ if __name__ == "__main__":
 #             **({"email": email} if email else {}),
 #             **({"phone": phone} if phone else {}),
 #         },
-#         "registrationNumbers": [
-#             *([{"typeCode": "VAT", "number": importer_vat, "issuerCountryCode": vat_issuer}] if importer_vat else []),
-#             *([{"typeCode": "EOR", "number": eori,         "issuerCountryCode": country}]    if eori else []),
-#         ],
+#         **({"registrationNumbers": regs} if regs else {}),
 #         "typeCode": "business",
 #     }
 
@@ -5190,12 +5448,20 @@ if __name__ == "__main__":
 #     shipper_account = rules["shipper_account"]
 #     duty_account    = rules["duty_account"]
 #     is_domestic     = (region == "domestic_uae")
-#     # Declare the importer as its own named party (importerDetails + remarks) for the UK
-#     # and for EU member states; everything else keeps its existing layout.
-#     declare_importer = (region == "uk") or (region == "eu" and country in EU_MEMBER_STATES)
+#     # Every shipment that goes through customs names its importer as its own party
+#     # (importerDetails + remarks). The importer is the registered local entity where we
+#     # have one: Computer Remarketing Services Ltd for the UK, YESAGAIN (France) for the
+#     # 27 EU member states. Everywhere else we have no local registration, so the importer
+#     # is YESAGAIN FZC itself (the former Palm Tree company, which is also the shipper).
+#     # Domestic UAE has no customs, so no importer is declared.
+#     declare_importer = not is_domestic
 
 #     # Destination-based importer VAT/EORI
 #     importer_party = rules["additional_party"]
+#     if region == "eu" and country not in EU_MEMBER_STATES:
+#         # Switzerland, Norway, ... are routed as "eu" but are not member states, so the
+#         # French registration does not identify an importer there.
+#         importer_party = PARTY_UAE
 #     importer_vat   = importer_vat_for(country, importer_party.get("VAT", ""))
 #     importer_eori  = importer_party.get("EORI", "")
 #     vat_issuer     = (importer_vat[:2].upper() if importer_vat else importer_party.get("Country", ""))
@@ -5297,6 +5563,7 @@ if __name__ == "__main__":
 #                     *([{"typeCode": "VAT", "number": importer_vat,  "issuerCountryCode": vat_issuer}] if (importer_vat  and not declare_importer) else []),
 #                     *([{"typeCode": "EOR", "number": importer_eori, "issuerCountryCode": importer_party.get("Country", "")}] if (importer_eori and not declare_importer) else []),
 #                 ],
+#                 **({"typeCode": SHIPPER_TRADER_TYPE} if (SHIPPER_TRADER_TYPE and not is_domestic) else {}),
 #             },
 #             "receiverDetails": {
 #                 "postalAddress": postal_address,
@@ -5306,8 +5573,9 @@ if __name__ == "__main__":
 #                     "email"      : str(row.get("Email Address (Ship TO)", "")).strip(),
 #                     "phone"      : full_phone,
 #                 },
+#                 **({"typeCode": CONSIGNEE_TRADER_TYPE} if (CONSIGNEE_TRADER_TYPE and not is_domestic) else {}),
 #             },
-#             # UK only: declare the Importer of Record as its own named party.
+#             # Declare the Importer of Record as its own named party.
 #             **({"importerDetails": _importer_details(importer_party, importer_vat)}
 #                if declare_importer else {}),
 #         },
@@ -5349,6 +5617,10 @@ if __name__ == "__main__":
 #                         "date"  : datetime.now().strftime("%Y-%m-%d"),
 #                     },
 #                     "exportReason": F["export_reason"],
+#                     # Named place for the Incoterm (DDP + destination city) and the type of export —
+#                     # both were blank on every invoice. Sana confirmed Create Shipment accepts them.
+#                     **({"placeOfIncoterm": str(postal_address.get("cityName", "")).strip()[:35]} if str(postal_address.get("cityName", "")).strip() else {}),
+#                     "shipmentType": "commercial",
 #                     # DHL: payerVATNumber lives inside exportDeclaration, not top-level content
 #                     # (confirmed extraneous there — Sana's example groups it with
 #                     # destinationPortName/placeOfIncoterm/recipientReference/exporter).
@@ -5647,7 +5919,8 @@ if __name__ == "__main__":
  
 #     url = f"{base_url}/shipments"
  
-#     headers = {"Content-Type": "application/json", "Accept": "application/json"}
+#     headers = {"Content-Type": "application/json", "Accept": "application/json",
+#                **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
 #     payload = build_dhl_payload(row)
  
 #     country = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
@@ -5666,22 +5939,33 @@ if __name__ == "__main__":
 #         print(f"   ❌ Connection error for {order_number}: {e}")
 #         return {"success": False, "order_number": order_number, "error": str(e)}
 
-#     # The UK importer fields (importerDetails, remarks) are optional additions. If
-#     # DHL rejects one, drop just that field and resend rather than losing the
-#     # booking — at most twice. A rejected request creates no shipment, so a retry
-#     # cannot produce a duplicate.
-#     for _ in range(2):
+#     # Optional invoice fields (importer block, remarks, trader types, place of incoterm, shipment
+#     # type, the detailed description). If DHL rejects one, drop just that field and resend rather
+#     # than losing the booking. A rejected request creates no shipment, so a retry cannot produce a
+#     # duplicate. At most 6 resends.
+#     for _ in range(6):
 #         if response.status_code in (200, 201):
 #             break
 #         _err  = response.text.lower()
 #         _cust = payload.get("customerDetails", {})
 #         _decl = payload.get("content", {}).get("exportDeclaration", {})
+#         _rcv, _shp = _cust.get("receiverDetails", {}), _cust.get("shipperDetails", {})
+#         _items = _decl.get("lineItems", [])
+#         _short = str(row.get("Summary of Contents", "") or "")[:MAX_SHORT_DESC]
 #         if "importerdetails" in _err and _cust.get("importerDetails"):
-#             _dropped = "importerDetails"
-#             _cust.pop("importerDetails", None)
+#             _dropped = "importerDetails";  _cust.pop("importerDetails", None)
 #         elif "remarks" in _err and _decl.get("remarks"):
-#             _dropped = "remarks"
-#             _decl.pop("remarks", None)
+#             _dropped = "remarks";          _decl.pop("remarks", None)
+#         elif "placeofincoterm" in _err and _decl.get("placeOfIncoterm"):
+#             _dropped = "placeOfIncoterm";  _decl.pop("placeOfIncoterm", None)
+#         elif "shipmenttype" in _err and _decl.get("shipmentType"):
+#             _dropped = "shipmentType";     _decl.pop("shipmentType", None)
+#         elif "receiverdetails" in _err and "typecode" in _err and _rcv.get("typeCode"):
+#             _dropped = "consignee trader type"; _rcv.pop("typeCode", None)
+#         elif "shipperdetails" in _err and "typecode" in _err and _shp.get("typeCode"):
+#             _dropped = "shipper trader type";   _shp.pop("typeCode", None)
+#         elif "description" in _err and _items and _short and _items[0].get("description") != _short:
+#             _dropped = "detailed description (using the short one)"; _items[0]["description"] = _short
 #         else:
 #             break
 #         print(f"   ⚠️  DHL rejected {_dropped} — retrying without it")
@@ -5695,7 +5979,7 @@ if __name__ == "__main__":
 #         except requests.exceptions.ConnectionError as e:
 #             print(f"   ❌ Connection error for {order_number}: {e}")
 #             return {"success": False, "order_number": order_number, "error": str(e)}
- 
+
 #     if response.status_code in (200, 201):
 #         data            = response.json()
 #         tracking_number = data.get("shipmentTrackingNumber", "")
