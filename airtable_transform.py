@@ -351,7 +351,7 @@ PARTY_UAE = {
     "ZIP"      : "00000",
     "Email"    : "logistics@yesagain.com",
     "PhoneCC"  : 971,
-    "Phone"    : "501851220",
+    "Phone"    : "508893656",
     "VAT"      : "",
     "EORI"     : "",
     "Rel"      : "IP",
@@ -367,7 +367,7 @@ PARTY_UAE_MAINLAND = {
     "ZIP"      : "00000",
     "Email"    : "support@yesagain.com",
     "PhoneCC"  : 971,
-    "Phone"    : "501851220",
+    "Phone"    : "508893656",
     "VAT"      : "",
     "EORI"     : "",
     "Rel"      : "IP",
@@ -1566,9 +1566,26 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
 # ============================================================
  
 # ═══ GOODS DESCRIPTIONS ══════════════════════════════════════════════════════════════
+# What each device is called on the LABEL (short) and on the COMMERCIAL INVOICE (detailed).
+#   label   : the plain category name — "Used laptop" / "Used phone" / "Used smart watch" / "Used tablet"
+#   invoice : DHL customs teams ask for a specific description (what it is, type/quality, material, intended use)
+# The detail comes from Airtable: first from the SKU when its format is understood, otherwise from the
+# Airtable product name, otherwise from a category description.
+
 # Longest line-item description we send (about 4 lines in the invoice's Description column)
 MAX_ITEM_DESC  = 150
 MAX_SHORT_DESC = 70      # shipment-level "contents" line
+
+
+def _first_text(val):
+    """
+    Airtable lookup fields (SKU, product name) arrive as a LIST even for one record, e.g. ["PRO-13-2020-..."].
+    str() of that would give the literal text "['PRO-13-...']" and break every prefix check, so unwrap first.
+    """
+    if isinstance(val, (list, tuple)):
+        val = next((x for x in val if x is not None and str(x).strip()), "")
+    return re.sub(r"\s+", " ", str(val)).strip() if val is not None else ""
+
 
 def _chip_label(code):
     code = str(code).upper()
@@ -1580,12 +1597,14 @@ def _chip_label(code):
         return "Apple M" + m.group(1) + {"P": " Pro", "M": " Max"}.get(m.group(2), ""), False
     return "", False
 
+
 def _storage_label(tok):
     tok = str(tok)
     if not tok.isdigit():
         return ""
     n = int(tok)
     return f"{n} TB" if n <= 8 else f"{n} GB"
+
 
 def _parse_macbook(sku):
     t = str(sku).upper().split("-")
@@ -1601,6 +1620,7 @@ def _parse_macbook(sku):
     return dict(model="MacBook " + ("Air" if fam == "AIR" else "Pro"), size=int(size), year=year,
                 chip=chip_l, intel=intel, clock=clock, ram=int(ram), storage=stor_l)
 
+
 _IPHONE_SUFFIX = {"": "", "PRO": " Pro", "PROMAX": " Pro Max", "MAX": " Max", "PLUS": " Plus", "MINI": " mini", "E": "e"}
 def _parse_iphone(sku):
     t = str(sku).upper().split("-")
@@ -1612,6 +1632,7 @@ def _parse_iphone(sku):
         return None
     return dict(model="iPhone " + m.group(1) + _IPHONE_SUFFIX[m.group(2) or ""], storage=stor)
 
+
 def _fit(variants, limit):
     """first variant that fits the limit; otherwise the shortest one, cut on a word boundary"""
     for v in variants:
@@ -1620,46 +1641,122 @@ def _fit(variants, limit):
     v = variants[-1]
     return v[:limit].rsplit(" ", 1)[0].rstrip(",;")
 
+
+# ── wording used with an Airtable product name (material + intended use, per category) ──
+_CATEGORY_SUFFIX = {
+    "laptop"    : ", aluminium casing, for personal or office computing",
+    "phone"     : ", glass and metal body, for mobile communication",
+    "watch"     : ", metal case with glass display, for time keeping and fitness tracking",
+    "tablet"    : ", aluminium and glass body, for personal computing and media",
+    "earphones" : ", wireless earphones, for personal audio",
+    "headphones": ", wireless headphones, for personal audio",
+}
+_NOISE_RE = re.compile(r"(?i)\b(refurbished|renewed|used|pre-?owned|second[- ]hand|grade\s*[a-d]\+?|like new|b-?stock)\b")
+_APPLE_WORDS = ("macbook", "iphone", "ipad", "airpods", "apple watch", "imac", "mac mini", "mac studio", "homepod", "airtag")
+_IPAD_ACCESSORY_WORDS = ("case", "cover", "pencil", "keyboard", "charger", "cable", "adapter", "stand", "screen protector")
+
+
+def _clean_name(name):
+    """Airtable product name -> plain wording. Drops 'refurbished'/'grade A' style words (we add our own)."""
+    n = _NOISE_RE.sub(" ", name)
+    n = re.sub(r"\s*[|•·]\s*", ", ", n)
+    n = re.sub(r"\s{2,}", " ", n)
+    n = re.sub(r"\s+,", ",", n)
+    return n.strip(" -–—,;|/")
+
+
+def _name_description(name, category):
+    """Invoice wording built from the Airtable product name (None when the name is too short to be useful)."""
+    n = _clean_name(name)
+    if len(n) < 6:
+        return None
+    if not n.lower().startswith("apple") and any(w in n.lower() for w in _APPLE_WORDS):
+        n = "Apple " + n
+    lead = "Used refurbished "
+    return _fit([lead + n + _CATEGORY_SUFFIX.get(category, ""), lead + n], MAX_ITEM_DESC)
+
+
+def _ipad_descriptions(sku, name=""):
+    """
+    Label and invoice wording for an iPad. NOTE: only the wording is handled here — iPads still use the
+    laptop customs profile (HS code, weight, box size) until their own are confirmed with DHL.
+    """
+    t = str(sku).upper().split("-")
+    model = ""
+    if len(t) > 1:
+        m = re.fullmatch(r"(PRO|AIR)(\d{2})", t[1])
+        if m:
+            model = f"iPad {m.group(1).title()} {m.group(2)}-inch"
+        elif re.fullmatch(r"MINI\d?", t[1]):
+            model = "iPad mini"
+    if not model and name:                          # SKU format not understood: use the Airtable product name
+        by_name = _name_description(name, "tablet")
+        if by_name:
+            return "Used tablet", by_name
+    year = next((x for x in t[2:] if re.fullmatch(r"20\d\d", x)), "")
+    storage = next((_storage_label(x) for x in t[2:] if x.isdigit() and not re.fullmatch(r"20\d\d", x)), "")
+    if any(x in ("CEL", "CELL", "CELLULAR", "LTE", "5G") for x in t):
+        conn = "Wi-Fi + Cellular"
+    elif any(x in ("WIFI", "WF") for x in t):
+        conn = "Wi-Fi"
+    else:
+        conn = ""
+    parts = [f"Used refurbished Apple {model or 'iPad'} tablet" + (f" ({year})" if year else "")]
+    parts += [p for p in (storage, conn) if p]
+    parts.append("aluminium and glass body")
+    base = ", ".join(parts)
+    return "Used tablet", _fit([base + ", for personal computing and media", base + ", for personal use"], MAX_ITEM_DESC)
+
+
 def build_goods_descriptions(sku, name, kind):
     """
-    (short, long) goods descriptions for the invoice.
-    DHL customs teams ask for: common description, type/quality, material and intended use.
-    kind = "laptop" | "phone" | "watch" (the product profile that was detected).
-    Returns None when the SKU is not understood well enough — callers then keep the old wording,
-    so nothing is ever described as something it isn't (e.g. an iPad is left alone).
+    (label wording, invoice description) for one order line, or None to keep the old plain wording.
+    kind = "laptop" | "phone" | "watch" — the customs profile the order was given.
+    sku and name may be Airtable lookup lists; they are unwrapped here.
     """
-    s = str(sku).upper()
-    if s.startswith("IPD"):                 # iPad: no profile/HS code yet — do not describe it as a laptop
-        return None
+    sku, name = _first_text(sku), _first_text(name)
+    s, nm = sku.upper(), name.lower()
+    text = f"{sku} {name}".lower()
+
+    # AirPods and other audio (no customs profile of their own yet — wording only)
+    if "airpod" in text or "earpod" in text:
+        cat = "headphones" if "max" in text else "earphones"
+        return (f"Used {cat}", _name_description(name, cat)
+                or f"Used refurbished Apple AirPods, wireless {cat}, for personal audio")
+
+    # iPad
+    if s.startswith(("IPD", "IPAD")) or ("ipad" in nm and not any(w in nm for w in _IPAD_ACCESSORY_WORDS)):
+        return _ipad_descriptions(sku, name)
+
     if kind == "laptop":
         mb = _parse_macbook(sku)
         if mb:
             spec = mb["chip"] + (f" {mb['clock']} GHz" if mb["intel"] else "")
             base = f"Apple {mb['model']} {mb['size']}-inch"
-            short = f"Used {base} laptop ({mb['year']})"
-            long_ = _fit([
+            return "Used laptop", _fit([
                 f"Used refurbished {base} laptop computer ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for personal or office computing",
                 f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for office computing",
                 f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for computing",
             ], MAX_ITEM_DESC)
-            return short[:MAX_SHORT_DESC], long_
-        if s.startswith(("AIR", "PRO")):    # looks like a MacBook but the SKU did not parse — keep old wording
-            return None
-        return "Used laptop computer", "Used refurbished laptop computer, metal and plastic casing, for personal or office computing"
+        # a MacBook whose SKU format we do not understand: say what it is from the Airtable name
+        if s.startswith(("AIR", "PRO", "MB")) or any(w in text for w in ("macbook", "laptop", "notebook")):
+            return "Used laptop", (_name_description(name, "laptop")
+                                   or "Used refurbished Apple MacBook laptop computer, aluminium casing, for personal or office computing")
+        return None                      # nothing says laptop (an unrecognised product): keep the old wording
+
     if kind == "phone":
         ip = _parse_iphone(sku)
         if ip:
-            short = f"Used Apple {ip['model']} smartphone"
-            long_ = _fit([
+            return "Used phone", _fit([
                 f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal body, for mobile communication",
                 f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal, for communication",
             ], MAX_ITEM_DESC)
-            return short[:MAX_SHORT_DESC], long_
-        return None
+        return "Used phone", (_name_description(name, "phone")
+                              or "Used refurbished Apple iPhone smartphone, glass and metal body, for mobile communication")
+
     if kind == "watch":
-        if s.startswith("AW"):
-            return "Used Apple Watch smart watch", "Used refurbished Apple Watch smart watch, metal case with glass display, for time keeping and fitness tracking"
-        return None
+        return "Used smart watch", (_name_description(name, "watch")
+                                    or "Used refurbished Apple Watch smart watch, metal case with glass display, for time keeping and fitness tracking")
     return None
 
 
