@@ -43,6 +43,11 @@ DHL_API_VERSION = os.getenv("DHL_API_VERSION", "3.3.2").strip()
 # "Trader Type" printed for the parties on the invoice. Set CONSIGNEE_TRADER_TYPE="" to leave it blank.
 SHIPPER_TRADER_TYPE   = os.getenv("SHIPPER_TRADER_TYPE", "business").strip()
 CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "direct_consumer").strip()
+# A corporate importer is declared on the invoice ONLY where YESAGAIN holds a local registration (the countries in
+# EU_VAT_BY_COUNTRY). Everywhere else (Spain, Portugal, the US, Saudi Arabia, ...) the consignee is the importer,
+# no importer block is printed, and the invoice states who pays the duties and taxes instead. This optional list
+# forces extra countries into that second group even if we hold a registration, e.g. NO_IMPORTER_COUNTRIES="IT".
+NO_IMPORTER_COUNTRIES = {c.strip().upper() for c in os.getenv("NO_IMPORTER_COUNTRIES", "").split(",") if c.strip()}
 
 # ── Local UAE return pickup scheduling (customer self-serve link) ─────────
 PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
@@ -349,7 +354,7 @@ PARTY_UAE = {
     "Country"  : "AE",
     "City"     : "SHARJAH",
     "ZIP"      : "00000",
-    "Email"    : "logistics@yesagain.com",
+    "Email"    : "support@yesagain.com",
     "PhoneCC"  : 971,
     "Phone"    : "508893656",
     "VAT"      : "",
@@ -475,6 +480,8 @@ STATE_FULL_NAMES = {
 def split_phone(telephone, country):
     tel = re.sub(r'[^\d]', '', str(telephone))
     cc = PHONE_CODES.get(country, "")
+    if tel.startswith("00") and cc and tel[2:].startswith(cc):
+        tel = tel[2:]            # "0034612345678" -> "34612345678"
     if country in ["US", "CA"]:
         if tel.startswith("1") and len(tel) > 10:
             return cc, tel[1:]
@@ -1772,7 +1779,17 @@ EU_MEMBER_STATES = {
 PACKAGE_MARKS = "Brown cardboard box with YesAgain logo"
 
 
-def _invoice_remarks(importer_party):
+def _payer_label(party):
+    """Who pays the duties and taxes = the holder of the DHL duty account, named as the invoice should say it."""
+    country = str(party.get("Country", "")).strip().upper()
+    if country == "FR":
+        return "YESAGAIN France"
+    if country == "AE":
+        return "YESAGAIN FZC (UAE)"
+    return str(party.get("Company", "")).strip() or "YESAGAIN"
+
+
+def _invoice_remarks(importer_party, payer_label=None):
     """
     The two free-text lines the commercial invoice prints for UK shipments.
 
@@ -1789,7 +1806,9 @@ def _invoice_remarks(importer_party):
     invoice fields).
     """
     company = str(importer_party.get("Company", "")).strip()
-    lines = [f"Importer: {company}" if company else "", PACKAGE_MARKS]
+    # no corporate importer: say who pays the duties and taxes instead
+    first = f"Duties & taxes paid by: {payer_label}" if payer_label else (f"Importer: {company}" if company else "")
+    lines = [first, PACKAGE_MARKS]
     return [{"value": ln[:45]} for ln in lines if ln.strip()]
 
 
@@ -1867,10 +1886,12 @@ def build_dhl_payload(row):
     # 27 EU member states. Everywhere else we have no local registration, so the importer
     # is YESAGAIN FZC itself (the former Palm Tree company, which is also the shipper).
     # Domestic UAE has no customs, so no importer is declared.
-    declare_importer = not is_domestic
+    consignee_is_importer = (not is_domestic) and (country not in EU_VAT_BY_COUNTRY or country in NO_IMPORTER_COUNTRIES)
+    declare_importer = (not is_domestic) and not consignee_is_importer
 
     # Destination-based importer VAT/EORI
-    importer_party = rules["additional_party"]
+    payer_party    = rules["additional_party"]          # the DHL duty-account holder = who pays duties and taxes
+    importer_party = payer_party
     if region == "eu" and country not in EU_MEMBER_STATES:
         # Switzerland, Norway, ... are routed as "eu" but are not member states, so the
         # French registration does not identify an importer there.
@@ -1878,6 +1899,16 @@ def build_dhl_payload(row):
     importer_vat   = importer_vat_for(country, importer_party.get("VAT", ""))
     importer_eori  = importer_party.get("EORI", "")
     vat_issuer     = (importer_vat[:2].upper() if importer_vat else importer_party.get("Country", ""))
+    payer_label = ""
+    if consignee_is_importer:
+        # The consignee is the importer: no importer block and no corporate EORI/VAT as an importer (nor under
+        # SHIP FROM). The invoice instead says who PAYS the duties and taxes: in the Remarks, and in "Payer of
+        # GST/VAT" (that entity's VAT number, or its name when it has none, e.g. YESAGAIN FZC).
+        payer_label = _payer_label(payer_party)
+        payer_line  = str(payer_party.get("VAT", "")).strip() or payer_label
+        importer_vat, importer_eori, vat_issuer = "", "", ""
+    else:
+        payer_line = importer_vat
  
     # Phone number sanitation and formatting
     phone_cc  = str(row.get("Phone Country Code (Ship TO) (Required)", "")).strip()
@@ -2037,12 +2068,12 @@ def build_dhl_payload(row):
                     # DHL: payerVATNumber lives inside exportDeclaration, not top-level content
                     # (confirmed extraneous there — Sana's example groups it with
                     # destinationPortName/placeOfIncoterm/recipientReference/exporter).
-                    **({"payerVATNumber": importer_vat} if importer_vat else {}),
+                    **({"payerVATNumber": payer_line} if payer_line else {}),
                     # UK only: name the Importer of Record on the invoice. The field
                     # shape comes from DHL's invoice-data schema; send_to_dhl() retries
                     # without it if DHL rejects it, so a booking is never lost over it.
-                    **({"remarks": _invoice_remarks(importer_party)}
-                       if declare_importer else {}),
+                    **({"remarks": _invoice_remarks(importer_party, payer_label or None)}
+                       if (declare_importer or consignee_is_importer) else {}),
                 },
             }),
             "description"       : row.get("Summary of Contents", F["contents"]),
@@ -2369,6 +2400,8 @@ def send_to_dhl(row, verbose=False):
             _dropped = "importerDetails";  _cust.pop("importerDetails", None)
         elif "remarks" in _err and _decl.get("remarks"):
             _dropped = "remarks";          _decl.pop("remarks", None)
+        elif "payervatnumber" in _err and _decl.get("payerVATNumber"):
+            _dropped = "payerVATNumber";   _decl.pop("payerVATNumber", None)
         elif "placeofincoterm" in _err and _decl.get("placeOfIncoterm"):
             _dropped = "placeOfIncoterm";  _decl.pop("placeOfIncoterm", None)
         elif "shipmenttype" in _err and _decl.get("shipmentType"):
