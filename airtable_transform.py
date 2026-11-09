@@ -48,6 +48,9 @@ CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "direct_consumer").st
 # no importer block is printed, and the invoice states who pays the duties and taxes instead. This optional list
 # forces extra countries into that second group even if we hold a registration, e.g. NO_IMPORTER_COUNTRIES="IT".
 NO_IMPORTER_COUNTRIES = {c.strip().upper() for c in os.getenv("NO_IMPORTER_COUNTRIES", "").split(",") if c.strip()}
+# RMA / replacement shipments are priced from the ORIGINAL order. If that price cannot be found for any reason
+# (no sales order, no price on its lines, or a price of 0) this value is declared instead — never the €1 minimum.
+RMA_FALLBACK_PRICE = float(os.getenv("RMA_FALLBACK_PRICE", "200"))
 
 # ── Local UAE return pickup scheduling (customer self-serve link) ─────────
 PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
@@ -349,12 +352,12 @@ def resolve_country_code(raw):
  
 PARTY_UAE = {
     "Company"  : "YESAGAIN FZC",
-    "Name"     : "YESAGAIN",
+    "Name"     : "YESAGAIN FZC",
     "Address1" : "P MALL, SHARJAH FREE ZONE",
     "Country"  : "AE",
     "City"     : "SHARJAH",
     "ZIP"      : "00000",
-    "Email"    : "support@yesagain.com",
+    "Email"    : "logistics@yesagain.com",
     "PhoneCC"  : 971,
     "Phone"    : "508893656",
     "VAT"      : "",
@@ -1427,18 +1430,14 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
  
             if sales_order:
                 looked_up_price = price_map.get(sales_order, None)
-                if looked_up_price is not None:
+                if looked_up_price is not None and looked_up_price > 0:
                     price = round(looked_up_price, 2)
-                    print(f"   ✅ {order_number} ({source_label}) → SO {sales_order} → €{price}")
+                    print(f"   ✅ {order_number} ({source_label}) → SO {sales_order} → €{price} (price of the original order)")
                 else:
-                    # Path A: Sales Order found but no price in Sales Order Lines
-                    if rma_source == "crs":
-                        price = 200.0
-                        print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
-                              f"found but no price in Sales Order Lines — defaulting to €200.00")
-                    else:
-                        print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
-                              f"found but no price in Sales Order Lines")
+                    # Path A: Sales Order found but no usable price in its Sales Order Lines
+                    price = RMA_FALLBACK_PRICE
+                    print(f"   ⚠️  {order_number} ({source_label}) → SO {sales_order} "
+                          f"found but no price in Sales Order Lines — using the fallback €{RMA_FALLBACK_PRICE:.2f}")
             else:
                 # Path B: RMA key not found in the map at all
                 rma_map_used = ya_rma_map if rma_source == "ya" else crs_rma_map
@@ -1446,9 +1445,8 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
                       f"RMA key '{clean_rma}' not found in map.")
                 print(f"        Map has {len(rma_map_used)} entries: "
                       f"{list(rma_map_used.keys())[:10]}")
-                if rma_source == "crs":
-                    price = 200.0
-                    print(f"   🔄 {order_number} (RMAC) → RMA not in map — defaulting to €200.00")
+                price = RMA_FALLBACK_PRICE
+                print(f"   🔄 {order_number} ({source_label}) → original order not found — using the fallback €{RMA_FALLBACK_PRICE:.2f}")
  
         qty = clean_qty(r.get("Sold Qty per line", 1))
 
@@ -4144,6 +4142,14 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
+
+
+
+
 # """
 # =============================================================
 #   AIRTABLE → DHL SHIPPING AUTOMATION SCRIPT
@@ -4189,6 +4195,11 @@ if __name__ == "__main__":
 # # "Trader Type" printed for the parties on the invoice. Set CONSIGNEE_TRADER_TYPE="" to leave it blank.
 # SHIPPER_TRADER_TYPE   = os.getenv("SHIPPER_TRADER_TYPE", "business").strip()
 # CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "direct_consumer").strip()
+# # A corporate importer is declared on the invoice ONLY where YESAGAIN holds a local registration (the countries in
+# # EU_VAT_BY_COUNTRY). Everywhere else (Spain, Portugal, the US, Saudi Arabia, ...) the consignee is the importer,
+# # no importer block is printed, and the invoice states who pays the duties and taxes instead. This optional list
+# # forces extra countries into that second group even if we hold a registration, e.g. NO_IMPORTER_COUNTRIES="IT".
+# NO_IMPORTER_COUNTRIES = {c.strip().upper() for c in os.getenv("NO_IMPORTER_COUNTRIES", "").split(",") if c.strip()}
 
 # # ── Local UAE return pickup scheduling (customer self-serve link) ─────────
 # PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
@@ -4490,14 +4501,14 @@ if __name__ == "__main__":
  
 # PARTY_UAE = {
 #     "Company"  : "YESAGAIN FZC",
-#     "Name"     : "YESAGAIN FZC",
+#     "Name"     : "YESAGAIN",
 #     "Address1" : "P MALL, SHARJAH FREE ZONE",
 #     "Country"  : "AE",
 #     "City"     : "SHARJAH",
 #     "ZIP"      : "00000",
-#     "Email"    : "logistics@yesagain.com",
+#     "Email"    : "support@yesagain.com",
 #     "PhoneCC"  : 971,
-#     "Phone"    : "501851220",
+#     "Phone"    : "508893656",
 #     "VAT"      : "",
 #     "EORI"     : "",
 #     "Rel"      : "IP",
@@ -4511,9 +4522,9 @@ if __name__ == "__main__":
 #     "Country"  : "AE",
 #     "City"     : "SHARJAH",
 #     "ZIP"      : "00000",
-#     "Email"    : "support@yesagain.ae",
+#     "Email"    : "support@yesagain.com",
 #     "PhoneCC"  : 971,
-#     "Phone"    : "501851220",
+#     "Phone"    : "508893656",
 #     "VAT"      : "",
 #     "EORI"     : "",
 #     "Rel"      : "IP",
@@ -4541,9 +4552,9 @@ if __name__ == "__main__":
 #     "Country"  : "FR",
 #     "City"     : "TOULOUSE",
 #     "ZIP"      : "31100",
-#     "Email"    : "support@yesagain.com",
+#     "Email"    : "logistics@yesagain.com",
 #     "PhoneCC"  : 33,
-#     "Phone"    : "187661011",
+#     "Phone"    : "561315853",
 #     "VAT"      : "FR04919345207",
 #     "EORI"     : "FR91934520700022",
 #     "Rel"      : "IP",
@@ -4621,6 +4632,8 @@ if __name__ == "__main__":
 # def split_phone(telephone, country):
 #     tel = re.sub(r'[^\d]', '', str(telephone))
 #     cc = PHONE_CODES.get(country, "")
+#     if tel.startswith("00") and cc and tel[2:].startswith(cc):
+#         tel = tel[2:]            # "0034612345678" -> "34612345678"
 #     if country in ["US", "CA"]:
 #         if tel.startswith("1") and len(tel) > 10:
 #             return cc, tel[1:]
@@ -5712,9 +5725,26 @@ if __name__ == "__main__":
 # # ============================================================
  
 # # ═══ GOODS DESCRIPTIONS ══════════════════════════════════════════════════════════════
+# # What each device is called on the LABEL (short) and on the COMMERCIAL INVOICE (detailed).
+# #   label   : the plain category name — "Used laptop" / "Used phone" / "Used smart watch" / "Used tablet"
+# #   invoice : DHL customs teams ask for a specific description (what it is, type/quality, material, intended use)
+# # The detail comes from Airtable: first from the SKU when its format is understood, otherwise from the
+# # Airtable product name, otherwise from a category description.
+
 # # Longest line-item description we send (about 4 lines in the invoice's Description column)
 # MAX_ITEM_DESC  = 150
 # MAX_SHORT_DESC = 70      # shipment-level "contents" line
+
+
+# def _first_text(val):
+#     """
+#     Airtable lookup fields (SKU, product name) arrive as a LIST even for one record, e.g. ["PRO-13-2020-..."].
+#     str() of that would give the literal text "['PRO-13-...']" and break every prefix check, so unwrap first.
+#     """
+#     if isinstance(val, (list, tuple)):
+#         val = next((x for x in val if x is not None and str(x).strip()), "")
+#     return re.sub(r"\s+", " ", str(val)).strip() if val is not None else ""
+
 
 # def _chip_label(code):
 #     code = str(code).upper()
@@ -5726,12 +5756,14 @@ if __name__ == "__main__":
 #         return "Apple M" + m.group(1) + {"P": " Pro", "M": " Max"}.get(m.group(2), ""), False
 #     return "", False
 
+
 # def _storage_label(tok):
 #     tok = str(tok)
 #     if not tok.isdigit():
 #         return ""
 #     n = int(tok)
 #     return f"{n} TB" if n <= 8 else f"{n} GB"
+
 
 # def _parse_macbook(sku):
 #     t = str(sku).upper().split("-")
@@ -5747,6 +5779,7 @@ if __name__ == "__main__":
 #     return dict(model="MacBook " + ("Air" if fam == "AIR" else "Pro"), size=int(size), year=year,
 #                 chip=chip_l, intel=intel, clock=clock, ram=int(ram), storage=stor_l)
 
+
 # _IPHONE_SUFFIX = {"": "", "PRO": " Pro", "PROMAX": " Pro Max", "MAX": " Max", "PLUS": " Plus", "MINI": " mini", "E": "e"}
 # def _parse_iphone(sku):
 #     t = str(sku).upper().split("-")
@@ -5758,6 +5791,7 @@ if __name__ == "__main__":
 #         return None
 #     return dict(model="iPhone " + m.group(1) + _IPHONE_SUFFIX[m.group(2) or ""], storage=stor)
 
+
 # def _fit(variants, limit):
 #     """first variant that fits the limit; otherwise the shortest one, cut on a word boundary"""
 #     for v in variants:
@@ -5766,46 +5800,122 @@ if __name__ == "__main__":
 #     v = variants[-1]
 #     return v[:limit].rsplit(" ", 1)[0].rstrip(",;")
 
+
+# # ── wording used with an Airtable product name (material + intended use, per category) ──
+# _CATEGORY_SUFFIX = {
+#     "laptop"    : ", aluminium casing, for personal or office computing",
+#     "phone"     : ", glass and metal body, for mobile communication",
+#     "watch"     : ", metal case with glass display, for time keeping and fitness tracking",
+#     "tablet"    : ", aluminium and glass body, for personal computing and media",
+#     "earphones" : ", wireless earphones, for personal audio",
+#     "headphones": ", wireless headphones, for personal audio",
+# }
+# _NOISE_RE = re.compile(r"(?i)\b(refurbished|renewed|used|pre-?owned|second[- ]hand|grade\s*[a-d]\+?|like new|b-?stock)\b")
+# _APPLE_WORDS = ("macbook", "iphone", "ipad", "airpods", "apple watch", "imac", "mac mini", "mac studio", "homepod", "airtag")
+# _IPAD_ACCESSORY_WORDS = ("case", "cover", "pencil", "keyboard", "charger", "cable", "adapter", "stand", "screen protector")
+
+
+# def _clean_name(name):
+#     """Airtable product name -> plain wording. Drops 'refurbished'/'grade A' style words (we add our own)."""
+#     n = _NOISE_RE.sub(" ", name)
+#     n = re.sub(r"\s*[|•·]\s*", ", ", n)
+#     n = re.sub(r"\s{2,}", " ", n)
+#     n = re.sub(r"\s+,", ",", n)
+#     return n.strip(" -–—,;|/")
+
+
+# def _name_description(name, category):
+#     """Invoice wording built from the Airtable product name (None when the name is too short to be useful)."""
+#     n = _clean_name(name)
+#     if len(n) < 6:
+#         return None
+#     if not n.lower().startswith("apple") and any(w in n.lower() for w in _APPLE_WORDS):
+#         n = "Apple " + n
+#     lead = "Used refurbished "
+#     return _fit([lead + n + _CATEGORY_SUFFIX.get(category, ""), lead + n], MAX_ITEM_DESC)
+
+
+# def _ipad_descriptions(sku, name=""):
+#     """
+#     Label and invoice wording for an iPad. NOTE: only the wording is handled here — iPads still use the
+#     laptop customs profile (HS code, weight, box size) until their own are confirmed with DHL.
+#     """
+#     t = str(sku).upper().split("-")
+#     model = ""
+#     if len(t) > 1:
+#         m = re.fullmatch(r"(PRO|AIR)(\d{2})", t[1])
+#         if m:
+#             model = f"iPad {m.group(1).title()} {m.group(2)}-inch"
+#         elif re.fullmatch(r"MINI\d?", t[1]):
+#             model = "iPad mini"
+#     if not model and name:                          # SKU format not understood: use the Airtable product name
+#         by_name = _name_description(name, "tablet")
+#         if by_name:
+#             return "Used tablet", by_name
+#     year = next((x for x in t[2:] if re.fullmatch(r"20\d\d", x)), "")
+#     storage = next((_storage_label(x) for x in t[2:] if x.isdigit() and not re.fullmatch(r"20\d\d", x)), "")
+#     if any(x in ("CEL", "CELL", "CELLULAR", "LTE", "5G") for x in t):
+#         conn = "Wi-Fi + Cellular"
+#     elif any(x in ("WIFI", "WF") for x in t):
+#         conn = "Wi-Fi"
+#     else:
+#         conn = ""
+#     parts = [f"Used refurbished Apple {model or 'iPad'} tablet" + (f" ({year})" if year else "")]
+#     parts += [p for p in (storage, conn) if p]
+#     parts.append("aluminium and glass body")
+#     base = ", ".join(parts)
+#     return "Used tablet", _fit([base + ", for personal computing and media", base + ", for personal use"], MAX_ITEM_DESC)
+
+
 # def build_goods_descriptions(sku, name, kind):
 #     """
-#     (short, long) goods descriptions for the invoice.
-#     DHL customs teams ask for: common description, type/quality, material and intended use.
-#     kind = "laptop" | "phone" | "watch" (the product profile that was detected).
-#     Returns None when the SKU is not understood well enough — callers then keep the old wording,
-#     so nothing is ever described as something it isn't (e.g. an iPad is left alone).
+#     (label wording, invoice description) for one order line, or None to keep the old plain wording.
+#     kind = "laptop" | "phone" | "watch" — the customs profile the order was given.
+#     sku and name may be Airtable lookup lists; they are unwrapped here.
 #     """
-#     s = str(sku).upper()
-#     if s.startswith("IPD"):                 # iPad: no profile/HS code yet — do not describe it as a laptop
-#         return None
+#     sku, name = _first_text(sku), _first_text(name)
+#     s, nm = sku.upper(), name.lower()
+#     text = f"{sku} {name}".lower()
+
+#     # AirPods and other audio (no customs profile of their own yet — wording only)
+#     if "airpod" in text or "earpod" in text:
+#         cat = "headphones" if "max" in text else "earphones"
+#         return (f"Used {cat}", _name_description(name, cat)
+#                 or f"Used refurbished Apple AirPods, wireless {cat}, for personal audio")
+
+#     # iPad
+#     if s.startswith(("IPD", "IPAD")) or ("ipad" in nm and not any(w in nm for w in _IPAD_ACCESSORY_WORDS)):
+#         return _ipad_descriptions(sku, name)
+
 #     if kind == "laptop":
 #         mb = _parse_macbook(sku)
 #         if mb:
 #             spec = mb["chip"] + (f" {mb['clock']} GHz" if mb["intel"] else "")
 #             base = f"Apple {mb['model']} {mb['size']}-inch"
-#             short = f"Used {base} laptop ({mb['year']})"
-#             long_ = _fit([
+#             return "Used laptop", _fit([
 #                 f"Used refurbished {base} laptop computer ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for personal or office computing",
 #                 f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for office computing",
 #                 f"Used refurbished {base} laptop ({mb['year']}), {spec}, {mb['ram']} GB RAM, {mb['storage']} SSD, aluminium casing, for computing",
 #             ], MAX_ITEM_DESC)
-#             return short[:MAX_SHORT_DESC], long_
-#         if s.startswith(("AIR", "PRO")):    # looks like a MacBook but the SKU did not parse — keep old wording
-#             return None
-#         return "Used laptop computer", "Used refurbished laptop computer, metal and plastic casing, for personal or office computing"
+#         # a MacBook whose SKU format we do not understand: say what it is from the Airtable name
+#         if s.startswith(("AIR", "PRO", "MB")) or any(w in text for w in ("macbook", "laptop", "notebook")):
+#             return "Used laptop", (_name_description(name, "laptop")
+#                                    or "Used refurbished Apple MacBook laptop computer, aluminium casing, for personal or office computing")
+#         return None                      # nothing says laptop (an unrecognised product): keep the old wording
+
 #     if kind == "phone":
 #         ip = _parse_iphone(sku)
 #         if ip:
-#             short = f"Used Apple {ip['model']} smartphone"
-#             long_ = _fit([
+#             return "Used phone", _fit([
 #                 f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal body, for mobile communication",
 #                 f"Used refurbished Apple {ip['model']} smartphone, {ip['storage']}, glass and metal, for communication",
 #             ], MAX_ITEM_DESC)
-#             return short[:MAX_SHORT_DESC], long_
-#         return None
+#         return "Used phone", (_name_description(name, "phone")
+#                               or "Used refurbished Apple iPhone smartphone, glass and metal body, for mobile communication")
+
 #     if kind == "watch":
-#         if s.startswith("AW"):
-#             return "Used Apple Watch smart watch", "Used refurbished Apple Watch smart watch, metal case with glass display, for time keeping and fitness tracking"
-#         return None
+#         return "Used smart watch", (_name_description(name, "watch")
+#                                     or "Used refurbished Apple Watch smart watch, metal case with glass display, for time keeping and fitness tracking")
 #     return None
 
 
@@ -5821,7 +5931,17 @@ if __name__ == "__main__":
 # PACKAGE_MARKS = "Brown cardboard box with YesAgain logo"
 
 
-# def _invoice_remarks(importer_party):
+# def _payer_label(party):
+#     """Who pays the duties and taxes = the holder of the DHL duty account, named as the invoice should say it."""
+#     country = str(party.get("Country", "")).strip().upper()
+#     if country == "FR":
+#         return "YESAGAIN France"
+#     if country == "AE":
+#         return "YESAGAIN FZC (UAE)"
+#     return str(party.get("Company", "")).strip() or "YESAGAIN"
+
+
+# def _invoice_remarks(importer_party, payer_label=None):
 #     """
 #     The two free-text lines the commercial invoice prints for UK shipments.
 
@@ -5838,7 +5958,9 @@ if __name__ == "__main__":
 #     invoice fields).
 #     """
 #     company = str(importer_party.get("Company", "")).strip()
-#     lines = [f"Importer: {company}" if company else "", PACKAGE_MARKS]
+#     # no corporate importer: say who pays the duties and taxes instead
+#     first = f"Duties & taxes paid by: {payer_label}" if payer_label else (f"Importer: {company}" if company else "")
+#     lines = [first, PACKAGE_MARKS]
 #     return [{"value": ln[:45]} for ln in lines if ln.strip()]
 
 
@@ -5916,10 +6038,12 @@ if __name__ == "__main__":
 #     # 27 EU member states. Everywhere else we have no local registration, so the importer
 #     # is YESAGAIN FZC itself (the former Palm Tree company, which is also the shipper).
 #     # Domestic UAE has no customs, so no importer is declared.
-#     declare_importer = not is_domestic
+#     consignee_is_importer = (not is_domestic) and (country not in EU_VAT_BY_COUNTRY or country in NO_IMPORTER_COUNTRIES)
+#     declare_importer = (not is_domestic) and not consignee_is_importer
 
 #     # Destination-based importer VAT/EORI
-#     importer_party = rules["additional_party"]
+#     payer_party    = rules["additional_party"]          # the DHL duty-account holder = who pays duties and taxes
+#     importer_party = payer_party
 #     if region == "eu" and country not in EU_MEMBER_STATES:
 #         # Switzerland, Norway, ... are routed as "eu" but are not member states, so the
 #         # French registration does not identify an importer there.
@@ -5927,6 +6051,16 @@ if __name__ == "__main__":
 #     importer_vat   = importer_vat_for(country, importer_party.get("VAT", ""))
 #     importer_eori  = importer_party.get("EORI", "")
 #     vat_issuer     = (importer_vat[:2].upper() if importer_vat else importer_party.get("Country", ""))
+#     payer_label = ""
+#     if consignee_is_importer:
+#         # The consignee is the importer: no importer block and no corporate EORI/VAT as an importer (nor under
+#         # SHIP FROM). The invoice instead says who PAYS the duties and taxes: in the Remarks, and in "Payer of
+#         # GST/VAT" (that entity's VAT number, or its name when it has none, e.g. YESAGAIN FZC).
+#         payer_label = _payer_label(payer_party)
+#         payer_line  = str(payer_party.get("VAT", "")).strip() or payer_label
+#         importer_vat, importer_eori, vat_issuer = "", "", ""
+#     else:
+#         payer_line = importer_vat
  
 #     # Phone number sanitation and formatting
 #     phone_cc  = str(row.get("Phone Country Code (Ship TO) (Required)", "")).strip()
@@ -6086,12 +6220,12 @@ if __name__ == "__main__":
 #                     # DHL: payerVATNumber lives inside exportDeclaration, not top-level content
 #                     # (confirmed extraneous there — Sana's example groups it with
 #                     # destinationPortName/placeOfIncoterm/recipientReference/exporter).
-#                     **({"payerVATNumber": importer_vat} if importer_vat else {}),
+#                     **({"payerVATNumber": payer_line} if payer_line else {}),
 #                     # UK only: name the Importer of Record on the invoice. The field
 #                     # shape comes from DHL's invoice-data schema; send_to_dhl() retries
 #                     # without it if DHL rejects it, so a booking is never lost over it.
-#                     **({"remarks": _invoice_remarks(importer_party)}
-#                        if declare_importer else {}),
+#                     **({"remarks": _invoice_remarks(importer_party, payer_label or None)}
+#                        if (declare_importer or consignee_is_importer) else {}),
 #                 },
 #             }),
 #             "description"       : row.get("Summary of Contents", F["contents"]),
@@ -6418,6 +6552,8 @@ if __name__ == "__main__":
 #             _dropped = "importerDetails";  _cust.pop("importerDetails", None)
 #         elif "remarks" in _err and _decl.get("remarks"):
 #             _dropped = "remarks";          _decl.pop("remarks", None)
+#         elif "payervatnumber" in _err and _decl.get("payerVATNumber"):
+#             _dropped = "payerVATNumber";   _decl.pop("payerVATNumber", None)
 #         elif "placeofincoterm" in _err and _decl.get("placeOfIncoterm"):
 #             _dropped = "placeOfIncoterm";  _decl.pop("placeOfIncoterm", None)
 #         elif "shipmenttype" in _err and _decl.get("shipmentType"):
@@ -7374,6 +7510,462 @@ if __name__ == "__main__":
 #     return result
 
 # # ============================================================
+# # CHECK ORDERS WITH DHL — validates every order, books NOTHING
+# # ============================================================
+# # DHL's strict address check does not recognise our own Sharjah shipper address (the UAE has no postcodes,
+# # so we send the placeholder 00000). Real bookings with this exact address have always been accepted, so
+# # when these two are the ONLY problems the order is treated as fine.
+# KNOWN_STRICT_NOTES = {"410501", "6020"}
+# # Problems that are a warning about delivery, not a refusal: DHL may still book the order.
+# SOFT_CODES = {"410509"}
+
+# def _problem_code(text):
+#     m_code = re.match(r"\s*(\d{3,6})\b", str(text))
+#     return m_code.group(1) if m_code else ""
+
+
+# def _explain_dhl_error(text):
+#     """Turn a DHL rejection into plain words. Returns (hint, fatal). fatal = every order would fail the same way."""
+#     t = str(text).lower()
+#     code = _problem_code(text)
+#     if code == "410509":
+#         return ("DHL's address database does not recognise this receiver's postcode and city together. DHL may still book it, "
+#                 "but delivery can be delayed. Check the postcode and city in Airtable.", False)
+#     if code == "410501":
+#         return ("DHL's strict address check does not recognise our Sharjah shipper address. Real bookings with it work, so this is ignored.", False)
+#     if code == "6020":
+#         return ("DHL's strict address check failed. The address problems listed with it are the real reason.", False)
+#     if "8007" in t or "credit stop" in t:
+#         return ("The DHL account is on credit stop. Nothing can be booked until DHL lifts it.", True)
+#     if "420505" in t:
+#         return ("DHL does not recognise the destination city or postcode. Check the spelling, or use the nearest main city.", False)
+#     for needle, name in (("importerdetails", "importer block"), ("remarks", "remarks"), ("placeofincoterm", "place of incoterm"),
+#                          ("shipmenttype", "shipment type"), ("receiverdetails", "consignee trader type"),
+#                          ("shipperdetails", "shipper trader type")):
+#         if needle in t:
+#             return (f"DHL rejected the optional {name}. A real booking would drop it and retry, so this order would still book. Tell Claude so the field can be fixed.", False)
+#     if "description" in t:
+#         return ("DHL rejected the goods description. A real booking would retry with the short description.", False)
+#     m_extra = re.search(r"extraneous key \[(\w+)\]", str(text))
+#     if m_extra:
+#         return (f"DHL does not accept the field '{m_extra.group(1)}' in that place.", False)
+#     m_req = re.search(r"required key \[(\w+)\] not found", str(text))
+#     if m_req:
+#         return (f"DHL needs the field '{m_req.group(1)}' and it is missing.", False)
+#     if "not allowed for this service" in t or "803" in t:
+#         return ("DHL says this account is not allowed to use this product or route.", False)
+#     return ("", False)
+
+
+# def validate_with_dhl(row, verbose=False):
+#     """
+#     Ask DHL whether it would accept this order — WITHOUT booking it.
+#     Sends the exact same request as a real booking, plus DHL's switch validateDataOnly=true.
+
+#     Safety tripwire: if DHL ignores the switch and really creates a shipment, the result has
+#     booked=True and the tracking number, so the caller can record it instead of losing it.
+#     """
+#     order_number = str(row.get("Shipment Reference 1", "unknown")).strip()
+#     base = {"order_number": order_number, "ok": False, "booked": False, "fatal": False,
+#             "message": "", "hint": "", "problems": [], "notes": [], "soft": False, "status_code": None, "tracking_number": "", "raw_response": {}}
+#     if not DHL_API_KEY or not DHL_API_SECRET:
+#         return {**base, "message": "DHL_API_KEY or DHL_API_SECRET is missing", "fatal": True}
+
+#     try:
+#         payload = build_dhl_payload(row)
+#     except Exception as e:
+#         return {**base, "message": f"Could not build the request: {e}"}
+#     if verbose:
+#         print(f"   Payload:{chr(10)}{json.dumps(payload, indent=2)}")
+
+#     headers = {"Content-Type": "application/json", "Accept": "application/json",
+#                **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
+#     try:
+#         response = requests.post(f"{DHL_BASE_URL_PROD}/shipments", params={"validateDataOnly": "true", "strictValidation": "false"},
+#                                  json=payload, headers=headers, auth=(DHL_API_KEY, DHL_API_SECRET), timeout=30)
+#     except requests.exceptions.Timeout:
+#         return {**base, "message": "Timeout — DHL did not answer"}
+#     except requests.exceptions.ConnectionError as e:
+#         return {**base, "message": f"Connection error: {e}"}
+
+#     try:
+#         body = response.json()
+#     except ValueError:
+#         body = {}
+#     base["status_code"] = response.status_code
+
+#     if response.status_code in (200, 201):
+#         tracking = str(body.get("shipmentTrackingNumber", "") or "").strip() if isinstance(body, dict) else ""
+#         if tracking.isdigit() and len(tracking) >= 10:        # DHL really created a shipment
+#             return {**base, "booked": True, "tracking_number": tracking, "raw_response": body,
+#                     "message": f"DHL created a REAL shipment (AWB {tracking})"}
+#         return {**base, "ok": True}
+
+#     detail = (body.get("detail") if isinstance(body, dict) else None) or response.text[:300]
+#     extra = body.get("additionalDetails") if isinstance(body, dict) else None
+#     if isinstance(extra, str) and extra:
+#         extra = [extra]
+#     problems = [str(x).strip() for x in extra if str(x).strip()] if isinstance(extra, list) else []
+#     if not problems and "multiple problems" in str(detail).lower():
+#         problems = [f"(DHL gave no list, raw reply) {response.text[:500]}"]      # never lose the details
+
+#     # Set aside the known strict-address notes about OUR shipper address. If nothing else is wrong, the order is fine.
+#     candidates = problems or ([str(detail)] if _problem_code(detail) else [])
+#     noted = [p for p in candidates if _problem_code(p) in KNOWN_STRICT_NOTES]
+#     real  = [p for p in candidates if _problem_code(p) not in KNOWN_STRICT_NOTES]
+#     if candidates and noted and not real:
+#         return {**base, "ok": True, "notes": noted, "status_code": response.status_code}
+#     if noted and real:
+#         problems = real                       # show only the real problems
+
+#     fatal, hint = False, ""
+#     for p in [str(detail)] + problems:
+#         h, f = _explain_dhl_error(p)
+#         hint, fatal = hint or h, fatal or f
+#     soft = bool(problems) and all(_problem_code(p) in SOFT_CODES for p in problems)
+#     return {**base, "message": str(detail)[:220], "problems": problems, "hint": hint, "fatal": fatal, "soft": soft}
+
+
+# def run_dhl_check(result, df, verbose=False):
+#     """Check every order with DHL and print a plain-language report. Books nothing. Returns an exit code."""
+#     if DHL_TEST_MODE:
+#         print("\nℹ️  TEST MODE is on, so the script does not talk to DHL. The check needs DHL, so it was skipped.")
+#         return 0
+
+#     total = len(result)
+#     print(f"\n{'='*60}")
+#     print(f"🔎 CHECK ONLY — asking DHL to validate {total} order(s)")
+#     print(f"   Nothing is booked. No labels are made. Airtable is not touched.")
+#     print(f"{'='*60}")
+
+#     record_id_map = {}
+#     if "_airtable_id" in df.columns:
+#         for _, r in df.iterrows():
+#             on, rid = str(r.get("Order Number", "")).strip(), str(r.get("_airtable_id", "")).strip()
+#             if on and rid and rid != "nan":
+#                 record_id_map[on] = rid
+
+#     accepted, problems, stopped, booked_info, strict_note = 0, [], None, None, False
+#     seen_sets = {}        # identical problem lists are only printed once
+#     for idx, (_, row) in enumerate(result.iterrows(), start=1):
+#         order_number = str(row.get("Shipment Reference 1", "unknown"))
+#         dest = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
+#         res = validate_with_dhl(row, verbose=verbose)
+
+#         if res.get("booked"):
+#             tracking = res["tracking_number"]
+#             print(f"[{idx}/{total}] {order_number}  → {dest}   ⚠️  DHL BOOKED THIS ORDER FOR REAL (AWB {tracking})")
+#             print("        DHL ignored the check switch. Recording this booking now so nothing is lost or doubled.")
+#             rec = record_id_map.get(order_number, "")
+#             if rec:
+#                 update_shipment_tracking_in_airtable(rec, order_number, tracking)
+#                 if res.get("raw_response") and upload_docs_to_airtable(rec, order_number, res["raw_response"]):
+#                     mark_label_created_in_airtable(rec, order_number, tracking, dest)
+#                 print("        Airtable updated with the AWB, label and invoice.")
+#             else:
+#                 print(f"        No Airtable record found. Write down AWB {tracking} and tell Claude.")
+#             stopped, booked_info = "tripwire", (order_number, tracking)
+#             break
+
+#         if res["ok"]:
+#             accepted += 1
+#             strict_note = strict_note or bool(res.get("notes"))
+#             print(f"[{idx}/{total}] {order_number}  → {dest}   ✅ DHL would accept this order")
+#             continue
+
+#         problems.append((order_number, dest, res["message"], res["hint"], res.get("problems", [])))
+#         if res.get("soft"):
+#             print(f"[{idx}/{total}] {order_number}  → {dest}   ⚠️  DHL would probably book this, but check the address")
+#         else:
+#             print(f"[{idx}/{total}] {order_number}  → {dest}   ❌ DHL would reject this order")
+#         print(f"        DHL says: {res['message']}")
+#         key = tuple(res.get("problems", []))
+#         if key and key in seen_sets:
+#             print(f"        (the same {len(key)} problem(s) as order {seen_sets[key]} above)")
+#         else:
+#             if key:
+#                 seen_sets[key] = order_number
+#             for p in res.get("problems", [])[:8]:
+#                 print(f"          • {p[:260]}")
+#                 ph, _pf = _explain_dhl_error(p)
+#                 if ph:
+#                     print(f"            → {ph}")
+#         if res["hint"] and not res.get("problems"):
+#             print(f"        What it means: {res['hint']}")
+#         if res["fatal"]:
+#             stopped = "fatal"
+#             print(f"\n🛑 Stopping the check. Every other order would fail the same way.")
+#             break
+
+#     checked = accepted + len(problems)
+#     print(f"\n{'='*60}")
+#     print(f"📋 CHECK COMPLETE — {checked} of {total} order(s) checked")
+#     print(f"   ✅ Would be accepted : {accepted}")
+#     print(f"   ❌ Need attention    : {len(problems)}")
+#     if strict_note:
+#         print(f"   ℹ️  DHL's strict address check does not recognise our Sharjah shipper address (the UAE has no postcodes).")
+#         print(f"      Real bookings with this address have always worked, so that note was ignored.")
+#     if booked_info:
+#         print(f"   ⚠️  ONE ORDER WAS BOOKED FOR REAL: {booked_info[0]} (AWB {booked_info[1]}). It is recorded in Airtable.")
+#         print(f"   DHL did not honour the check switch. Do NOT use Check Orders again until this is sorted out.")
+#     else:
+#         print(f"   Nothing was booked.")
+#     if problems and stopped != "fatal":
+#         counts = {}
+#         for _on, _d, _m, _h, plist in problems:
+#             for p in (plist or [_m]):
+#                 counts[p] = counts.get(p, 0) + 1
+#         repeated = [(p, n) for p, n in counts.items() if n >= 2]
+#         if repeated:
+#             print(f"\n   Same problem on several orders (fix these first):")
+#             for p, n in sorted(repeated, key=lambda x: -x[1])[:6]:
+#                 print(f"     • on {n} orders: {p[:240]}")
+#         print(f"\n   Orders that need attention:")
+#         for on, dest, msg, hint, plist in problems:
+#             print(f"     • {on} ({dest}): {len(plist) or 1} problem(s)")
+#     print(f"{'='*60}")
+#     return 1 if stopped else 0
+
+
+# # ============================================================
+# # COST ESTIMATE (DHL Rating service) — read-only, nothing is stored
+# # ============================================================
+# # DHL's terms forbid storing rate data, so quotes are only ever printed to the dashboard
+# # and never written to a file, the CSV, a log or Airtable.
+
+# def _rate_price(product):
+#     """DHL lists a price in several currency views; BILLC is the account's billing currency."""
+#     prices = product.get("totalPrice") or []
+#     for wanted in ("BILLC", "PULCL", "BASEC"):
+#         for p in prices:
+#             if p.get("currencyType") == wanted and p.get("price") is not None:
+#                 return float(p["price"]), str(p.get("priceCurrency", ""))
+#     for p in prices:
+#         if p.get("price") is not None:
+#             return float(p["price"]), str(p.get("priceCurrency", ""))
+#     return None, ""
+
+
+# def _rate_days(product):
+#     d = (product.get("deliveryCapabilities") or {}).get("totalTransitDays")
+#     try:
+#         return int(d)
+#     except (TypeError, ValueError):
+#         return None
+
+
+# def get_rate_estimate(payload):
+#     """
+#     Ask DHL's Rating service (GET /rates) what this exact shipment would cost. Books nothing.
+#     The request is built from the same payload the booking would send, so the quote is for the
+#     same route, weight and box size.
+
+#     Returns {"ok": True, "pieces", "ours", "cheapest", "options", "warnings"} or {"ok": False, "error"}.
+#       ours     = the product the booking really uses (P = Express Worldwide, N = domestic)
+#       cheapest = the lowest-priced product DHL offers for this shipment (may be the same one)
+#     """
+#     try:
+#         acc = next((a.get("number") for a in payload.get("accounts", []) if a.get("typeCode") == "shipper"), "")
+#         cust = payload["customerDetails"]
+#         s, r = cust["shipperDetails"]["postalAddress"], cust["receiverDetails"]["postalAddress"]
+#         pieces = payload["content"]["packages"]
+#         p0 = pieces[0]
+#         dim = p0["dimensions"]
+#         params = {
+#             "accountNumber": acc,
+#             "originCountryCode": s["countryCode"], "originCityName": s["cityName"],
+#             "destinationCountryCode": r["countryCode"], "destinationCityName": r["cityName"],
+#             "weight": float(p0["weight"]), "length": float(dim["length"]), "width": float(dim["width"]), "height": float(dim["height"]),
+#             "plannedShippingDate": str(payload["plannedShippingDateAndTime"])[:10],
+#             "isCustomsDeclarable": str(bool(payload["content"].get("isCustomsDeclarable"))).lower(),
+#             "unitOfMeasurement": "metric",
+#             "nextBusinessDay": "true",                  # still quote if the planned day has no pickup
+#             "requestEstimatedDeliveryDate": "true",
+#             "estimatedDeliveryDateType": "QDDC",        # the committed time, including customs clearance
+#         }
+#         # the UAE has no postcodes — the shipper's "00000" is a placeholder, so it is not sent
+#         if str(s.get("postalCode", "")).strip("0 "):
+#             params["originPostalCode"] = s["postalCode"]
+#         if str(r.get("postalCode", "")).strip():
+#             params["destinationPostalCode"] = r["postalCode"]
+#     except (KeyError, IndexError, TypeError, AttributeError) as e:
+#         return {"ok": False, "error": f"could not build the quote request ({type(e).__name__}: {e})"}
+
+#     base_url = DHL_BASE_URL_TEST if DHL_TEST_MODE else DHL_BASE_URL_PROD
+#     headers = {"Accept": "application/json", **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
+#     try:
+#         resp = requests.get(f"{base_url}/rates", params=params, headers=headers,
+#                             auth=(DHL_API_KEY, DHL_API_SECRET), timeout=30)
+#     except requests.exceptions.RequestException:
+#         return {"ok": False, "error": "could not reach DHL (timeout or network)"}
+#     if resp.status_code != 200:
+#         try:
+#             detail = resp.json().get("detail") or resp.text[:160]
+#         except ValueError:
+#             detail = resp.text[:160]
+#         detail = str(detail)[:200]
+#         # when DHL names a field it did not like, show the value we actually sent for it
+#         sent = [f"{k}={params[k]!r}" for k in params if k in detail]
+#         if sent:
+#             detail += "  [we sent " + ", ".join(sent) + "]"
+#         return {"ok": False, "error": detail}
+#     try:
+#         data = resp.json()
+#     except ValueError:
+#         return {"ok": False, "error": "DHL's reply was not readable"}
+
+#     options = []
+#     for p in data.get("products") or []:
+#         price, cur = _rate_price(p)
+#         w = p.get("weight") or {}
+#         options.append({"code": str(p.get("productCode", "")), "name": str(p.get("productName", "")),
+#                         "price": price, "currency": cur, "days": _rate_days(p),
+#                         "volumetric": w.get("volumetric"), "provided": w.get("provided")})
+#     priced = sorted((o for o in options if o["price"] is not None),
+#                     key=lambda o: (o["price"], o["days"] if o["days"] is not None else 99))
+#     ours = next((o for o in options if o["code"] == str(payload.get("productCode", ""))), None)
+#     return {"ok": True, "pieces": len(pieces), "ours": ours, "cheapest": priced[0] if priced else None,
+#             "options": priced, "warnings": [str(w) for w in (data.get("warnings") or [])]}
+
+
+# def _estimate_for_row(row):
+#     """Quote for one order. NEVER raises, so a rating problem can never touch a booking."""
+#     try:
+#         return get_rate_estimate(build_dhl_payload(row))
+#     except Exception as e:
+#         return {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
+
+
+# def booking_cost_lines(est):
+#     """Log lines for one booked order, plus (amount, currency). amount is None when there is no price."""
+#     if not est or not est.get("ok"):
+#         why = str((est or {}).get("error", "no answer"))[:120]
+#         return [f"  Cost     ⚠️   shipping cost unavailable ({why})"], None, ""
+#     ours, cheapest, n = est["ours"], est["cheapest"], est["pieces"]
+#     if not ours or ours["price"] is None:
+#         why = est["warnings"][0] if est.get("warnings") else "DHL gave no price for this service"
+#         return [f"  Cost     ⚠️   shipping cost unavailable ({why[:120]})"], None, ""
+#     cur, amt = ours["currency"], ours["price"] * n
+#     days = f"{ours['days']} day(s)" if ours["days"] is not None else "transit time n/a"
+#     multi = f", ×{n} pieces approx." if n > 1 else ""
+#     lines = [f"  Cost     💶  {cur} {amt:,.2f}  (DHL estimate: {ours['code']} {ours['name']}, {days}{multi})"]
+#     vol, prov = ours.get("volumetric"), ours.get("provided")
+#     if isinstance(vol, (int, float)) and isinstance(prov, (int, float)) and vol > prov:
+#         lines.append(f"           ⚖️  DHL would bill the box size ({vol} kg), not the declared {prov} kg")
+#     if cheapest and cheapest["currency"] == cur and cheapest["price"] < ours["price"] - 1e-9:
+#         pct = round((1 - cheapest["price"] / ours["price"]) * 100)
+#         lines.append(f"           cheaper option exists: {cheapest['code']} {cheapest['name']}  {cur} {cheapest['price'] * n:,.2f}  (−{pct}%)")
+#     return lines, amt, cur
+
+
+# def _log_booking_cost(future, state):
+#     """
+#     Print the shipping-cost line(s) for an order that was just booked. NEVER raises.
+#     Quotes are only printed, never saved (DHL's terms forbid storing rate data), so nothing here
+#     touches dhl_results or the log files. After two outages in a row we stop waiting for DHL.
+#     """
+#     try:
+#         if state["outage"] >= 2:
+#             est = {"ok": False, "error": "no answer from DHL's rating service (skipped)"}
+#         else:
+#             try:
+#                 est = future.result(timeout=20)
+#             except Exception:
+#                 est = {"ok": False, "error": "no answer from DHL's rating service"}
+#         lines, amt, cur = booking_cost_lines(est)
+#         for ln in lines:
+#             print(ln)
+#         if amt is not None:
+#             state["outage"] = 0
+#             state["priced"] += 1
+#             state["totals"][cur] = state["totals"].get(cur, 0.0) + amt
+#         elif str(est.get("error", "")).startswith(("could not reach", "no answer")):
+#             state["outage"] += 1
+#     except Exception as e:
+#         print(f"  Cost     ⚠️   shipping cost unavailable ({type(e).__name__})")
+
+
+# def run_cost_estimate(result, verbose=False):
+#     """Print what DHL would charge to ship every order. Books nothing, stores nothing. Returns an exit code."""
+#     if DHL_TEST_MODE:
+#         print("\nℹ️  TEST MODE is on, so the script does not talk to DHL. The estimate needs DHL, so it was skipped.")
+#         return 0
+#     from concurrent.futures import ThreadPoolExecutor
+
+#     total = len(result)
+#     print(f"\n{'='*60}")
+#     print(f"💶 COST ESTIMATE — asking DHL for the price of {total} order(s)")
+#     print(f"   Nothing is booked and nothing is saved. Quotes are estimates.")
+#     print(f"{'='*60}")
+
+#     rows = [row for _, row in result.iterrows()]
+
+#     work = _estimate_for_row                                     # one bad order must not stop the rest
+
+#     money = lambda cur, amt: f"{cur} {amt:,.2f}".strip()
+#     totals, priced, unpriced, cheaper_n, last_err = {}, 0, 0, 0, None
+#     with ThreadPoolExecutor(max_workers=4) as pool:
+#         futures = [pool.submit(work, row) for row in rows]
+#         for idx, (row, fut) in enumerate(zip(rows, futures), start=1):
+#             order_number = str(row.get("Shipment Reference 1", "unknown"))
+#             dest = str(row.get("Country Code (Ship TO) (Required)", "")).strip()
+#             est = fut.result()
+#             head = f"[{idx}/{total}] {order_number}  → {dest}"
+#             if not est["ok"]:
+#                 unpriced += 1
+#                 if est["error"] == last_err:
+#                     print(f"{head}   could not be priced (same reason as above)")
+#                 else:
+#                     print(f"{head}   could not be priced: {est['error']}")
+#                 last_err = est["error"]
+#                 continue
+#             last_err = None
+#             ours, cheapest, n = est["ours"], est["cheapest"], est["pieces"]
+#             if not ours or ours["price"] is None:
+#                 unpriced += 1
+#                 why = est["warnings"][0] if est["warnings"] else "DHL gave no price for our usual service on this route"
+#                 print(f"{head}   could not be priced: {why[:160]}")
+#                 continue
+#             priced += 1
+#             cur = ours["currency"]
+#             days = f"{ours['days']} day(s)" if ours["days"] is not None else "transit time n/a"
+#             multi = f"  (×{n} pieces, approx.)" if n > 1 else ""
+#             print(f"{head}   {ours['code']} {ours['name']}   {money(cur, ours['price'] * n)}   {days}{multi}")
+#             vol, prov = ours.get("volumetric"), ours.get("provided")
+#             if isinstance(vol, (int, float)) and isinstance(prov, (int, float)) and vol > prov:
+#                 print(f"        ⚖️  DHL would bill the box size ({vol} kg), not the declared {prov} kg")
+#             cur_tot = totals.setdefault(cur, [0.0, 0.0])
+#             cur_tot[0] += ours["price"] * n
+#             if cheapest and cheapest["currency"] == cur and cheapest["price"] < ours["price"] - 1e-9:
+#                 cheaper_n += 1
+#                 cur_tot[1] += cheapest["price"] * n
+#                 pct = round((1 - cheapest["price"] / ours["price"]) * 100)
+#                 cd = f"{cheapest['days']} day(s)" if cheapest["days"] is not None else "transit n/a"
+#                 print(f"        cheaper option: {cheapest['code']} {cheapest['name']}  {money(cur, cheapest['price'] * n)}  (−{pct}%)  {cd}")
+#             else:
+#                 cur_tot[1] += ours["price"] * n
+
+#     print(f"\n{'='*60}")
+#     print(f"💶 ESTIMATE COMPLETE — {priced} of {total} order(s) priced")
+#     for cur, (now, best) in totals.items():
+#         print(f"   Estimated shipping cost : {money(cur, now)}")
+#         if best < now - 0.005:
+#             print(f"   Cheapest options total  : {money(cur, best)}   (about {money(cur, now - best)} less)")
+#     if cheaper_n:
+#         print(f"   A cheaper DHL product exists on {cheaper_n} order(s). It may be slower or not support the same")
+#         print(f"   duty service, so check before switching — the booking still uses our usual service.")
+#     if unpriced:
+#         print(f"   {unpriced} order(s) could not be priced (see above).")
+#     print(f"   Estimates only: DHL's final bill can differ, and duties and taxes are billed separately.")
+#     print(f"{'='*60}")
+#     print("ESTIMATE_SUMMARY " + json.dumps({
+#         "orders": total, "priced": priced, "unpriced": unpriced, "cheaper": cheaper_n,
+#         "totals": {c: {"estimated": round(v[0], 2), "cheapest": round(v[1], 2)} for c, v in totals.items()},
+#     }))
+#     return 0
+
+
+# # ============================================================
 # # MAIN
 # # ============================================================
 # if __name__ == "__main__":
@@ -7383,6 +7975,8 @@ if __name__ == "__main__":
 #     send_to_dhl_flag = "--send-to-dhl" in sys.argv
 #     test_override    = "--test"         in sys.argv
 #     verbose_flag     = "--verbose"      in sys.argv  # print full DHL payload per order
+#     check_flag       = "--check-dhl"    in sys.argv  # ask DHL to validate every order, book nothing
+#     estimate_flag    = "--estimate-cost" in sys.argv  # ask DHL what every order would cost, book nothing
  
 #     if test_override:
 #         DHL_TEST_MODE = True
@@ -7533,6 +8127,15 @@ if __name__ == "__main__":
 #     result.to_csv(csv_out, index=False, encoding="utf-8-sig")
 #     print(f"\n✅ CSV saved: {csv_out}  ({len(result)} order(s))")
  
+#     # ── 4b. CHECK ONLY (--check-dhl): validate with DHL, book nothing, then stop ──
+#     # This runs BEFORE the booking code below and always exits, even if --send-to-dhl was also passed.
+#     if check_flag:
+#         sys.exit(run_dhl_check(result, df, verbose_flag))
+
+#     # ── 4c. COST ESTIMATE (--estimate-cost): ask DHL for prices, book nothing, then stop ──
+#     if estimate_flag:
+#         sys.exit(run_cost_estimate(result, verbose_flag))
+
 #     # ── 5. SEND TO DHL (only if --send-to-dhl flag) ─────────
 #     if not send_to_dhl_flag:
 #         print("\nℹ️  Dry run complete — CSV only.")
@@ -7560,6 +8163,16 @@ if __name__ == "__main__":
 #     success_count = 0
 #     fail_count    = 0
 #     failed_orders = []  # saved to JSON so you can retry just these
+
+#     # ── Shipping cost: quoted in the background, PRINTED ONLY (never saved) ──
+#     # Kept out of dhl_results and every log file on purpose: DHL's terms forbid storing rate data.
+#     cost_pool, cost_futures = None, {}
+#     cost_state = {"outage": 0, "priced": 0, "totals": {}}
+#     if not DHL_TEST_MODE:
+#         from concurrent.futures import ThreadPoolExecutor
+#         cost_pool = ThreadPoolExecutor(max_workers=3)
+#         for _i, (_, _r) in enumerate(result.iterrows(), start=1):
+#             cost_futures[_i] = cost_pool.submit(_estimate_for_row, _r)
  
 #     # ── THE PROTECTED BATCH LOOP ─────────────────────────────
 #     # Each order is wrapped in try/except so one failure never
@@ -7585,6 +8198,8 @@ if __name__ == "__main__":
 #                 airtable_rec_id = record_id_map.get(order_number, "")
 
 #                 print(f"  DHL      ✅  AWB: {tracking_number}")
+#                 if cost_pool is not None:
+#                     _log_booking_cost(cost_futures.get(idx), cost_state)
 
 #                 if DHL_TEST_MODE:
 #                     print(f"  Airtable ⏭️   TEST MODE — writeback skipped")
@@ -7646,6 +8261,9 @@ if __name__ == "__main__":
 #         if idx < total:
 #             time.sleep(1.0)
  
+#     if cost_pool is not None:
+#         cost_pool.shutdown(wait=False, cancel_futures=True)
+
 #     # ── 6. SAVE LOGS ─────────────────────────────────────────
 #     os.makedirs("logs", exist_ok=True)
  
@@ -7665,6 +8283,8 @@ if __name__ == "__main__":
 #     print(f"📊 BATCH COMPLETE")
 #     print(f"   ✅ Success : {success_count}/{total}")
 #     print(f"   ❌ Failed  : {fail_count}/{total}")
+#     for _cur, _amt in cost_state["totals"].items():
+#         print(f"   💶 Shipping cost : {_cur} {_amt:,.2f} for {cost_state['priced']} booked shipment(s) (DHL estimate)")
 #     print(f"   Full log  : {response_file}")
 #     print(f"{'='*60}")
  
