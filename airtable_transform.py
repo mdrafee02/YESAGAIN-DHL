@@ -2978,6 +2978,49 @@ def confirm_customer_pickup(token, pickup_date, ready_time, close_time, instruct
 # RETURN LABEL
 # ============================================================
 
+def _diagnose_return_lane(payload, base_url):
+    """
+    Called only when DHL keeps refusing a return label with "product not available" / "no pickup service".
+    Asks DHL's product service what it offers for the SAME route and account, and prints the answer in the log,
+    so the real reason is visible. Read-only (no booking, no prices). Never raises.
+    """
+    try:
+        cust = payload["customerDetails"]
+        s, r = cust["shipperDetails"]["postalAddress"], cust["receiverDetails"]["postalAddress"]
+        p0 = payload["content"]["packages"][0]
+        dim = p0["dimensions"]
+        acct = next((a["number"] for a in payload["accounts"] if a["typeCode"] == "shipper"), "")
+        params = {
+            "accountNumber": acct, "originCountryCode": s["countryCode"], "originCityName": s["cityName"],
+            "destinationCountryCode": r["countryCode"], "destinationCityName": r["cityName"],
+            "weight": float(p0["weight"]), "length": float(dim["length"]), "width": float(dim["width"]), "height": float(dim["height"]),
+            "plannedShippingDate": str(payload["plannedShippingDateAndTime"])[:10],
+            "isCustomsDeclarable": "true", "unitOfMeasurement": "metric", "nextBusinessDay": "true",
+        }
+        if s.get("postalCode"):
+            params["originPostalCode"] = s["postalCode"]
+        if str(r.get("postalCode", "")).strip("0 "):
+            params["destinationPostalCode"] = r["postalCode"]
+        headers = {"Accept": "application/json", **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
+        resp = requests.get(f"{base_url}/products", params=params, headers=headers,
+                            auth=(DHL_API_KEY, DHL_API_SECRET), timeout=20)
+        print(f"   🔎 LANE CHECK — DHL product service for {s['countryCode']} {s['cityName']} {s.get('postalCode', '')}"
+              f" (state {s.get('provinceCode', 'not sent')}) → {r['countryCode']}, account {acct}: HTTP {resp.status_code}")
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {}
+        products = body.get("products") if isinstance(body, dict) else None
+        if resp.status_code == 200 and products:
+            print("       DHL offers: " + ", ".join(f"{p.get('productCode')} {p.get('productName')}" for p in products))
+        else:
+            print(f"       DHL says: {(body.get('detail') if isinstance(body, dict) else '') or resp.text[:300]}")
+            for extra in (body.get("additionalDetails") or [] if isinstance(body, dict) else []):
+                print(f"         • {str(extra)[:250]}")
+    except Exception as e:
+        print(f"   🔎 Lane check could not run: {type(e).__name__}: {e}")
+
+
 def book_return_label(original_awb):
     """
     Book a DHL return label by looking up the original shipment AWB
@@ -3055,6 +3098,19 @@ def book_return_label(original_awb):
         row.get("Address 2 (Ship TO)") or ""
     ))[:45]
 
+    # US addresses need the STATE as its own field. Outgoing US shipments already send it as provinceCode,
+    # and a 2-letter address line 2 ("MO") IS the state (see get_address2_and_state). The return flow sent
+    # it as a second address line and left the state out, so DHL could not find a pickup area.
+    cust_state = ""
+    if dest_country == "US":
+        _st = _str(row.get("ShippingState") or row.get("Shipping State") or row.get("State Province (Ship TO)") or "")
+        if len(cust_addr2) == 2 and cust_addr2.isalpha():
+            _st, cust_addr2 = cust_addr2, ""
+        if len(_st) == 2 and _st.isalpha():
+            cust_state = _st.upper()
+        else:
+            cust_state = next((k for k, v in STATE_FULL_NAMES.items() if v.lower() == _st.lower()), "") if _st else ""
+
     cust_city  = clean_text(_str(
         row.get("ShippingCity") or
         row.get("Shipping City") or
@@ -3080,7 +3136,7 @@ def book_return_label(original_awb):
     print(f"   Name   : {cust_name!r}")
     print(f"   Addr1  : {cust_addr1!r}")
     print(f"   City   : {cust_city!r}")
-    print(f"   ZIP    : {cust_zip!r}")
+    print(f"   ZIP    : {cust_zip!r}" + (f"   State: {cust_state}" if cust_state else ""))
     print(f"   Phone  : +{phone_cc}{cust_phone}")
 
     # ── Step 3: Build payload ─────────────────────────────────────────────
@@ -3096,6 +3152,8 @@ def book_return_label(original_awb):
     }
     if cust_addr2:
         shipper_postal["addressLine2"] = cust_addr2
+    if cust_state:
+        shipper_postal["provinceCode"] = cust_state
 
     receiver_postal = {
         "postalCode"  : receiver_party["ZIP"],
@@ -3226,9 +3284,10 @@ def book_return_label(original_awb):
         )
         # DHL cannot collect on a public holiday or other non-working day in the customer's country
         # (error 410201 "Pick-up service is not provided on this day", followed by "product not available").
-        # A rejected request creates no shipment, so it is safe to try the next working day (up to 6 more tries).
+        # A rejected request creates no shipment, so it is safe to try the next working day (up to 3 more tries:
+        # a holiday blocks a day or two, so if DHL still refuses, the date is not the reason).
         _day, _tries = datetime.strptime(ship_date[:10], "%Y-%m-%d"), 0
-        while (resp.status_code not in (200, 201) and _tries < 6
+        while (resp.status_code not in (200, 201) and _tries < 3
                and ("410201" in resp.text or "pick-up service is not provided" in resp.text.lower())):
             _tries += 1
             _rejected = _day.strftime("%Y-%m-%d")
@@ -3245,6 +3304,9 @@ def book_return_label(original_awb):
                 headers=headers,
                 timeout=30,
             )
+
+        if resp.status_code not in (200, 201) and ("1001" in resp.text or "410201" in resp.text):
+            _diagnose_return_lane(payload, base_url)
 
         if resp.status_code in (200, 201):
             data       = resp.json()
