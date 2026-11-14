@@ -63,7 +63,7 @@ PERSONAL_EXPORT_COUNTRIES   = {c.strip().upper() for c in os.getenv("PERSONAL_EX
 # belong to a different DHL layout; set these once DHL names the template that prints them.
 INVOICE_TEMPLATE = os.getenv("INVOICE_TEMPLATE", "COMMERCIAL_INVOICE_P_10").strip()
 INVOICE_DOC_TYPE = os.getenv("INVOICE_DOC_TYPE", "commercial").strip()     # "commercial" or "proforma"
-INVOICE_SIGNATURE_NAME  = os.getenv("INVOICE_SIGNATURE_NAME",  "mohamed nabil support").strip()[:35]
+INVOICE_SIGNATURE_NAME  = os.getenv("INVOICE_SIGNATURE_NAME",  "Logistics Team").strip()[:35]
 INVOICE_SIGNATURE_TITLE = os.getenv("INVOICE_SIGNATURE_TITLE", "Sales & Logistics Coordinator").strip()[:35]
 PERSONAL_EXPORT_REASON      = "Personal, Not for Resale"
 PERSONAL_EXPORT_REASON_TYPE = "personal_belongings_or_personal_use"   # prints as "Personal Belongings/Not for Resale"
