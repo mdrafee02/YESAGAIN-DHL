@@ -42,7 +42,7 @@ DHL_TEST_MODE  = os.getenv("DHL_TEST_MODE", "true").strip().lower() == "true"
 DHL_API_VERSION = os.getenv("DHL_API_VERSION", "3.3.2").strip()
 # "Trader Type" printed for the parties on the invoice. Set CONSIGNEE_TRADER_TYPE="" to leave it blank.
 SHIPPER_TRADER_TYPE   = os.getenv("SHIPPER_TRADER_TYPE", "business").strip()
-CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "direct_consumer").strip()
+CONSIGNEE_TRADER_TYPE = os.getenv("CONSIGNEE_TRADER_TYPE", "private").strip()      # prints "PRIVATE", as on manual MyDHL+ bookings
 # A corporate importer is declared on the invoice ONLY where YESAGAIN holds a local registration (the countries in
 # EU_VAT_BY_COUNTRY). Everywhere else (Spain, Portugal, the US, Saudi Arabia, ...) the consignee is the importer,
 # no importer block is printed, and the invoice states who pays the duties and taxes instead. This optional list
@@ -51,6 +51,26 @@ NO_IMPORTER_COUNTRIES = {c.strip().upper() for c in os.getenv("NO_IMPORTER_COUNT
 # RMA / replacement shipments are priced from the ORIGINAL order. If that price cannot be found for any reason
 # (no sales order, no price on its lines, or a price of 0) this value is declared instead — never the €1 minimum.
 RMA_FALLBACK_PRICE = float(os.getenv("RMA_FALLBACK_PRICE", "200"))
+# Countries where the invoice's "Payer of GST/VAT" line shows only the paying company's NAME, never a VAT number.
+# DHL Spain's customs team says the French VAT cannot be used for customs purposes in Spain, so it is not printed there.
+PAYER_NAME_ONLY_COUNTRIES = {c.strip().upper() for c in os.getenv("PAYER_NAME_ONLY_COUNTRIES", "ES").split(",") if c.strip()}
+# Countries whose invoices follow the MANUAL MyDHL+ booking: reason "Personal, Not for Resale", type of export
+# "Personal Belongings/Not for Resale", and no "Payer of GST/VAT" line. Default "*" = every international shipment
+# (UAE domestic is not affected). Set a list such as "ES,PT" to limit it, or empty to switch it off.
+PERSONAL_EXPORT_COUNTRIES   = {c.strip().upper() for c in os.getenv("PERSONAL_EXPORT_COUNTRIES", "*").split(",") if c.strip()}
+# Signer printed at the bottom of every commercial invoice (as on manual MyDHL+ bookings). Empty = left blank.
+# DHL invoice layout for outgoing shipments. The extra rows on manual MyDHL+ invoices ("Duty / taxes acct", "Carrier", ...)
+# belong to a different DHL layout; set these once DHL names the template that prints them.
+INVOICE_TEMPLATE = os.getenv("INVOICE_TEMPLATE", "COMMERCIAL_INVOICE_P_10").strip()
+INVOICE_DOC_TYPE = os.getenv("INVOICE_DOC_TYPE", "commercial").strip()     # "commercial" or "proforma"
+INVOICE_SIGNATURE_NAME  = os.getenv("INVOICE_SIGNATURE_NAME",  "mohamed nabil support").strip()[:35]
+INVOICE_SIGNATURE_TITLE = os.getenv("INVOICE_SIGNATURE_TITLE", "Sales & Logistics Coordinator").strip()[:35]
+PERSONAL_EXPORT_REASON      = "Personal, Not for Resale"
+PERSONAL_EXPORT_REASON_TYPE = "personal_belongings_or_personal_use"   # prints as "Personal Belongings/Not for Resale"
+
+def personal_export_for(country):
+    c = str(country).strip().upper()
+    return "*" in PERSONAL_EXPORT_COUNTRIES or c in PERSONAL_EXPORT_COUNTRIES
 
 # ── Local UAE return pickup scheduling (customer self-serve link) ─────────
 PUBLIC_APP_URL     = os.getenv("PUBLIC_APP_URL", "http://localhost:5000")
@@ -1464,6 +1484,9 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
         duty_acc    = rules["duty_account"]
         add_party   = rules["additional_party"]
         region      = rules["region"]
+        _cu         = country.strip().upper()
+        if region != "domestic_uae" and (_cu not in EU_VAT_BY_COUNTRY or _cu in NO_IMPORTER_COUNTRIES):
+            add_party = {k: "" for k in add_party}      # no corporate importer on these invoices: leave it empty
  
         # ── Declared Value Rules ──────────────────────────────────────
         # Policy (per shipping policy document):
@@ -1529,7 +1552,7 @@ def transform(df, ya_rma_map=None, crs_rma_map=None, price_map=None):
             "LENGTH"                                    : pp["length"],
             "WIDTH"                                     : pp["width"],
             "HEIGHT"                                    : pp["height"],
-            "REASON OF EXPORT"                          : F["export_reason"],
+            "REASON OF EXPORT"                          : (PERSONAL_EXPORT_REASON if (region != "domestic_uae" and personal_export_for(country)) else F["export_reason"]),
             "Digital Customs Invoice  Y N (Paperless)"  : F["dig_customs"],
  
             # --- INVOICE / ITEM ---
@@ -1777,6 +1800,17 @@ EU_MEMBER_STATES = {
 PACKAGE_MARKS = "Brown cardboard box with YesAgain logo"
 
 
+_COMPANY_WORDS = re.compile(r"\b(gmbh|ltd|limited|llc|inc|corp|corporation|sarl|sas|eurl|srl|spa|plc|pty|bv|gbr|"
+                            r"business|company|group|holding|trading|enterprises|solutions|services|technologies)\b", re.IGNORECASE)
+_COMPANY_SUFFIX = re.compile(r"(?:\b(?:SL|SA|AB|NV|AG|OY)\b|\bS\.\s?[LAR]\.?(?:\s?[LA]\.?)?\b|\bB\.V\.)")   # upper-case only: "ACME SL", "S.L."
+
+
+def _looks_like_company(text):
+    """True when a name carries a legal form or business word (e.g. 'Amazon Business EU SARL', 'ACME S.L.')."""
+    t = str(text or "")
+    return bool(_COMPANY_WORDS.search(t) or _COMPANY_SUFFIX.search(t))
+
+
 def _payer_label(party):
     """Who pays the duties and taxes = the holder of the DHL duty account, named as the invoice should say it."""
     country = str(party.get("Country", "")).strip().upper()
@@ -1903,11 +1937,21 @@ def build_dhl_payload(row):
         # SHIP FROM). The invoice instead says who PAYS the duties and taxes: in the Remarks, and in "Payer of
         # GST/VAT" (that entity's VAT number, or its name when it has none, e.g. YESAGAIN FZC).
         payer_label = _payer_label(payer_party)
-        payer_line  = str(payer_party.get("VAT", "")).strip() or payer_label
+        payer_line  = payer_label if country in PAYER_NAME_ONLY_COUNTRIES else (str(payer_party.get("VAT", "")).strip() or payer_label)
         importer_vat, importer_eori, vat_issuer = "", "", ""
     else:
         payer_line = importer_vat
+    personal_export = (not is_domestic) and personal_export_for(country)
+    if not is_domestic and duty_account is not None:
+        # "Payer of GST/VAT" shows the DHL account that pays duties and taxes for this destination
+        # (EU/CH/NO 229887839 YESAGAIN France, UK 952629100 CRS, US/GCC/others 961923318 YESAGAIN FZC).
+        payer_line = str(duty_account)
  
+    # A buyer with a company name (legal form or business word) is a business, not a consumer.
+    _co = str(row.get("Company (Ship TO) (Required)", "")).strip()
+    _nm = str(row.get("Name (Ship TO) (Required)", "")).strip()
+    consignee_type = CONSIGNEE_TRADER_TYPE      # every buyer is a customer from a sales channel: always Private
+
     # Phone number sanitation and formatting
     phone_cc  = str(row.get("Phone Country Code (Ship TO) (Required)", "")).strip()
     phone_num = str(row.get("Phone Number (Ship TO) (Required)", "")).strip()
@@ -1973,9 +2017,9 @@ def build_dhl_payload(row):
                 {"typeCode": "label", "templateName": "ECOM26_84_001", "isRequested": True},
                 *( [] if is_domestic else [{
                     "typeCode"           : "invoice",
-                    "templateName"       : "COMMERCIAL_INVOICE_P_10",
+                    "templateName"       : INVOICE_TEMPLATE,
                     "isRequested"        : True,
-                    "invoiceType"        : "commercial",
+                    "invoiceType"        : INVOICE_DOC_TYPE,
                     "languageCode"       : "eng",
                     "languageCountryCode": "US",
                 }]),
@@ -2015,7 +2059,7 @@ def build_dhl_payload(row):
                     "email"      : str(row.get("Email Address (Ship TO)", "")).strip(),
                     "phone"      : full_phone,
                 },
-                **({"typeCode": CONSIGNEE_TRADER_TYPE} if (CONSIGNEE_TRADER_TYPE and not is_domestic) else {}),
+                **({"typeCode": consignee_type} if (consignee_type and not is_domestic) else {}),
             },
             # Declare the Importer of Record as its own named party.
             **({"importerDetails": _importer_details(importer_party, importer_vat)}
@@ -2057,12 +2101,16 @@ def build_dhl_payload(row):
                     "invoice": {
                         "number": (str(row.get("INVOICE NO.", "")) or order_id)[:35],
                         "date"  : datetime.now().strftime("%Y-%m-%d"),
+                        **({"signatureName": INVOICE_SIGNATURE_NAME} if INVOICE_SIGNATURE_NAME else {}),
+                        **({"signatureTitle": INVOICE_SIGNATURE_TITLE} if INVOICE_SIGNATURE_TITLE else {}),
                     },
-                    "exportReason": F["export_reason"],
+                    "exportReason": PERSONAL_EXPORT_REASON if personal_export else F["export_reason"],
+                    # "Type of Export" on the invoice (blank until now)
+                    **({"exportReasonType": PERSONAL_EXPORT_REASON_TYPE} if personal_export else {}),
                     # Named place for the Incoterm (DDP + destination city) and the type of export —
                     # both were blank on every invoice. Sana confirmed Create Shipment accepts them.
                     **({"placeOfIncoterm": str(postal_address.get("cityName", "")).strip()[:35]} if str(postal_address.get("cityName", "")).strip() else {}),
-                    "shipmentType": "commercial",
+                    "shipmentType": "personal" if personal_export else "commercial",   # matches the type of export
                     # DHL: payerVATNumber lives inside exportDeclaration, not top-level content
                     # (confirmed extraneous there — Sana's example groups it with
                     # destinationPortName/placeOfIncoterm/recipientReference/exporter).
@@ -2398,6 +2446,11 @@ def send_to_dhl(row, verbose=False):
             _dropped = "importerDetails";  _cust.pop("importerDetails", None)
         elif "remarks" in _err and _decl.get("remarks"):
             _dropped = "remarks";          _decl.pop("remarks", None)
+        elif "signature" in _err and (_decl.get("invoice", {}).get("signatureName") or _decl.get("invoice", {}).get("signatureTitle")):
+            _dropped = "invoice signature"
+            _decl["invoice"].pop("signatureName", None); _decl["invoice"].pop("signatureTitle", None)
+        elif "exportreasontype" in _err and _decl.get("exportReasonType"):
+            _dropped = "type of export";   _decl.pop("exportReasonType", None)
         elif "payervatnumber" in _err and _decl.get("payerVATNumber"):
             _dropped = "payerVATNumber";   _decl.pop("payerVATNumber", None)
         elif "placeofincoterm" in _err and _decl.get("placeOfIncoterm"):
@@ -2981,8 +3034,9 @@ def confirm_customer_pickup(token, pickup_date, ready_time, close_time, instruct
 def _diagnose_return_lane(payload, base_url):
     """
     Called only when DHL keeps refusing a return label with "product not available" / "no pickup service".
-    Asks DHL's product service what it offers for the SAME route and account, and prints the answer in the log,
-    so the real reason is visible. Read-only (no booking, no prices). Never raises.
+    Asks DHL's product service (read-only: no booking, no prices) about THIS route and about two CONTROL routes
+    with the same account, and prints the answers in the log. Comparing them shows whether the problem is this
+    one address (no DHL pickup coverage there) or the account (not set up to ship FROM abroad). Never raises.
     """
     try:
         cust = payload["customerDetails"]
@@ -2990,33 +3044,45 @@ def _diagnose_return_lane(payload, base_url):
         p0 = payload["content"]["packages"][0]
         dim = p0["dimensions"]
         acct = next((a["number"] for a in payload["accounts"] if a["typeCode"] == "shipper"), "")
-        params = {
-            "accountNumber": acct, "originCountryCode": s["countryCode"], "originCityName": s["cityName"],
-            "destinationCountryCode": r["countryCode"], "destinationCityName": r["cityName"],
+        date = str(payload["plannedShippingDateAndTime"])[:10]
+        base_params = {
+            "accountNumber": acct, "destinationCountryCode": r["countryCode"], "destinationCityName": r["cityName"],
             "weight": float(p0["weight"]), "length": float(dim["length"]), "width": float(dim["width"]), "height": float(dim["height"]),
-            "plannedShippingDate": str(payload["plannedShippingDateAndTime"])[:10],
-            "isCustomsDeclarable": "true", "unitOfMeasurement": "metric", "nextBusinessDay": "true",
+            "plannedShippingDate": date, "isCustomsDeclarable": "true", "unitOfMeasurement": "metric", "nextBusinessDay": "true",
         }
-        if s.get("postalCode"):
-            params["originPostalCode"] = s["postalCode"]
         if str(r.get("postalCode", "")).strip("0 "):
-            params["destinationPostalCode"] = r["postalCode"]
+            base_params["destinationPostalCode"] = r["postalCode"]
         headers = {"Accept": "application/json", **({"x-version": DHL_API_VERSION} if DHL_API_VERSION else {})}
-        resp = requests.get(f"{base_url}/products", params=params, headers=headers,
-                            auth=(DHL_API_KEY, DHL_API_SECRET), timeout=20)
-        print(f"   🔎 LANE CHECK — DHL product service for {s['countryCode']} {s['cityName']} {s.get('postalCode', '')}"
-              f" (state {s.get('provinceCode', 'not sent')}) → {r['countryCode']}, account {acct}: HTTP {resp.status_code}")
-        try:
-            body = resp.json()
-        except ValueError:
-            body = {}
-        products = body.get("products") if isinstance(body, dict) else None
-        if resp.status_code == 200 and products:
-            print("       DHL offers: " + ", ".join(f"{p.get('productCode')} {p.get('productName')}" for p in products))
-        else:
-            print(f"       DHL says: {(body.get('detail') if isinstance(body, dict) else '') or resp.text[:300]}")
-            for extra in (body.get("additionalDetails") or [] if isinstance(body, dict) else []):
-                print(f"         • {str(extra)[:250]}")
+
+        def ask(label, country, city, postal):
+            params = dict(base_params, originCountryCode=country, originCityName=city)
+            if postal:
+                params["originPostalCode"] = postal
+            try:
+                resp = requests.get(f"{base_url}/products", params=params, headers=headers,
+                                    auth=(DHL_API_KEY, DHL_API_SECRET), timeout=20)
+                try:
+                    body = resp.json()
+                except ValueError:
+                    body = {}
+                products = body.get("products") if isinstance(body, dict) else None
+                if resp.status_code == 200 and products:
+                    verdict = "DHL offers " + ", ".join(f"{p.get('productCode')} {p.get('productName')}" for p in products)
+                else:
+                    why = (body.get("detail") if isinstance(body, dict) else "") or resp.text[:200]
+                    extra = (body.get("additionalDetails") or []) if isinstance(body, dict) else []
+                    verdict = "REFUSED — " + str(why)[:160] + ("  [" + "; ".join(str(x)[:90] for x in extra[:3]) + "]" if extra else "")
+                print(f"       {label}: HTTP {resp.status_code} → {verdict}")
+            except Exception as e:
+                print(f"       {label}: could not run ({type(e).__name__})")
+
+        print(f"   🔎 LANE CHECK — DHL product service, account {acct}, to {r['countryCode']}, date {date}:")
+        ask(f"THIS RETURN ({s['countryCode']} {s['cityName']} {s.get('postalCode', '')}, state {s.get('provinceCode', 'n/a')})",
+            s["countryCode"], s["cityName"], s.get("postalCode", ""))
+        ask("CONTROL 1 (US, New York 10001)", "US", "NEW YORK", "10001")
+        ask("CONTROL 2 (Germany, Berlin 10115)", "DE", "BERLIN", "10115")
+        print("       How to read it: if both controls are refused too, the account is not set up to book shipments FROM abroad")
+        print("       (ask DHL). If a control works and THIS RETURN does not, DHL has no pickup coverage at that address.")
     except Exception as e:
         print(f"   🔎 Lane check could not run: {type(e).__name__}: {e}")
 
@@ -4116,6 +4182,8 @@ if __name__ == "__main__":
         product      = get_dhl_product_code(PARTY_UAE["Country"], dest_country)
         print(f"\n[{idx}/{total}] ── {order_number} {'─'*30}")
         print(f"  Dest: {dest_country}  │  Region: {region.upper()}  │  Product: {product}  │  Declared: €{declared}")
+        if not re.sub(r"\D", "", str(row.get("Phone Number (Ship TO) (Required)", ""))).strip("0"):
+            print("  Contact  ⚠️   No phone number in Airtable — DHL cannot call this customer (a placeholder number is sent)")
 
         try:
             # ── DHL API call ──────────────────
